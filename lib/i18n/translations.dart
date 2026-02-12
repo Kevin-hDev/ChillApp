@@ -146,6 +146,9 @@ const Map<String, Map<String, String>> translations = {
     'settings.lock.confirm': 'Confirme ton code PIN',
     'settings.lock.mismatch': 'Les codes PIN ne correspondent pas',
     'settings.lock.enterCurrent': 'Entre ton PIN actuel',
+    'settings.lock.warning': 'Choisis un code dont tu te souviendras. '
+        'Aucune procédure de réinitialisation n\'est disponible. '
+        'Si tu oublies ton PIN, tu devras réinstaller l\'application.',
 
     // Lock
     'lock.title': 'Déverrouiller Chill',
@@ -307,6 +310,9 @@ const Map<String, Map<String, String>> translations = {
     'settings.lock.confirm': 'Confirm your PIN',
     'settings.lock.mismatch': 'PINs do not match',
     'settings.lock.enterCurrent': 'Enter your current PIN',
+    'settings.lock.warning': 'Choose a code you will remember. '
+        'No reset procedure is available. '
+        'If you forget your PIN, you will need to reinstall the application.',
 
     // Lock
     'lock.title': 'Unlock Chill',
