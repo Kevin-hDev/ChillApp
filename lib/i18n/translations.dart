@@ -61,6 +61,28 @@ const Map<String, Map<String, String>> translations = {
     'wol.step.disableFastStartup': 'Désactiver le démarrage rapide',
     'wol.step.persist': 'Rendre le WoL permanent',
     'wol.step.showMac': 'Afficher l\'adresse MAC',
+    'wol.step.installEthtool': 'Installer ethtool',
+    'wol.step.enableWol': 'Activer le Wake-on-LAN',
+    'wol.explanation.title': 'Qu\'est-ce que ça fait ?',
+    'wol.explanation.content': 'Le Wake-on-LAN (WoL) permet d\'allumer ton PC à distance. '
+        'ChillShell envoie un signal spécial appelé "Magic Packet" à ta carte réseau, '
+        'et celle-ci allume ton PC même quand il est éteint. '
+        'On va activer cette fonctionnalité sur ta carte réseau '
+        'et s\'assurer que ça reste actif après chaque redémarrage. '
+        'Ton PC doit être branché en Ethernet (pas en WiFi) pour que ça fonctionne.',
+    'wol.patience': 'Cela peut prendre quelques instants',
+    'wol.result.title': 'Configuration terminée !',
+    'wol.result.mac': 'Ton adresse MAC (entre-la dans ChillShell)',
+    'wol.result.adapter': 'Carte réseau',
+    'wol.result.ip': 'Ton adresse IP',
+    'wol.result.reminder': 'N\'oublie pas de configurer ton BIOS ! '
+        'Le WoL ne fonctionnera pas sans la configuration BIOS. '
+        'Consulte le tuto BIOS sur le site ChillShell.',
+    'wol.error.retry': 'Réessayer',
+    'wol.linuxWarning': 'Sur Linux, le Wake-on-LAN peut ne pas fonctionner selon ta carte réseau '
+        'et ton noyau Linux. Le WoL fonctionne de manière plus fiable quand le PC '
+        'est éteint depuis Windows. Si tu fais du dual-boot, éteins depuis Windows '
+        'avant d\'essayer d\'allumer à distance.',
 
     // Connection Info
     'info.title': 'Infos de connexion',
@@ -153,6 +175,27 @@ const Map<String, Map<String, String>> translations = {
     'wol.step.disableFastStartup': 'Disable Fast Startup',
     'wol.step.persist': 'Make WoL persistent',
     'wol.step.showMac': 'Show MAC address',
+    'wol.step.installEthtool': 'Install ethtool',
+    'wol.step.enableWol': 'Enable Wake-on-LAN',
+    'wol.explanation.title': 'What does this do?',
+    'wol.explanation.content': 'Wake-on-LAN (WoL) lets you turn on your PC remotely. '
+        'ChillShell sends a special signal called a "Magic Packet" to your network card, '
+        'which powers on your PC even when it\'s off. '
+        'We will enable this feature on your network card '
+        'and make sure it stays active after each reboot. '
+        'Your PC must be connected via Ethernet (not WiFi) for this to work.',
+    'wol.patience': 'This may take a moment',
+    'wol.result.title': 'Setup complete!',
+    'wol.result.mac': 'Your MAC address (enter it in ChillShell)',
+    'wol.result.adapter': 'Network adapter',
+    'wol.result.ip': 'Your IP address',
+    'wol.result.reminder': 'Don\'t forget to configure your BIOS! '
+        'WoL won\'t work without the BIOS configuration. '
+        'Check the BIOS tutorial on the ChillShell website.',
+    'wol.error.retry': 'Retry',
+    'wol.linuxWarning': 'On Linux, Wake-on-LAN may not work depending on your network card '
+        'and Linux kernel. WoL works more reliably when the PC is shut down from Windows. '
+        'If you dual-boot, shut down from Windows before trying to wake remotely.',
 
     // Connection Info
     'info.title': 'Connection Info',

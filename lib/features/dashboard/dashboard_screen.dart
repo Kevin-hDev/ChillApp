@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../i18n/locale_provider.dart';
 import '../../shared/widgets/chill_card.dart';
+import '../../shared/widgets/status_badge.dart';
+import 'dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -10,6 +12,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
+    final dashboard = ref.watch(dashboardProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -44,12 +47,28 @@ class DashboardScreen extends ConsumerWidget {
                         title: t(locale, 'dashboard.ssh.title'),
                         description: t(locale, 'dashboard.ssh.desc'),
                         onTap: () => context.go('/ssh'),
+                        badge: dashboard.sshConfigured != null
+                            ? StatusBadge(
+                                label: dashboard.sshConfigured!
+                                    ? t(locale, 'status.configured')
+                                    : t(locale, 'status.notConfigured'),
+                                isConfigured: dashboard.sshConfigured!,
+                              )
+                            : null,
                       ),
                       ChillCard(
                         icon: Icons.power_settings_new,
                         title: t(locale, 'dashboard.wol.title'),
                         description: t(locale, 'dashboard.wol.desc'),
                         onTap: () => context.go('/wol'),
+                        badge: dashboard.wolConfigured != null
+                            ? StatusBadge(
+                                label: dashboard.wolConfigured!
+                                    ? t(locale, 'status.configured')
+                                    : t(locale, 'status.notConfigured'),
+                                isConfigured: dashboard.wolConfigured!,
+                              )
+                            : null,
                       ),
                       ChillCard(
                         icon: Icons.info_outline,

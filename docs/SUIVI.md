@@ -36,7 +36,7 @@
 
 ## 4. Internationalisation (i18n)
 
-- [x] Traductions FR/EN complètes (60+ clés)
+- [x] Traductions FR/EN complètes (80+ clés)
 - [x] Provider de langue (Riverpod)
 - [x] Sauvegarde de la langue choisie (SharedPreferences)
 
@@ -58,7 +58,9 @@
 
 - [x] Squelette de l'écran
 - [x] Grille de 4 cartes (SSH, WoL, Infos, Réglages)
-- [ ] Badge d'état sur chaque carte (configuré ou pas)
+- [x] Badge d'état sur les cartes SSH et WoL (configuré/pas encore configuré)
+- [x] Vérification auto du statut SSH (service actif ?)
+- [x] Vérification auto du statut WoL (Magic Packet activé ?)
 
 ## 8. Écran Configuration SSH
 
@@ -79,22 +81,32 @@
 ## 9. Écran Configuration WoL
 
 - [x] Squelette de l'écran + provider Riverpod
-- [ ] Liste des étapes avec StepIndicator
-- [ ] Bouton "Tout configurer"
-- [ ] Commandes Windows (4 commandes : Magic Packet, réveil réseau, démarrage rapide)
-- [ ] Commandes Linux (5 commandes : ethtool, systemd)
-- [ ] Masquer l'écran sur Mac (WoL non disponible)
-- [ ] Avertissement BIOS
-- [ ] Affichage de l'adresse MAC à la fin
+- [x] Carte explicative "Qu'est-ce que ça fait ?"
+- [x] Liste des étapes avec StepIndicator (progression visible en temps réel)
+- [x] Bouton "Tout configurer" + bouton "Réessayer" en cas d'erreur
+- [x] Loader animé + message de patience (fade in/out)
+- [x] Commandes Windows (5 étapes : carte Ethernet → Magic Packet → réveil réseau → démarrage rapide → MAC)
+- [x] Commandes Linux (5 étapes : ethtool → carte Ethernet → activer WoL → service systemd → MAC)
+- [x] Masquer l'écran sur Mac (message "non disponible")
+- [x] Avertissement BIOS (carte ambre, toujours visible)
+- [x] Affichage de l'adresse MAC + carte réseau + IP à la fin
+- [x] Bouton "Copier" sur chaque info
+- [x] Rappel BIOS dans la carte résultat
+- [x] Gestion des erreurs (rouge par étape + message global)
+- [x] Avertissement Linux (WoL pas toujours fiable selon carte/noyau, conseil dual-boot)
+- [ ] Ajouter le logo/personnage animé (en attente de l'image)
 
 ## 10. Écran Infos connexion
 
-- [x] Squelette de l'écran
-- [ ] Récupération auto de l'IP
-- [ ] Récupération auto de l'adresse MAC
-- [ ] Récupération auto du nom d'utilisateur
-- [ ] Bouton "Copier" pour chaque info
-- [ ] Bouton "Rafraîchir"
+- [x] Squelette de l'écran + provider Riverpod
+- [x] Récupération auto de l'IP (Windows/Linux/Mac)
+- [x] Récupération auto de l'adresse MAC (Windows/Linux)
+- [x] Récupération auto du nom d'utilisateur
+- [x] Récupération auto de la carte réseau (Windows/Linux)
+- [x] Bouton "Copier" pour chaque info
+- [x] Bouton "Rafraîchir" dans le header
+- [x] Chargement auto à l'ouverture de l'écran
+- [x] Affichage "Non trouvée" si info indisponible
 
 ## 11. Écran Réglages
 
@@ -120,13 +132,15 @@
 
 - Flutter doit être installé via git (pas snap) pour le build Linux
 - Le paquet `lld-18` est requis sur Ubuntu (`sudo apt install lld-18`)
+- Le Wake-on-LAN sur Linux peut ne pas fonctionner selon la carte réseau et le noyau — fonctionne mieux quand le PC est éteint depuis Windows (dual-boot)
+- La vérification WoL du dashboard utilise `systemctl is-enabled wol-enable.service` (pas besoin de sudo)
 
 ---
 
 ## Prochaines étapes prioritaires
 
-1. **Écran SSH** — Câbler les commandes et l'interface (c'est le cœur de l'app)
-2. **Écran Infos connexion** — Afficher IP/MAC/utilisateur (le plus simple)
-3. **Écran WoL** — Câbler les commandes WoL
-4. **Badges dashboard** — Afficher l'état de configuration sur les cartes
+1. ~~**Écran SSH** — Câbler les commandes et l'interface~~ ✓
+2. ~~**Écran WoL** — Câbler les commandes WoL~~ ✓
+3. ~~**Écran Infos connexion** — Afficher IP/MAC/utilisateur~~ ✓
+4. ~~**Badges dashboard** — Afficher l'état de configuration sur les cartes~~ ✓
 5. **Tests** — Ajouter les tests unitaires
