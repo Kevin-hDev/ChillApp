@@ -329,15 +329,26 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
     super.dispose();
   }
 
+  static final _digitKeys = {
+    LogicalKeyboardKey.digit0: '0', LogicalKeyboardKey.numpad0: '0',
+    LogicalKeyboardKey.digit1: '1', LogicalKeyboardKey.numpad1: '1',
+    LogicalKeyboardKey.digit2: '2', LogicalKeyboardKey.numpad2: '2',
+    LogicalKeyboardKey.digit3: '3', LogicalKeyboardKey.numpad3: '3',
+    LogicalKeyboardKey.digit4: '4', LogicalKeyboardKey.numpad4: '4',
+    LogicalKeyboardKey.digit5: '5', LogicalKeyboardKey.numpad5: '5',
+    LogicalKeyboardKey.digit6: '6', LogicalKeyboardKey.numpad6: '6',
+    LogicalKeyboardKey.digit7: '7', LogicalKeyboardKey.numpad7: '7',
+    LogicalKeyboardKey.digit8: '8', LogicalKeyboardKey.numpad8: '8',
+    LogicalKeyboardKey.digit9: '9', LogicalKeyboardKey.numpad9: '9',
+  };
+
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    for (int i = 0; i <= 9; i++) {
-      if (key == LogicalKeyboardKey(0x00000030 + i) ||
-          key == LogicalKeyboardKey(0x00200030 + i)) {
-        _onDigit('$i');
-        return KeyEventResult.handled;
-      }
+    final digit = _digitKeys[key];
+    if (digit != null) {
+      _onDigit(digit);
+      return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
       _onDelete();
