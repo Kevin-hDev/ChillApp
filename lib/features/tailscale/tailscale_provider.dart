@@ -95,6 +95,12 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
     final debugPath = '$projectDir${sep}tailscale-daemon$sep$name';
     if (File(debugPath).existsSync()) return debugPath;
 
+    // macOS debug : le binaire peut avoir un suffixe -macos
+    if (Platform.isMacOS) {
+      final macDebugPath = '$projectDir${sep}tailscale-daemon${sep}chill-tailscale-macos';
+      if (File(macDebugPath).existsSync()) return macDebugPath;
+    }
+
     return name; // fallback PATH
   }
 
