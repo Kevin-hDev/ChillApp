@@ -79,16 +79,20 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
   String _getDaemonPath() {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     final name = Platform.isWindows ? 'chill-tailscale.exe' : 'chill-tailscale';
+    final sep = Platform.pathSeparator;
 
     // Production : à côté de l'exécutable Flutter
-    for (final sub in ['', '/lib', '/data']) {
-      final path = '$exeDir$sub/$name';
+    for (final sub in ['', '${sep}lib', '${sep}data']) {
+      final path = '$exeDir$sub$sep$name';
       if (File(path).existsSync()) return path;
     }
 
-    // Debug : remonter depuis build/linux/x64/debug/bundle/ vers la racine du projet
-    final projectDir = exeDir.replaceFirst(RegExp(r'/build/.*$'), '');
-    final debugPath = '$projectDir/tailscale-daemon/$name';
+    // Debug : remonter depuis build/<os>/x64/debug/bundle/ vers la racine du projet
+    final buildPattern = Platform.isWindows
+        ? RegExp(r'\\build\\.*$')
+        : RegExp(r'/build/.*$');
+    final projectDir = exeDir.replaceFirst(buildPattern, '');
+    final debugPath = '$projectDir${sep}tailscale-daemon$sep$name';
     if (File(debugPath).existsSync()) return debugPath;
 
     return name; // fallback PATH
