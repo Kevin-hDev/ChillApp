@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
 import '../../core/os_detector.dart';
+import '../tailscale/tailscale_provider.dart';
 
 class DashboardState {
   final bool? sshConfigured;
@@ -25,22 +25,28 @@ final dashboardProvider =
 class DashboardNotifier extends Notifier<DashboardState> {
   @override
   DashboardState build() {
+    // Écouter les changements Tailscale pour le badge dashboard
+    ref.listen<TailscaleState>(tailscaleProvider, (_, next) {
+      if (next.status == TailscaleConnectionStatus.loading) return;
+      state = state.copyWith(
+        tailscaleConnected: next.status == TailscaleConnectionStatus.connected,
+      );
+    });
+
     Future.microtask(() => checkAll());
     return const DashboardState();
   }
 
   Future<void> checkAll() async {
     final os = OsDetector.currentOS;
-    // Lancer les vérifications en parallèle
     final results = await Future.wait([
       _checkSsh(os),
       _checkWol(os),
-      _checkTailscale(os),
     ]);
     state = DashboardState(
       sshConfigured: results[0],
       wolConfigured: results[1],
-      tailscaleConnected: results[2],
+      tailscaleConnected: state.tailscaleConnected,
     );
   }
 
@@ -104,30 +110,4 @@ class DashboardNotifier extends Notifier<DashboardState> {
     }
   }
 
-  /// Vérifie si Tailscale est connecté
-  Future<bool> _checkTailscale(SupportedOS os) async {
-    try {
-      // Vérifier si tailscale est installé
-      CommandResult whichResult;
-      switch (os) {
-        case SupportedOS.windows:
-          whichResult = await CommandRunner.runPowerShell(
-            'Get-Command tailscale -ErrorAction SilentlyContinue',
-          );
-          if (!whichResult.success || whichResult.stdout.isEmpty) return false;
-        case SupportedOS.linux:
-        case SupportedOS.macos:
-          whichResult = await CommandRunner.run('which', ['tailscale']);
-          if (!whichResult.success) return false;
-      }
-      // Vérifier si connecté
-      final result = await CommandRunner.run('tailscale', ['status', '--json']);
-      if (!result.success) return false;
-      final json = jsonDecode(result.stdout) as Map<String, dynamic>;
-      final backendState = json['BackendState'] as String? ?? '';
-      return backendState == 'Running';
-    } catch (_) {
-      return false;
-    }
-  }
 }

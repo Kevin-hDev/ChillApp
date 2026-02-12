@@ -116,16 +116,37 @@
 - [x] Toggle thème sombre/clair (fonctionnel)
 - [x] Sélecteur de langue FR/EN (fonctionnel)
 - [x] Sauvegarde des préférences (SharedPreferences)
+- [x] Verrouillage par PIN à 8 chiffres (activation/désactivation/changement)
 
-## 12. Tests
+## 12. Intégration Tailscale native (tsnet)
+
+- [x] Daemon Go `chill-tailscale` avec tsnet.Server (subprocess JSON stdin/stdout)
+- [x] Provider Flutter réécrit (subprocess au lieu de CLI)
+- [x] Dashboard simplifié (ref.listen au lieu de CLI)
+- [x] Écran Tailscale : 2 boutons (Se connecter + Créer un compte) + état erreur
+- [x] Persistance de connexion (état tsnet sauvé sur disque, reconnexion auto)
+- [x] Script de build multi-plateforme (scripts/build-tailscale.sh)
+- [x] Zéro installation externe requise
+
+## 13. Verrouillage PIN
+
+- [x] Provider LockNotifier (PIN hashé SHA-256 dans SharedPreferences)
+- [x] Écran de saisie PIN avec pavé numérique visuel (8 cercles)
+- [x] Support clavier (chiffres 0-9 + Backspace/Delete)
+- [x] Animation shake en cas d'erreur
+- [x] Limite de tentatives (5 max)
+- [x] Dialogues de saisie PIN dans les réglages (activer/désactiver/changer)
+- [x] Confirmation PIN (saisie 2 fois pour vérifier)
+
+## 14. Tests
 
 - [x] Test de base (l'app démarre)
-- [x] Tests unitaires des states (SetupStep, SshSetupState, WolSetupState, ConnectionInfoState, DashboardState)
+- [x] Tests unitaires des states (SetupStep, SshSetupState, WolSetupState, ConnectionInfoState, DashboardState, TailscaleState, LockState)
 - [x] Tests unitaires du CommandRunner (commande simple, commande inexistante, trim stdout)
 - [x] Tests unitaires des traductions (parité FR/EN, pas de valeurs vides, clés critiques)
 - [ ] Tests d'interface des écrans
 
-## 13. Build & distribution
+## 15. Build & distribution
 
 - [x] Résoudre le problème de linker Linux (Flutter réinstallé via git + lld-18)
 - [ ] Build Windows
@@ -140,6 +161,8 @@
 - La vérification WoL du dashboard utilise `systemctl is-enabled wol-enable.service` (pas besoin de sudo)
 - Les commandes admin Linux sont regroupées en un seul script pkexec → 1 seul mot de passe par configuration
 - Les IPs Ethernet et WiFi sont récupérées séparément sur chaque OS (scan `/sys/class/net/*/wireless` sur Linux, filtrage PowerShell sur Windows, `networksetup` sur Mac)
+- Le daemon Go `chill-tailscale` doit être placé à côté de l'exécutable Flutter (ou dans lib/ ou data/). En mode debug, il est trouvé automatiquement dans `tailscale-daemon/`
+- Le PIN est hashé en SHA-256 avant d'être stocké dans SharedPreferences (clé `pin_hash`)
 
 ---
 
@@ -150,4 +173,6 @@
 3. ~~**Écran Infos connexion** — Afficher IP/MAC/utilisateur~~ ✓
 4. ~~**Badges dashboard** — Afficher l'état de configuration sur les cartes~~ ✓
 5. ~~**Tests** — Ajouter les tests unitaires~~ ✓
-6. **Build & distribution** — Build Windows/macOS, packaging
+6. ~~**Tailscale natif** — Intégration tsnet (Go daemon)~~ ✓
+7. ~~**Verrouillage PIN** — Sécurisation par code à 8 chiffres~~ ✓
+8. **Build & distribution** — Build Windows/macOS, packaging
