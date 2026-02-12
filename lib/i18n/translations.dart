@@ -17,7 +17,7 @@ const Map<String, Map<String, String>> translations = {
     'dashboard.ssh.title': 'Configuration SSH',
     'dashboard.ssh.desc': 'Installe et active SSH pour ChillShell.',
     'dashboard.wol.title': 'Wake-on-LAN',
-    'dashboard.wol.desc': 'Allume ton PC à distance.',
+    'dashboard.wol.desc': 'Allume ton PC avec ton téléphone.',
     'dashboard.info.title': 'Infos connexion',
     'dashboard.info.desc': 'IP, MAC, nom d\'utilisateur.',
 
@@ -53,7 +53,7 @@ const Map<String, Map<String, String>> translations = {
 
     // WoL Setup
     'wol.title': 'Configuration Wake-on-LAN',
-    'wol.intro': 'Active le Wake-on-LAN pour pouvoir allumer ce PC à distance depuis ChillShell.',
+    'wol.intro': 'Active le Wake-on-LAN pour pouvoir allumer ce PC avec ton téléphone via ChillShell.',
     'wol.biosWarning': 'Le BIOS doit être configuré manuellement (consulte le tuto BIOS sur le site).',
     'wol.notAvailableMac': 'Le Wake-on-LAN n\'est pas disponible sur Mac en V1.',
     'wol.configureAll': 'Tout configurer',
@@ -66,7 +66,7 @@ const Map<String, Map<String, String>> translations = {
     'wol.step.installEthtool': 'Installer ethtool',
     'wol.step.enableWol': 'Activer le Wake-on-LAN',
     'wol.explanation.title': 'Qu\'est-ce que ça fait ?',
-    'wol.explanation.content': 'Le Wake-on-LAN (WoL) permet d\'allumer ton PC à distance. '
+    'wol.explanation.content': 'Le Wake-on-LAN (WoL) permet d\'allumer ton PC avec ton téléphone, tant que tu es connecté au même WiFi. '
         'ChillShell envoie un signal spécial appelé "Magic Packet" à ta carte réseau, '
         'et celle-ci allume ton PC même quand il est éteint. '
         'On va activer cette fonctionnalité sur ta carte réseau '
@@ -85,7 +85,7 @@ const Map<String, Map<String, String>> translations = {
     'wol.linuxWarning': 'Sur Linux, le Wake-on-LAN peut ne pas fonctionner selon ta carte réseau '
         'et ton noyau Linux. Le WoL fonctionne de manière plus fiable quand le PC '
         'est éteint depuis Windows. Si tu fais du dual-boot, éteins depuis Windows '
-        'avant d\'essayer d\'allumer à distance.',
+        'avant d\'essayer d\'allumer via WoL.',
 
     // Tailscale
     'dashboard.tailscale.title': 'Tailscale',
@@ -187,7 +187,7 @@ const Map<String, Map<String, String>> translations = {
     'dashboard.ssh.title': 'SSH Setup',
     'dashboard.ssh.desc': 'Install and activate SSH for ChillShell.',
     'dashboard.wol.title': 'Wake-on-LAN',
-    'dashboard.wol.desc': 'Turn on your PC remotely.',
+    'dashboard.wol.desc': 'Turn on your PC with your phone.',
     'dashboard.info.title': 'Connection Info',
     'dashboard.info.desc': 'IP, MAC, username.',
 
@@ -223,7 +223,7 @@ const Map<String, Map<String, String>> translations = {
 
     // WoL Setup
     'wol.title': 'Wake-on-LAN Setup',
-    'wol.intro': 'Enable Wake-on-LAN to turn on this PC remotely from ChillShell.',
+    'wol.intro': 'Enable Wake-on-LAN to turn on this PC with your phone via ChillShell.',
     'wol.biosWarning': 'BIOS must be configured manually (see the BIOS tutorial on the website).',
     'wol.notAvailableMac': 'Wake-on-LAN is not available on Mac in V1.',
     'wol.configureAll': 'Configure All',
@@ -236,7 +236,7 @@ const Map<String, Map<String, String>> translations = {
     'wol.step.installEthtool': 'Install ethtool',
     'wol.step.enableWol': 'Enable Wake-on-LAN',
     'wol.explanation.title': 'What does this do?',
-    'wol.explanation.content': 'Wake-on-LAN (WoL) lets you turn on your PC remotely. '
+    'wol.explanation.content': 'Wake-on-LAN (WoL) lets you turn on your PC with your phone, as long as you\'re on the same WiFi. '
         'ChillShell sends a special signal called a "Magic Packet" to your network card, '
         'which powers on your PC even when it\'s off. '
         'We will enable this feature on your network card '
@@ -254,7 +254,7 @@ const Map<String, Map<String, String>> translations = {
     'wol.error.retry': 'Retry',
     'wol.linuxWarning': 'On Linux, Wake-on-LAN may not work depending on your network card '
         'and Linux kernel. WoL works more reliably when the PC is shut down from Windows. '
-        'If you dual-boot, shut down from Windows before trying to wake remotely.',
+        'If you dual-boot, shut down from Windows before trying to wake via WoL.',
 
     // Tailscale
     'dashboard.tailscale.title': 'Tailscale',
