@@ -15,6 +15,8 @@ class LockScreen extends ConsumerStatefulWidget {
 
 class _LockScreenState extends ConsumerState<LockScreen>
     with SingleTickerProviderStateMixin {
+  // NOTE: _pin is cleared to '' after use, but the old value may persist
+  // in memory due to Dart's immutable strings. See lock_provider.dart for details.
   String _pin = '';
   String? _error;
   late AnimationController _shakeController;
@@ -269,6 +271,8 @@ class PinInputDialog extends ConsumerStatefulWidget {
 }
 
 class PinInputDialogState extends ConsumerState<PinInputDialog> {
+  // NOTE: _pin is cleared to '' after use, but the old value may persist
+  // in memory due to Dart's immutable strings. See lock_provider.dart for details.
   String _pin = '';
   String? _error;
   final FocusNode _focusNode = FocusNode();

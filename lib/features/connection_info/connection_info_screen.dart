@@ -218,6 +218,10 @@ class _InfoRowState extends State<_InfoRow> {
   void _copy() async {
     if (widget.value == null) return;
     await Clipboard.setData(ClipboardData(text: widget.value!));
+    // Auto-clear clipboard after 3 seconds for security
+    Future.delayed(const Duration(seconds: 3), () {
+      Clipboard.setData(const ClipboardData(text: ''));
+    });
     setState(() => _copied = true);
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) setState(() => _copied = false);

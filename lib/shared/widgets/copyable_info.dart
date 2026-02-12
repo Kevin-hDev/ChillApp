@@ -29,6 +29,10 @@ class _CopyableInfoState extends State<CopyableInfo> {
 
   void _copy() async {
     await Clipboard.setData(ClipboardData(text: widget.value));
+    // Auto-clear clipboard after 3 seconds for security
+    Future.delayed(const Duration(seconds: 3), () {
+      Clipboard.setData(const ClipboardData(text: ''));
+    });
     setState(() => _copied = true);
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) setState(() => _copied = false);

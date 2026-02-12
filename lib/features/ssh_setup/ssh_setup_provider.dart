@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
 import '../../core/network_info.dart';
@@ -112,6 +113,7 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       }
       state = state.copyWith(isRunning: false, isComplete: true);
     } catch (e) {
+      debugPrint('[SSH] Setup error: $e');
       state = state.copyWith(isRunning: false, errorMessage: e.toString());
     }
   }
@@ -131,7 +133,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       'Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0',
     );
     if (!result.success && !result.stderr.contains('already installed')) {
-      _updateStep('installClient', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] installClient stderr: ${result.stderr}');
+      _updateStep('installClient', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
       throw Exception('Échec installation client OpenSSH');
     }
     _updateStep('installClient', StepStatus.success);
@@ -142,7 +145,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       'Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0',
     );
     if (!result.success && !result.stderr.contains('already installed')) {
-      _updateStep('installServer', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] installServer stderr: ${result.stderr}');
+      _updateStep('installServer', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
       throw Exception('Échec installation serveur OpenSSH');
     }
     _updateStep('installServer', StepStatus.success);
@@ -151,7 +155,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     _updateStep('start', StepStatus.running);
     result = await CommandRunner.runPowerShell('Start-Service sshd');
     if (!result.success && !result.stderr.contains('already running')) {
-      _updateStep('start', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] start stderr: ${result.stderr}');
+      _updateStep('start', StepStatus.error, errorDetail: 'Service start failed. Check system logs.');
       throw Exception('Échec démarrage SSH');
     }
     _updateStep('start', StepStatus.success);
@@ -162,7 +167,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       "Set-Service -Name sshd -StartupType 'Automatic'",
     );
     if (!result.success) {
-      _updateStep('autostart', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] autostart stderr: ${result.stderr}');
+      _updateStep('autostart', StepStatus.error, errorDetail: 'Autostart configuration failed. Check system logs.');
       throw Exception('Échec activation au démarrage');
     }
     _updateStep('autostart', StepStatus.success);
@@ -180,7 +186,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
         "-Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22",
       );
       if (!result.success) {
-        _updateStep('firewall', StepStatus.error, errorDetail: result.stderr);
+        debugPrint('[SSH] firewall stderr: ${result.stderr}');
+        _updateStep('firewall', StepStatus.error, errorDetail: 'Firewall configuration failed. Check system logs.');
         throw Exception('Échec configuration pare-feu');
       }
     }
@@ -269,7 +276,7 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     try {
       result = await CommandRunner.runElevated('bash', [tempScript.path]);
     } finally {
-      try { await tempDir.delete(recursive: true); } catch (_) {}
+      try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[SSH] Cleanup error: $e'); }
     }
 
     // Analyser le résultat par code de sortie
@@ -278,13 +285,15 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       throw Exception('Autorisation refusée');
     }
     if (result.exitCode == 10) {
-      _updateStep('install', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] install stderr: ${result.stderr}');
+      _updateStep('install', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
       throw Exception('Échec installation OpenSSH');
     }
     _updateStep('install', StepStatus.success);
 
     if (result.exitCode == 20) {
-      _updateStep('start', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] start stderr: ${result.stderr}');
+      _updateStep('start', StepStatus.error, errorDetail: 'Service start failed. Check system logs.');
       throw Exception('Échec démarrage SSH');
     }
     _updateStep('start', StepStatus.success);
@@ -322,7 +331,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     _updateStep('enableRemoteLogin', StepStatus.running);
     final result = await CommandRunner.runElevated('systemsetup', ['-setremotelogin', 'on']);
     if (!result.success) {
-      _updateStep('enableRemoteLogin', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[SSH] enableRemoteLogin stderr: ${result.stderr}');
+      _updateStep('enableRemoteLogin', StepStatus.error, errorDetail: 'Remote login activation failed. Check system logs.');
       throw Exception('Échec activation accès à distance');
     }
     _updateStep('enableRemoteLogin', StepStatus.success);
