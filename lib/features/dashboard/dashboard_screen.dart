@@ -23,6 +23,18 @@ class DashboardScreen extends ConsumerWidget {
           final columns = width < 600 ? 2 : width < 1000 ? 3 : 3;
           final topSpacing = width < 600 ? 24.0 : 48.0;
 
+          // Calculer la hauteur disponible pour la grille
+          final height = constraints.maxHeight;
+          final headerHeight = topSpacing + 40 + 8 + 20 + topSpacing; // titre + desc + espacement
+          final gridHeight = height - headerHeight - padding * 2;
+          final rows = (6 / columns).ceil();
+          final totalSpacing = (rows - 1) * 16.0;
+          final cardHeight = (gridHeight - totalSpacing) / rows;
+          final gridWidth = width - padding * 2;
+          final totalHSpacing = (columns - 1) * 16.0;
+          final cardWidth = (gridWidth - totalHSpacing) / columns;
+          final aspectRatio = cardWidth / cardHeight;
+
           return Center(
             child: Padding(
               padding: EdgeInsets.all(padding),
@@ -45,7 +57,8 @@ class DashboardScreen extends ConsumerWidget {
                       crossAxisCount: columns,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
-                      childAspectRatio: 1.2,
+                      childAspectRatio: aspectRatio.clamp(0.5, 3.0),
+                      physics: const NeverScrollableScrollPhysics(),
                       children: [
                       ChillCard(
                         icon: Icons.terminal,

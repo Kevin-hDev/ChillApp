@@ -157,6 +157,21 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       "-DisplayName \$p.DisplayName -DisplayValue 'Enabled' "
       "-ErrorAction SilentlyContinue } }",
     );
+    // Vérifier que le Magic Packet est bien activé
+    final magicCheck = await CommandRunner.runPowerShell(
+      "\$props = Get-NetAdapterAdvancedProperty -Name '$adapterName' "
+      "-ErrorAction SilentlyContinue | Where-Object { "
+      "(\$_.DisplayName -like '*Wake*Magic*' -or "
+      "\$_.DisplayName -like '*WOL*Magic*') -and "
+      "\$_.DisplayValue -eq 'Enabled' }; "
+      "if (\$props) { Write-Output 'OK' } else { exit 1 }",
+    );
+    if (!magicCheck.success || !magicCheck.stdout.contains('OK')) {
+      _updateStep('enableMagicPacket', StepStatus.error,
+          errorDetail: 'L\'option Magic Packet n\'est pas disponible sur cette carte réseau. '
+              'Vérifie dans le Gestionnaire de périphériques > Propriétés avancées de ta carte.');
+      throw Exception('Magic Packet non disponible');
+    }
     _updateStep('enableMagicPacket', StepStatus.success);
 
     // 3. Autoriser le réveil par le réseau
@@ -164,6 +179,17 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     result = await CommandRunner.runPowerShell(
       "powercfg /deviceenablewake \"$adapterDesc\"",
     );
+    // Vérifier que l'appareil est dans la liste de réveil
+    final wakeCheck = await CommandRunner.runPowerShell(
+      "\$devices = powercfg /devicequery wake_armed; "
+      "if (\$devices -match [regex]::Escape('$adapterDesc')) { Write-Output 'OK' } else { exit 1 }",
+    );
+    if (!wakeCheck.success || !wakeCheck.stdout.contains('OK')) {
+      _updateStep('enableWake', StepStatus.error,
+          errorDetail: 'Impossible d\'autoriser le réveil réseau pour cette carte. '
+              'Vérifie dans le Gestionnaire de périphériques > Gestion de l\'alimentation.');
+      throw Exception('Réveil réseau non autorisé');
+    }
     _updateStep('enableWake', StepStatus.success);
 
     // 4. Désactiver le démarrage rapide
@@ -172,8 +198,17 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       "reg add 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power' "
       "/v HiberbootEnabled /t REG_DWORD /d 0 /f",
     );
-    if (!result.success) {
-      _updateStep('disableFastStartup', StepStatus.error, errorDetail: result.stderr);
+    // Vérifier que la valeur a bien été modifiée
+    final fastCheck = await CommandRunner.runPowerShell(
+      "\$val = (Get-ItemProperty "
+      "'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power' "
+      "-Name HiberbootEnabled -ErrorAction SilentlyContinue).HiberbootEnabled; "
+      "if (\$val -eq 0) { Write-Output 'OK' } else { exit 1 }",
+    );
+    if (!fastCheck.success || !fastCheck.stdout.contains('OK')) {
+      _updateStep('disableFastStartup', StepStatus.error,
+          errorDetail: 'Le démarrage rapide n\'a pas pu être désactivé. '
+              'L\'option n\'est peut-être pas disponible sur cette machine.');
       throw Exception('Échec désactivation du démarrage rapide');
     }
     _updateStep('disableFastStartup', StepStatus.success);
