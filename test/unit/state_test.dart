@@ -4,6 +4,7 @@ import 'package:chill_app/features/wol_setup/wol_setup_provider.dart';
 import 'package:chill_app/features/connection_info/connection_info_provider.dart';
 import 'package:chill_app/features/dashboard/dashboard_provider.dart';
 import 'package:chill_app/features/tailscale/tailscale_provider.dart';
+import 'package:chill_app/features/lock/lock_provider.dart';
 
 void main() {
   // ============================================
@@ -262,13 +263,52 @@ void main() {
   // TailscaleConnectionStatus
   // ============================================
   group('TailscaleConnectionStatus', () {
-    test('contient les 5 valeurs attendues', () {
-      expect(TailscaleConnectionStatus.values.length, 5);
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.notInstalled));
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.daemonStopped));
+    test('contient les 4 valeurs attendues', () {
+      expect(TailscaleConnectionStatus.values.length, 4);
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loading));
       expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loggedOut));
       expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.connected));
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loading));
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.error));
+    });
+  });
+
+  // ============================================
+  // LockState
+  // ============================================
+  group('LockState', () {
+    test('valeurs par défaut', () {
+      const state = LockState();
+      expect(state.isEnabled, false);
+      expect(state.isUnlocked, false);
+      expect(state.failedAttempts, 0);
+    });
+
+    test('copyWith met à jour isEnabled', () {
+      const state = LockState();
+      final updated = state.copyWith(isEnabled: true);
+      expect(updated.isEnabled, true);
+      expect(updated.isUnlocked, false);
+      expect(updated.failedAttempts, 0);
+    });
+
+    test('copyWith met à jour isUnlocked', () {
+      const state = LockState();
+      final updated = state.copyWith(isUnlocked: true);
+      expect(updated.isUnlocked, true);
+    });
+
+    test('copyWith met à jour failedAttempts', () {
+      const state = LockState();
+      final updated = state.copyWith(failedAttempts: 3);
+      expect(updated.failedAttempts, 3);
+    });
+
+    test('copyWith ne modifie pas l\'original', () {
+      const state = LockState();
+      state.copyWith(isEnabled: true, isUnlocked: true, failedAttempts: 5);
+      expect(state.isEnabled, false);
+      expect(state.isUnlocked, false);
+      expect(state.failedAttempts, 0);
     });
   });
 }

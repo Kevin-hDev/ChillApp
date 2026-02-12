@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../i18n/locale_provider.dart';
+import '../lock/lock_provider.dart';
+import '../lock/lock_screen.dart';
 import 'settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -11,6 +13,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
     final isDark = ref.watch(themeModeProvider);
+    final lockState = ref.watch(lockProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -73,11 +76,140 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Verrouillage PIN
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.lock_outline),
+                        title: Text(t(locale, 'settings.lock')),
+                        subtitle: Text(t(locale, 'settings.lock.desc')),
+                        trailing: Switch(
+                          value: lockState.isEnabled,
+                          onChanged: (enabled) {
+                            if (enabled) {
+                              _showSetPinDialog(context, ref, locale);
+                            } else {
+                              _showDisablePinDialog(context, ref, locale);
+                            }
+                          },
+                        ),
+                      ),
+                      if (lockState.isEnabled)
+                        ListTile(
+                          leading: const SizedBox(width: 24),
+                          title: Text(t(locale, 'settings.lock.change')),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _showChangePinDialog(context, ref, locale),
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  void _showSetPinDialog(BuildContext context, WidgetRef ref, String locale) {
+    String? firstPin;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return PinInputDialog(
+              title: firstPin == null
+                  ? t(locale, 'settings.lock.new')
+                  : t(locale, 'settings.lock.confirm'),
+              onComplete: (pin) async {
+                if (firstPin == null) {
+                  firstPin = pin;
+                  setDialogState(() {});
+                  // Force rebuild du dialog pour changer le titre
+                  Navigator.of(ctx).pop();
+                  _showConfirmPinDialog(context, ref, locale, firstPin!);
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showConfirmPinDialog(
+      BuildContext context, WidgetRef ref, String locale, String firstPin) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final key = GlobalKey<PinInputDialogState>();
+        return PinInputDialog(
+          key: key,
+          title: t(locale, 'settings.lock.confirm'),
+          onComplete: (pin) async {
+            if (pin == firstPin) {
+              await ref.read(lockProvider.notifier).setPin(pin);
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            } else {
+              key.currentState?.setError(t(locale, 'settings.lock.mismatch'));
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _showDisablePinDialog(BuildContext context, WidgetRef ref, String locale) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        final key = GlobalKey<PinInputDialogState>();
+        return PinInputDialog(
+          key: key,
+          title: t(locale, 'settings.lock.enterCurrent'),
+          onComplete: (pin) async {
+            final ok = await ref.read(lockProvider.notifier).verifyPin(pin);
+            if (ok) {
+              await ref.read(lockProvider.notifier).removePin();
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            } else {
+              key.currentState?.setError(t(locale, 'lock.error'));
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _showChangePinDialog(BuildContext context, WidgetRef ref, String locale) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        final key = GlobalKey<PinInputDialogState>();
+        return PinInputDialog(
+          key: key,
+          title: t(locale, 'settings.lock.enterCurrent'),
+          onComplete: (pin) async {
+            final ok = await ref.read(lockProvider.notifier).verifyPin(pin);
+            if (ok) {
+              if (ctx.mounted) Navigator.of(ctx).pop();
+              if (context.mounted) _showSetPinDialog(context, ref, locale);
+            } else {
+              key.currentState?.setError(t(locale, 'lock.error'));
+            }
+          },
+        );
+      },
     );
   }
 }

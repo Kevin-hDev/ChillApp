@@ -1,10 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
-import '../../core/os_detector.dart';
 import '../../i18n/locale_provider.dart';
 import 'tailscale_provider.dart';
 
@@ -46,7 +46,7 @@ class TailscaleScreen extends ConsumerWidget {
                       IconButton(
                         icon: const Icon(Icons.refresh),
                         onPressed: () =>
-                            ref.read(tailscaleProvider.notifier).checkStatus(),
+                            ref.read(tailscaleProvider.notifier).refreshStatus(),
                       ),
                   ],
                 ),
@@ -90,241 +90,14 @@ class TailscaleScreen extends ConsumerWidget {
   ) {
     switch (tsState.status) {
       case TailscaleConnectionStatus.loading:
-        return Center(
-          child: CircularProgressIndicator(color: accent),
-        );
-
-      case TailscaleConnectionStatus.notInstalled:
-        return _buildNotInstalled(context, ref, tsState, locale, isDark, accent, theme);
-
-      case TailscaleConnectionStatus.daemonStopped:
-        return _buildDaemonStopped(context, ref, tsState, locale, isDark, accent, theme);
-
+        return Center(child: CircularProgressIndicator(color: accent));
       case TailscaleConnectionStatus.loggedOut:
         return _buildLoggedOut(context, ref, tsState, locale, isDark, accent, theme);
-
       case TailscaleConnectionStatus.connected:
         return _buildConnected(context, ref, tsState, locale, isDark, accent, theme);
+      case TailscaleConnectionStatus.error:
+        return _buildError(context, ref, tsState, locale, isDark, accent, theme);
     }
-  }
-
-  Widget _buildNotInstalled(
-    BuildContext context,
-    WidgetRef ref,
-    TailscaleState tsState,
-    String locale,
-    bool isDark,
-    Color accent,
-    ThemeData theme,
-  ) {
-    final red = isDark ? ChillColorsDark.red : ChillColorsLight.red;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ExplanationCard(locale: locale, isDark: isDark),
-        const SizedBox(height: 24),
-
-        // Carte d'installation selon OS
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? ChillColorsDark.bgElevated : ChillColorsLight.bgElevated,
-            borderRadius: BorderRadius.circular(ChillRadius.xl),
-            border: Border.all(
-              color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.warning_amber, color: red, size: 22),
-                  const SizedBox(width: 10),
-                  Text(
-                    t(locale, 'tailscale.notInstalled.title'),
-                    style: theme.textTheme.titleMedium?.copyWith(color: red),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                t(locale, 'tailscale.notInstalled.desc'),
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-              ),
-              const SizedBox(height: 16),
-              _buildInstallInstructions(locale, isDark, theme),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        Center(
-          child: ElevatedButton.icon(
-            onPressed: () => ref.read(tailscaleProvider.notifier).checkStatus(),
-            icon: const Icon(Icons.refresh),
-            label: Text(t(locale, 'tailscale.install.checkAgain')),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInstallInstructions(String locale, bool isDark, ThemeData theme) {
-    final os = OsDetector.currentOS;
-    switch (os) {
-      case SupportedOS.windows:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t(locale, 'tailscale.install.windows'),
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'tailscale.com/download',
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 14,
-                color: isDark ? ChillColorsDark.accent : ChillColorsLight.accent,
-              ),
-            ),
-          ],
-        );
-      case SupportedOS.linux:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t(locale, 'tailscale.install.linux'),
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface,
-                borderRadius: BorderRadius.circular(ChillRadius.lg),
-                border: Border.all(
-                  color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
-                ),
-              ),
-              child: Text(
-                'curl -fsSL https://tailscale.com/install.sh | sh',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 13,
-                  color: isDark ? ChillColorsDark.textPrimary : ChillColorsLight.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        );
-      case SupportedOS.macos:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t(locale, 'tailscale.install.mac'),
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'tailscale.com/download',
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 14,
-                color: isDark ? ChillColorsDark.accent : ChillColorsLight.accent,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface,
-                borderRadius: BorderRadius.circular(ChillRadius.lg),
-                border: Border.all(
-                  color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
-                ),
-              ),
-              child: Text(
-                'brew install --cask tailscale',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 13,
-                  color: isDark ? ChillColorsDark.textPrimary : ChillColorsLight.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        );
-    }
-  }
-
-  Widget _buildDaemonStopped(
-    BuildContext context,
-    WidgetRef ref,
-    TailscaleState tsState,
-    String locale,
-    bool isDark,
-    Color accent,
-    ThemeData theme,
-  ) {
-    final orange = isDark ? ChillColorsDark.orange : ChillColorsLight.orange;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: orange.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(ChillRadius.xl),
-            border: Border.all(color: orange.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.warning_amber, color: orange, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      t(locale, 'tailscale.daemon.title'),
-                      style: theme.textTheme.titleMedium?.copyWith(color: orange),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                t(locale, 'tailscale.daemon.desc'),
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (OsDetector.currentOS == SupportedOS.linux)
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: () => ref.read(tailscaleProvider.notifier).startDaemon(),
-              icon: const Icon(Icons.play_arrow),
-              label: Text(t(locale, 'tailscale.daemon.startLinux')),
-            ),
-          )
-        else
-          Center(
-            child: Text(
-              t(locale, 'tailscale.daemon.startOther'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
-              ),
-            ),
-          ),
-      ],
-    );
   }
 
   Widget _buildLoggedOut(
@@ -347,18 +120,41 @@ class TailscaleScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _PatienceMessage(locale: locale, accent: accent),
         ] else
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: () => ref.read(tailscaleProvider.notifier).login(),
-              icon: const Icon(Icons.login),
-              label: Text(
-                t(locale, 'tailscale.login.button'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          Column(
+            children: [
+              // Bouton "Se connecter" (principal, rempli accent)
+              ElevatedButton.icon(
+                onPressed: () => ref.read(tailscaleProvider.notifier).login(),
+                icon: const Icon(Icons.login),
+                label: Text(
+                  t(locale, 'tailscale.login.button'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
               ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              const SizedBox(height: 16),
+              // Texte "Pas encore de compte ?"
+              Text(
+                t(locale, 'tailscale.signup.desc'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              // Bouton "Créer un compte" (secondaire, outlined)
+              OutlinedButton.icon(
+                onPressed: () async {
+                  // Ouvrir la page d'inscription Tailscale
+                  if (Platform.isLinux) await Process.run('xdg-open', ['https://login.tailscale.com/start']);
+                  if (Platform.isWindows) await Process.run('cmd', ['/c', 'start', 'https://login.tailscale.com/start']);
+                  if (Platform.isMacOS) await Process.run('open', ['https://login.tailscale.com/start']);
+                },
+                icon: const Icon(Icons.person_add_outlined),
+                label: Text(t(locale, 'tailscale.signup.button')),
+              ),
+            ],
           ),
 
         // Message d'erreur
@@ -490,6 +286,59 @@ class TailscaleScreen extends ConsumerWidget {
         ),
 
         const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildError(
+    BuildContext context, WidgetRef ref, TailscaleState tsState,
+    String locale, bool isDark, Color accent, ThemeData theme,
+  ) {
+    final red = isDark ? ChillColorsDark.red : ChillColorsLight.red;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: red.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(ChillRadius.xl),
+            border: Border.all(color: red.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.error_outline, color: red, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      t(locale, 'tailscale.error.title'),
+                      style: theme.textTheme.titleMedium?.copyWith(color: red),
+                    ),
+                  ),
+                ],
+              ),
+              if (tsState.errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  tsState.errorMessage!,
+                  style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: () => ref.read(tailscaleProvider.notifier).retry(),
+            icon: const Icon(Icons.refresh),
+            label: Text(t(locale, 'tailscale.error.retry')),
+          ),
+        ),
       ],
     );
   }

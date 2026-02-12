@@ -1,15 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/command_runner.dart';
-import '../../core/os_detector.dart';
 
 enum TailscaleConnectionStatus {
-  notInstalled,
-  daemonStopped,
+  loading,
   loggedOut,
   connected,
-  loading,
+  error,
 }
 
 class TailscalePeer {
@@ -66,177 +65,238 @@ final tailscaleProvider =
     NotifierProvider<TailscaleNotifier, TailscaleState>(TailscaleNotifier.new);
 
 class TailscaleNotifier extends Notifier<TailscaleState> {
+  Process? _daemon;
   Timer? _pollTimer;
 
   @override
   TailscaleState build() {
-    Future.microtask(() => checkStatus());
-    ref.onDispose(() => _pollTimer?.cancel());
+    Future.microtask(() => _startDaemon());
+    ref.onDispose(() => _shutdownDaemon());
     return const TailscaleState();
   }
 
-  Future<bool> _isInstalled() async {
-    final os = OsDetector.currentOS;
-    switch (os) {
-      case SupportedOS.windows:
-        final result = await CommandRunner.runPowerShell(
-          'Get-Command tailscale -ErrorAction SilentlyContinue',
-        );
-        return result.success && result.stdout.isNotEmpty;
-      case SupportedOS.linux:
-      case SupportedOS.macos:
-        final result = await CommandRunner.run('which', ['tailscale']);
-        return result.success;
+  /// Trouve le binaire chill-tailscale à côté de l'exécutable Flutter
+  String _getDaemonPath() {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final name = Platform.isWindows ? 'chill-tailscale.exe' : 'chill-tailscale';
+
+    // Production : à côté de l'exécutable Flutter
+    for (final sub in ['', '/lib', '/data']) {
+      final path = '$exeDir$sub/$name';
+      if (File(path).existsSync()) return path;
     }
+
+    // Debug : remonter depuis build/linux/x64/debug/bundle/ vers la racine du projet
+    final projectDir = exeDir.replaceFirst(RegExp(r'/build/.*$'), '');
+    final debugPath = '$projectDir/tailscale-daemon/$name';
+    if (File(debugPath).existsSync()) return debugPath;
+
+    return name; // fallback PATH
   }
 
-  Future<void> checkStatus() async {
-    state = state.copyWith(status: TailscaleConnectionStatus.loading, errorMessage: null);
-
+  /// Démarre le daemon Go chill-tailscale
+  Future<void> _startDaemon() async {
+    state = state.copyWith(
+      status: TailscaleConnectionStatus.loading,
+      errorMessage: null,
+    );
     try {
-      final installed = await _isInstalled();
-      if (!installed) {
-        state = state.copyWith(status: TailscaleConnectionStatus.notInstalled);
-        _stopPolling();
-        return;
-      }
+      final daemonPath = _getDaemonPath();
+      debugPrint('[Tailscale] Daemon path: $daemonPath');
+      debugPrint('[Tailscale] File exists: ${File(daemonPath).existsSync()}');
+      _daemon = await Process.start(daemonPath, []);
 
-      final result = await CommandRunner.run('tailscale', ['status', '--json']);
+      // Écouter stdout ligne par ligne pour les événements JSON
+      _daemon!.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(
+            _handleEvent,
+            onError: (_) => _onDaemonCrash(),
+            onDone: _onDaemonCrash,
+          );
 
-      if (!result.success) {
-        if (result.stderr.contains('is not running') ||
-            result.stderr.contains('connection refused') ||
-            result.stderr.contains('dial')) {
-          state = state.copyWith(status: TailscaleConnectionStatus.daemonStopped);
-          _stopPolling();
-          return;
-        }
-        state = state.copyWith(
-          status: TailscaleConnectionStatus.loggedOut,
-          errorMessage: result.stderr,
-        );
-        _stopPolling();
-        return;
-      }
+      // Afficher stderr en debug (logs Go)
+      _daemon!.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) => debugPrint('[Tailscale daemon] $line'));
 
-      final json = jsonDecode(result.stdout) as Map<String, dynamic>;
-      final backendState = json['BackendState'] as String? ?? '';
-
-      if (backendState == 'NeedsLogin' || backendState == 'NoState') {
-        state = state.copyWith(status: TailscaleConnectionStatus.loggedOut);
-        _stopPolling();
-        return;
-      }
-
-      // Parse Self
-      final self = json['Self'] as Map<String, dynamic>?;
-      String? selfHostname;
-      String? selfIp;
-      if (self != null) {
-        selfHostname = self['HostName'] as String?;
-        final ips = self['TailscaleIPs'] as List<dynamic>?;
-        if (ips != null && ips.isNotEmpty) {
-          selfIp = ips.firstWhere(
-            (ip) => ip.toString().contains('.'),
-            orElse: () => ips.first,
-          ).toString();
-        }
-      }
-
-      // Parse Peers
-      final peerMap = json['Peer'] as Map<String, dynamic>? ?? {};
-      final peers = <TailscalePeer>[];
-      for (final entry in peerMap.values) {
-        final peer = entry as Map<String, dynamic>;
-        final peerIps = peer['TailscaleIPs'] as List<dynamic>?;
-        String peerIp = '';
-        if (peerIps != null && peerIps.isNotEmpty) {
-          peerIp = peerIps.firstWhere(
-            (ip) => ip.toString().contains('.'),
-            orElse: () => peerIps.first,
-          ).toString();
-        }
-        peers.add(TailscalePeer(
-          hostname: (peer['HostName'] as String?) ?? 'Unknown',
-          ipv4: peerIp,
-          os: (peer['OS'] as String?) ?? '',
-          isOnline: peer['Online'] == true,
-        ));
-      }
-
-      // Sort: online first, then alphabetical
-      peers.sort((a, b) {
-        if (a.isOnline != b.isOnline) return a.isOnline ? -1 : 1;
-        return a.hostname.toLowerCase().compareTo(b.hostname.toLowerCase());
-      });
-
-      state = state.copyWith(
-        status: TailscaleConnectionStatus.connected,
-        selfHostname: selfHostname,
-        selfIp: selfIp,
-        peers: peers,
-      );
-      _startPolling();
+      // Envoyer la commande start
+      _sendCommand({'cmd': 'start'});
     } catch (e) {
+      debugPrint('[Tailscale] Erreur démarrage daemon: $e');
       state = state.copyWith(
-        status: TailscaleConnectionStatus.notInstalled,
-        errorMessage: e.toString(),
+        status: TailscaleConnectionStatus.error,
+        errorMessage: 'Le moteur Tailscale est introuvable.',
       );
-      _stopPolling();
     }
   }
 
+  /// Traite un événement JSON reçu du daemon
+  void _handleEvent(String jsonLine) {
+    try {
+      final event = jsonDecode(jsonLine) as Map<String, dynamic>;
+      final eventType = event['event'] as String?;
+
+      switch (eventType) {
+        case 'started':
+          final backendState = event['state'] as String? ?? '';
+          if (backendState == 'Running') {
+            // Déjà connecté, demander le statut complet
+            _sendCommand({'cmd': 'status'});
+          } else {
+            state = state.copyWith(
+              status: TailscaleConnectionStatus.loggedOut,
+            );
+          }
+
+        case 'auth_url':
+          final url = event['url'] as String?;
+          if (url != null && url.isNotEmpty) {
+            _openUrl(url);
+          }
+
+        case 'connected':
+        case 'status':
+          final backendState = event['state'] as String? ?? 'Running';
+          if (backendState == 'Running') {
+            final selfHostname = event['self_hostname'] as String?;
+            final selfIp = event['self_ip'] as String?;
+            final peersJson = event['peers'] as List<dynamic>? ?? [];
+            final peers = peersJson.map((p) {
+              final peer = p as Map<String, dynamic>;
+              return TailscalePeer(
+                hostname: (peer['hostname'] as String?) ?? 'Unknown',
+                ipv4: (peer['ip'] as String?) ?? '',
+                os: (peer['os'] as String?) ?? '',
+                isOnline: peer['online'] == true,
+              );
+            }).toList();
+
+            state = state.copyWith(
+              status: TailscaleConnectionStatus.connected,
+              selfHostname: selfHostname,
+              selfIp: selfIp,
+              peers: peers,
+              isLoggingIn: false,
+            );
+            _startPolling();
+          } else {
+            state = state.copyWith(
+              status: TailscaleConnectionStatus.loggedOut,
+              isLoggingIn: false,
+            );
+          }
+
+        case 'logged_out':
+          _stopPolling();
+          state = state.copyWith(
+            status: TailscaleConnectionStatus.loggedOut,
+            selfHostname: null,
+            selfIp: null,
+            peers: [],
+            isLoggingIn: false,
+          );
+
+        case 'error':
+          final message = event['message'] as String? ?? 'Erreur inconnue';
+          state = state.copyWith(errorMessage: message, isLoggingIn: false);
+      }
+    } catch (_) {
+      // Ignorer les lignes non-JSON
+    }
+  }
+
+  /// Appelé quand le daemon crash ou se ferme
+  void _onDaemonCrash() {
+    _stopPolling();
+    if (state.status != TailscaleConnectionStatus.error) {
+      state = state.copyWith(
+        status: TailscaleConnectionStatus.error,
+        errorMessage: 'Le moteur Tailscale s\'est arrêté.',
+        isLoggingIn: false,
+      );
+    }
+  }
+
+  /// Déclenche le login OAuth (ouvre le navigateur)
   Future<void> login() async {
     state = state.copyWith(isLoggingIn: true, errorMessage: null);
-    try {
-      await CommandRunner.run('tailscale', ['up']);
-      await checkStatus();
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
-    } finally {
-      state = state.copyWith(isLoggingIn: false);
-    }
+    _sendCommand({'cmd': 'login'});
   }
 
+  /// Déconnecte du réseau Tailscale
   Future<void> logout() async {
     state = state.copyWith(errorMessage: null);
-    try {
-      await CommandRunner.run('tailscale', ['logout']);
-      _stopPolling();
-      state = state.copyWith(
-        status: TailscaleConnectionStatus.loggedOut,
-        selfHostname: null,
-        selfIp: null,
-        peers: [],
-      );
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+    _sendCommand({'cmd': 'logout'});
+  }
+
+  /// Relance le daemon après une erreur
+  Future<void> retry() async {
+    _daemon?.kill();
+    _daemon = null;
+    _stopPolling();
+    await _startDaemon();
+  }
+
+  /// Demande un rafraîchissement du statut
+  Future<void> refreshStatus() async {
+    _sendCommand({'cmd': 'status'});
+  }
+
+  /// Envoie une commande JSON au daemon via stdin
+  void _sendCommand(Map<String, dynamic> cmd) {
+    if (_daemon != null) {
+      _daemon!.stdin.writeln(jsonEncode(cmd));
     }
   }
 
-  Future<void> startDaemon() async {
-    state = state.copyWith(errorMessage: null);
-    try {
-      final os = OsDetector.currentOS;
-      if (os == SupportedOS.linux) {
-        await CommandRunner.runElevated('systemctl', ['start', 'tailscaled']);
-      }
-      await Future.delayed(const Duration(seconds: 2));
-      await checkStatus();
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+  /// Ouvre une URL dans le navigateur système
+  Future<void> _openUrl(String url) async {
+    if (Platform.isLinux) {
+      await Process.run('xdg-open', [url]);
+    } else if (Platform.isWindows) {
+      await Process.run('cmd', ['/c', 'start', url]);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', [url]);
     }
   }
 
+  /// Démarre le polling du statut toutes les 10 secondes
   void _startPolling() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      checkStatus();
+      _sendCommand({'cmd': 'status'});
     });
   }
 
+  /// Arrête le polling
   void _stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
+  }
+
+  /// Arrête le daemon proprement
+  void _shutdownDaemon() {
+    _stopPolling();
+    if (_daemon != null) {
+      final process = _daemon!;
+      _daemon = null;
+      try {
+        // Envoyer la commande shutdown
+        process.stdin.writeln(jsonEncode({'cmd': 'shutdown'}));
+        // Laisser le daemon se fermer proprement (max 3s)
+        process.exitCode.timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            process.kill();
+            return -1;
+          },
+        );
+      } catch (_) {
+        process.kill();
+      }
+    }
   }
 }

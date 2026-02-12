@@ -38,7 +38,7 @@ class ChillCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Icon(icon, color: accentColor, size: 32),
-                  ?badge,
+                  if (badge != null) Flexible(child: badge!),
                 ],
               ),
               const SizedBox(height: 8),
