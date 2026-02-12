@@ -74,8 +74,9 @@
 - [x] Commandes Linux (5 étapes : install → démarrage → vérif → pare-feu → infos, auto-détection distro)
 - [x] Commandes Mac (3 étapes : remote login → vérif → infos)
 - [x] Gestion des erreurs (rouge par étape + message global)
-- [x] Affichage des infos de connexion (IP, utilisateur, string de connexion)
+- [x] Affichage des infos de connexion (IP Ethernet + WiFi, utilisateur, string de connexion)
 - [x] Bouton "Copier" sur chaque info
+- [x] 1 seul mot de passe pour toutes les commandes admin (script batch pkexec)
 - [ ] Ajouter le logo/personnage animé (en attente de l'image)
 
 ## 9. Écran Configuration WoL
@@ -89,17 +90,19 @@
 - [x] Commandes Linux (5 étapes : ethtool → carte Ethernet → activer WoL → service systemd → MAC)
 - [x] Masquer l'écran sur Mac (message "non disponible")
 - [x] Avertissement BIOS (carte ambre, toujours visible)
-- [x] Affichage de l'adresse MAC + carte réseau + IP à la fin
+- [x] Affichage de l'adresse MAC + carte réseau + IP Ethernet + IP WiFi à la fin
 - [x] Bouton "Copier" sur chaque info
 - [x] Rappel BIOS dans la carte résultat
 - [x] Gestion des erreurs (rouge par étape + message global)
 - [x] Avertissement Linux (WoL pas toujours fiable selon carte/noyau, conseil dual-boot)
+- [x] 1 seul mot de passe pour toutes les commandes admin (script batch pkexec)
 - [ ] Ajouter le logo/personnage animé (en attente de l'image)
 
 ## 10. Écran Infos connexion
 
 - [x] Squelette de l'écran + provider Riverpod
-- [x] Récupération auto de l'IP (Windows/Linux/Mac)
+- [x] Récupération auto de l'IP Ethernet (Windows/Linux/Mac)
+- [x] Récupération auto de l'IP WiFi (Windows/Linux/Mac)
 - [x] Récupération auto de l'adresse MAC (Windows/Linux)
 - [x] Récupération auto du nom d'utilisateur
 - [x] Récupération auto de la carte réseau (Windows/Linux)
@@ -117,8 +120,9 @@
 ## 12. Tests
 
 - [x] Test de base (l'app démarre)
-- [ ] Tests unitaires des providers
-- [ ] Tests unitaires du CommandRunner
+- [x] Tests unitaires des states (SetupStep, SshSetupState, WolSetupState, ConnectionInfoState, DashboardState)
+- [x] Tests unitaires du CommandRunner (commande simple, commande inexistante, trim stdout)
+- [x] Tests unitaires des traductions (parité FR/EN, pas de valeurs vides, clés critiques)
 - [ ] Tests d'interface des écrans
 
 ## 13. Build & distribution
@@ -134,6 +138,8 @@
 - Le paquet `lld-18` est requis sur Ubuntu (`sudo apt install lld-18`)
 - Le Wake-on-LAN sur Linux peut ne pas fonctionner selon la carte réseau et le noyau — fonctionne mieux quand le PC est éteint depuis Windows (dual-boot)
 - La vérification WoL du dashboard utilise `systemctl is-enabled wol-enable.service` (pas besoin de sudo)
+- Les commandes admin Linux sont regroupées en un seul script pkexec → 1 seul mot de passe par configuration
+- Les IPs Ethernet et WiFi sont récupérées séparément sur chaque OS (scan `/sys/class/net/*/wireless` sur Linux, filtrage PowerShell sur Windows, `networksetup` sur Mac)
 
 ---
 
@@ -143,4 +149,5 @@
 2. ~~**Écran WoL** — Câbler les commandes WoL~~ ✓
 3. ~~**Écran Infos connexion** — Afficher IP/MAC/utilisateur~~ ✓
 4. ~~**Badges dashboard** — Afficher l'état de configuration sur les cartes~~ ✓
-5. **Tests** — Ajouter les tests unitaires
+5. ~~**Tests** — Ajouter les tests unitaires~~ ✓
+6. **Build & distribution** — Build Windows/macOS, packaging

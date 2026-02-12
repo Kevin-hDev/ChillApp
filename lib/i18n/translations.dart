@@ -43,9 +43,11 @@ const Map<String, Map<String, String>> translations = {
     'ssh.step.info': 'Récupérer les infos de connexion',
     'ssh.step.enableRemoteLogin': 'Activer l\'accès à distance',
     'ssh.result.title': 'Configuration terminée !',
-    'ssh.result.ip': 'Ton adresse IP',
+    'ssh.result.ipEthernet': 'Adresse IP Ethernet',
+    'ssh.result.ipWifi': 'Adresse IP WiFi',
     'ssh.result.username': 'Ton nom d\'utilisateur',
-    'ssh.result.connect': 'Dans ChillShell, connecte-toi avec :',
+    'ssh.result.connectEthernet': 'Connexion via Ethernet :',
+    'ssh.result.connectWifi': 'Connexion via WiFi :',
     'ssh.error.title': 'Une erreur est survenue',
     'ssh.error.retry': 'Réessayer',
 
@@ -74,7 +76,8 @@ const Map<String, Map<String, String>> translations = {
     'wol.result.title': 'Configuration terminée !',
     'wol.result.mac': 'Ton adresse MAC (entre-la dans ChillShell)',
     'wol.result.adapter': 'Carte réseau',
-    'wol.result.ip': 'Ton adresse IP',
+    'wol.result.ipEthernet': 'Adresse IP Ethernet',
+    'wol.result.ipWifi': 'Adresse IP WiFi',
     'wol.result.reminder': 'N\'oublie pas de configurer ton BIOS ! '
         'Le WoL ne fonctionnera pas sans la configuration BIOS. '
         'Consulte le tuto BIOS sur le site ChillShell.',
@@ -87,7 +90,8 @@ const Map<String, Map<String, String>> translations = {
     // Connection Info
     'info.title': 'Infos de connexion',
     'info.intro': 'Voici les informations à entrer dans ChillShell.',
-    'info.ip': 'Adresse IP',
+    'info.ipEthernet': 'Adresse IP Ethernet',
+    'info.ipWifi': 'Adresse IP WiFi',
     'info.mac': 'Adresse MAC',
     'info.username': 'Nom d\'utilisateur',
     'info.adapter': 'Carte réseau',
@@ -157,9 +161,11 @@ const Map<String, Map<String, String>> translations = {
     'ssh.step.info': 'Retrieve connection info',
     'ssh.step.enableRemoteLogin': 'Enable remote login',
     'ssh.result.title': 'Setup complete!',
-    'ssh.result.ip': 'Your IP address',
+    'ssh.result.ipEthernet': 'Ethernet IP Address',
+    'ssh.result.ipWifi': 'WiFi IP Address',
     'ssh.result.username': 'Your username',
-    'ssh.result.connect': 'In ChillShell, connect with:',
+    'ssh.result.connectEthernet': 'Connect via Ethernet:',
+    'ssh.result.connectWifi': 'Connect via WiFi:',
     'ssh.error.title': 'An error occurred',
     'ssh.error.retry': 'Retry',
 
@@ -188,7 +194,8 @@ const Map<String, Map<String, String>> translations = {
     'wol.result.title': 'Setup complete!',
     'wol.result.mac': 'Your MAC address (enter it in ChillShell)',
     'wol.result.adapter': 'Network adapter',
-    'wol.result.ip': 'Your IP address',
+    'wol.result.ipEthernet': 'Ethernet IP Address',
+    'wol.result.ipWifi': 'WiFi IP Address',
     'wol.result.reminder': 'Don\'t forget to configure your BIOS! '
         'WoL won\'t work without the BIOS configuration. '
         'Check the BIOS tutorial on the ChillShell website.',
@@ -200,7 +207,8 @@ const Map<String, Map<String, String>> translations = {
     // Connection Info
     'info.title': 'Connection Info',
     'info.intro': 'Here is the information to enter in ChillShell.',
-    'info.ip': 'IP Address',
+    'info.ipEthernet': 'Ethernet IP Address',
+    'info.ipWifi': 'WiFi IP Address',
     'info.mac': 'MAC Address',
     'info.username': 'Username',
     'info.adapter': 'Network adapter',

@@ -19,12 +19,20 @@ class CommandResult {
 class CommandRunner {
   /// Exécute une commande simple (sans privilèges élevés)
   static Future<CommandResult> run(String executable, List<String> args) async {
-    final result = await Process.run(executable, args);
-    return CommandResult(
-      exitCode: result.exitCode,
-      stdout: result.stdout.toString().trim(),
-      stderr: result.stderr.toString().trim(),
-    );
+    try {
+      final result = await Process.run(executable, args);
+      return CommandResult(
+        exitCode: result.exitCode,
+        stdout: result.stdout.toString().trim(),
+        stderr: result.stderr.toString().trim(),
+      );
+    } on ProcessException catch (e) {
+      return CommandResult(
+        exitCode: -1,
+        stdout: '',
+        stderr: e.message,
+      );
+    }
   }
 
   /// Exécute une commande PowerShell (Windows)

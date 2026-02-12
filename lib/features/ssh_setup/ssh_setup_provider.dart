@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
 import '../../core/os_detector.dart';
@@ -29,7 +30,8 @@ class SshSetupState {
   final List<SetupStep> steps;
   final bool isRunning;
   final bool isComplete;
-  final String? ipAddress;
+  final String? ipEthernet;
+  final String? ipWifi;
   final String? username;
   final String? errorMessage;
 
@@ -37,7 +39,8 @@ class SshSetupState {
     this.steps = const [],
     this.isRunning = false,
     this.isComplete = false,
-    this.ipAddress,
+    this.ipEthernet,
+    this.ipWifi,
     this.username,
     this.errorMessage,
   });
@@ -46,7 +49,8 @@ class SshSetupState {
     List<SetupStep>? steps,
     bool? isRunning,
     bool? isComplete,
-    String? ipAddress,
+    String? ipEthernet,
+    String? ipWifi,
     String? username,
     String? errorMessage,
   }) {
@@ -54,7 +58,8 @@ class SshSetupState {
       steps: steps ?? this.steps,
       isRunning: isRunning ?? this.isRunning,
       isComplete: isComplete ?? this.isComplete,
-      ipAddress: ipAddress ?? this.ipAddress,
+      ipEthernet: ipEthernet ?? this.ipEthernet,
+      ipWifi: ipWifi ?? this.ipWifi,
       username: username ?? this.username,
       errorMessage: errorMessage,
     );
@@ -215,100 +220,165 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 7. Récupérer les infos
     _updateStep('info', StepStatus.running);
-    final ipResult = await CommandRunner.runPowerShell(
-      "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { \$_.InterfaceAlias -notlike '*Loopback*' -and \$_.IPAddress -ne '127.0.0.1' } | Select-Object -First 1).IPAddress",
+    // IP Ethernet
+    final ethIpResult = await CommandRunner.runPowerShell(
+      "\$a = Get-NetAdapter | Where-Object { "
+      "\$_.Status -eq 'Up' -and "
+      "\$_.InterfaceDescription -notlike '*Wi-Fi*' -and "
+      "\$_.InterfaceDescription -notlike '*Wireless*' -and "
+      "\$_.InterfaceDescription -notlike '*Bluetooth*' -and "
+      "\$_.InterfaceDescription -notlike '*Virtual*' "
+      "} | Select-Object -First 1; "
+      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
+      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
+    );
+    // IP WiFi
+    final wifiIpResult = await CommandRunner.runPowerShell(
+      "\$a = Get-NetAdapter | Where-Object { "
+      "\$_.Status -eq 'Up' -and "
+      "(\$_.InterfaceDescription -like '*Wi-Fi*' -or "
+      "\$_.InterfaceDescription -like '*Wireless*') "
+      "} | Select-Object -First 1; "
+      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
+      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
     );
     final userResult = await CommandRunner.runPowerShell("\$env:USERNAME");
     state = state.copyWith(
-      ipAddress: ipResult.stdout.isNotEmpty ? ipResult.stdout : null,
+      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
+      ipWifi: wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null,
       username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
     );
     _updateStep('info', StepStatus.success);
   }
 
   // ============================================
-  // LINUX
+  // LINUX (1 seul mot de passe pour toutes les commandes admin)
   // ============================================
   Future<void> _runLinux() async {
     final distro = await OsDetector.detectLinuxDistro();
 
-    // 1. Installer OpenSSH
-    _updateStep('install', StepStatus.running);
-    CommandResult result;
+    // Déterminer la commande d'installation selon la distro
+    String installCmd;
     switch (distro) {
       case LinuxDistro.debian:
-        result = await CommandRunner.runElevated('bash', ['-c', 'apt update -qq && apt install openssh-server -y -qq']);
+        installCmd = 'apt update -qq && apt install openssh-server -y -qq';
         break;
       case LinuxDistro.fedora:
-        result = await CommandRunner.runElevated('bash', ['-c', 'dnf install openssh-server -y -q']);
+        installCmd = 'dnf install openssh-server -y -q';
         break;
       case LinuxDistro.arch:
-        result = await CommandRunner.runElevated('bash', ['-c', 'pacman -S --noconfirm openssh']);
+        installCmd = 'pacman -S --noconfirm openssh';
         break;
       case LinuxDistro.unknown:
         _updateStep('install', StepStatus.error, errorDetail: 'Distribution non reconnue');
         throw Exception('Distribution Linux non reconnue');
     }
-    if (!result.success) {
+
+    // === Phase 1 : toutes les commandes admin en 1 seul pkexec ===
+    _updateStep('install', StepStatus.running);
+
+    final script =
+        '#!/bin/bash\n'
+        '# 1. Installer OpenSSH\n'
+        '$installCmd\n'
+        'if [ \$? -ne 0 ]; then exit 10; fi\n'
+        '\n'
+        '# 2. Démarrer et activer SSH\n'
+        'systemctl enable --now sshd 2>/dev/null || systemctl enable --now ssh\n'
+        'if [ \$? -ne 0 ]; then exit 20; fi\n'
+        '\n'
+        '# 3. Configurer le pare-feu (non-critique)\n'
+        'if command -v ufw >/dev/null 2>&1; then\n'
+        '  ufw status 2>/dev/null | grep -q "Status: active" && ufw allow ssh 2>/dev/null\n'
+        'elif command -v firewall-cmd >/dev/null 2>&1; then\n'
+        '  systemctl is-active --quiet firewalld 2>/dev/null && '
+        'firewall-cmd --permanent --add-service=ssh 2>/dev/null && '
+        'firewall-cmd --reload 2>/dev/null\n'
+        'fi\n'
+        '\n'
+        'exit 0\n';
+
+    final tempScript = File('/tmp/chill-ssh-setup.sh');
+    await tempScript.writeAsString(script);
+
+    final result = await CommandRunner.runElevated('bash', [tempScript.path]);
+    try { await tempScript.delete(); } catch (_) {}
+
+    // Analyser le résultat par code de sortie
+    if (result.exitCode == 126 || result.exitCode == 127) {
+      _updateStep('install', StepStatus.error, errorDetail: 'Autorisation refusée');
+      throw Exception('Autorisation refusée');
+    }
+    if (result.exitCode == 10) {
       _updateStep('install', StepStatus.error, errorDetail: result.stderr);
       throw Exception('Échec installation OpenSSH');
     }
     _updateStep('install', StepStatus.success);
 
-    // 2. Démarrer et activer SSH
-    _updateStep('start', StepStatus.running);
-    result = await CommandRunner.runElevated('systemctl', ['enable', '--now', 'sshd']);
-    // Certaines distros utilisent 'ssh' au lieu de 'sshd'
-    if (!result.success) {
-      result = await CommandRunner.runElevated('systemctl', ['enable', '--now', 'ssh']);
-    }
-    if (!result.success) {
+    if (result.exitCode == 20) {
       _updateStep('start', StepStatus.error, errorDetail: result.stderr);
       throw Exception('Échec démarrage SSH');
     }
     _updateStep('start', StepStatus.success);
+    _updateStep('firewall', StepStatus.success);
 
-    // 3. Vérifier que SSH tourne
+    // === Phase 2 : commandes sans élévation ===
+
+    // 4. Vérifier que SSH tourne
     _updateStep('verify', StepStatus.running);
-    result = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'sshd']);
-    if (!result.success) {
-      result = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'ssh']);
+    var verifyResult = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'sshd']);
+    if (!verifyResult.success) {
+      verifyResult = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'ssh']);
     }
-    if (!result.success) {
+    if (!verifyResult.success) {
       _updateStep('verify', StepStatus.error, errorDetail: 'SSH ne semble pas actif');
       throw Exception('SSH non actif');
     }
     _updateStep('verify', StepStatus.success);
 
-    // 4. Configurer le pare-feu
-    _updateStep('firewall', StepStatus.running);
-    // Vérifier si ufw est installé et actif
-    final ufwCheck = await CommandRunner.run('bash', ['-c', 'command -v ufw']);
-    if (ufwCheck.success) {
-      final ufwStatus = await CommandRunner.run('bash', ['-c', 'ufw status 2>/dev/null | grep -q "Status: active"']);
-      if (ufwStatus.success) {
-        await CommandRunner.runElevated('ufw', ['allow', 'ssh']);
-      }
-    } else {
-      // Vérifier firewalld
-      final fwCheck = await CommandRunner.run('bash', ['-c', 'command -v firewall-cmd']);
-      if (fwCheck.success) {
-        final fwActive = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'firewalld']);
-        if (fwActive.success) {
-          await CommandRunner.runElevated('firewall-cmd', ['--permanent', '--add-service=ssh']);
-          await CommandRunner.runElevated('firewall-cmd', ['--reload']);
-        }
-      }
-    }
-    _updateStep('firewall', StepStatus.success);
-
     // 5. Récupérer les infos
     _updateStep('info', StepStatus.running);
-    final ipResult = await CommandRunner.run('hostname', ['-I']);
     final userResult = await CommandRunner.run('whoami', []);
-    final ip = ipResult.stdout.split(' ').firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    // IP Ethernet
+    String? ipEthernet;
+    final ethFind = await CommandRunner.run('bash', ['-c',
+      'for iface in \$(ls /sys/class/net/); do '
+      'if [ "\$iface" = "lo" ]; then continue; fi; '
+      'if [ -d "/sys/class/net/\$iface/wireless" ]; then continue; fi; '
+      'if [ -e "/sys/class/net/\$iface/device" ]; then '
+      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+      'fi; done; exit 1',
+    ]);
+    if (ethFind.success && ethFind.stdout.isNotEmpty) {
+      final ethIface = ethFind.stdout.trim();
+      final ethIpResult = await CommandRunner.run('bash', ['-c',
+        "ip -4 addr show $ethIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
+      ]);
+      ipEthernet = ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null;
+    }
+
+    // IP WiFi
+    String? ipWifi;
+    final wifiFind = await CommandRunner.run('bash', ['-c',
+      'for iface in \$(ls /sys/class/net/); do '
+      'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
+      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+      'fi; done; exit 1',
+    ]);
+    if (wifiFind.success && wifiFind.stdout.isNotEmpty) {
+      final wifiIface = wifiFind.stdout.trim();
+      final wifiIpResult = await CommandRunner.run('bash', ['-c',
+        "ip -4 addr show $wifiIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
+      ]);
+      ipWifi = wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null;
+    }
+
     state = state.copyWith(
-      ipAddress: ip.isNotEmpty ? ip : null,
+      ipEthernet: ipEthernet,
+      ipWifi: ipWifi,
       username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
     );
     _updateStep('info', StepStatus.success);
@@ -338,13 +408,43 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 3. Récupérer les infos
     _updateStep('info', StepStatus.running);
-    var ipResult = await CommandRunner.run('ipconfig', ['getifaddr', 'en0']);
-    if (!ipResult.success || ipResult.stdout.isEmpty) {
-      ipResult = await CommandRunner.run('ipconfig', ['getifaddr', 'en1']);
-    }
     final userResult = await CommandRunner.run('whoami', []);
+
+    // Détecter les interfaces WiFi et Ethernet
+    String? ipWifi;
+    String? ipEthernet;
+    final hwResult = await CommandRunner.run('networksetup', ['-listallhardwareports']);
+    final lines = hwResult.stdout.split('\n');
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i].contains('Wi-Fi')) {
+        if (i + 1 < lines.length) {
+          final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
+          if (match != null) {
+            final r = await CommandRunner.run('ipconfig', ['getifaddr', match.group(1)!]);
+            ipWifi = r.stdout.isNotEmpty ? r.stdout : null;
+          }
+        }
+      } else if (lines[i].contains('Ethernet') || lines[i].contains('Thunderbolt')) {
+        if (i + 1 < lines.length) {
+          final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
+          if (match != null) {
+            final r = await CommandRunner.run('ipconfig', ['getifaddr', match.group(1)!]);
+            ipEthernet = r.stdout.isNotEmpty ? r.stdout : null;
+          }
+        }
+      }
+    }
+    // Fallback
+    if (ipWifi == null && ipEthernet == null) {
+      final en0 = await CommandRunner.run('ipconfig', ['getifaddr', 'en0']);
+      if (en0.success && en0.stdout.isNotEmpty) ipWifi = en0.stdout;
+      final en1 = await CommandRunner.run('ipconfig', ['getifaddr', 'en1']);
+      if (en1.success && en1.stdout.isNotEmpty) ipEthernet = en1.stdout;
+    }
+
     state = state.copyWith(
-      ipAddress: ipResult.stdout.isNotEmpty ? ipResult.stdout : null,
+      ipEthernet: ipEthernet,
+      ipWifi: ipWifi,
       username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
     );
     _updateStep('info', StepStatus.success);

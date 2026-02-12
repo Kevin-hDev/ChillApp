@@ -29,7 +29,7 @@ class ChillCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(ChillRadius.xl),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -41,11 +41,16 @@ class ChillCard extends StatelessWidget {
                   ?badge,
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(title, style: theme.textTheme.titleLarge),
               if (description.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text(description, style: theme.textTheme.bodyMedium),
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ],
           ),
