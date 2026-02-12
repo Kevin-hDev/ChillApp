@@ -57,7 +57,7 @@
 ## 7. Écran Dashboard
 
 - [x] Squelette de l'écran
-- [x] Grille de 4 cartes (SSH, WoL, Infos, Réglages)
+- [x] Grille de 6 cartes (SSH, WoL, Tailscale, Infos, Réglages, Mascotte)
 - [x] Badge d'état sur les cartes SSH et WoL (configuré/pas encore configuré)
 - [x] Vérification auto du statut SSH (service actif ?)
 - [x] Vérification auto du statut WoL (Magic Packet activé ?)
@@ -77,7 +77,7 @@
 - [x] Affichage des infos de connexion (IP Ethernet + WiFi, utilisateur, string de connexion)
 - [x] Bouton "Copier" sur chaque info
 - [x] 1 seul mot de passe pour toutes les commandes admin (script batch pkexec)
-- [ ] Ajouter le logo/personnage animé (en attente de l'image)
+- [x] Loader personnage animé (loader.png, animation flottante)
 
 ## 9. Écran Configuration WoL
 
@@ -96,7 +96,7 @@
 - [x] Gestion des erreurs (rouge par étape + message global)
 - [x] Avertissement Linux (WoL pas toujours fiable selon carte/noyau, conseil dual-boot)
 - [x] 1 seul mot de passe pour toutes les commandes admin (script batch pkexec)
-- [ ] Ajouter le logo/personnage animé (en attente de l'image)
+- [x] Loader personnage animé (loader.png, animation flottante)
 
 ## 10. Écran Infos connexion
 
@@ -110,6 +110,7 @@
 - [x] Bouton "Rafraîchir" dans le header
 - [x] Chargement auto à l'ouverture de l'écran
 - [x] Affichage "Non trouvée" si info indisponible
+- [x] Carte recommandation Tailscale (sécurité + lien vers l'onglet)
 
 ## 11. Écran Réglages
 
@@ -138,7 +139,17 @@
 - [x] Dialogues de saisie PIN dans les réglages (activer/désactiver/changer)
 - [x] Confirmation PIN (saisie 2 fois pour vérifier)
 
-## 14. Tests
+## 14. Interface responsive & assets
+
+- [x] Taille minimum de fenêtre 800x600 (GTK Linux)
+- [x] Padding responsive sur tous les écrans (adaptatif selon la largeur)
+- [x] Dashboard : grille adaptive (2 ou 3 colonnes selon la largeur)
+- [x] Tous les écrans scrollables (pas de débordement)
+- [x] Mascotte sur le dashboard (mascot.png, en bas à droite)
+- [x] Loader personnage sur SSH et WoL (loader.png, animation flottante)
+- [x] Assets déclarés dans pubspec.yaml (assets/images/)
+
+## 15. Tests
 
 - [x] Test de base (l'app démarre)
 - [x] Tests unitaires des states (SetupStep, SshSetupState, WolSetupState, ConnectionInfoState, DashboardState, TailscaleState, LockState)
@@ -146,7 +157,7 @@
 - [x] Tests unitaires des traductions (parité FR/EN, pas de valeurs vides, clés critiques)
 - [ ] Tests d'interface des écrans
 
-## 15. Build & distribution
+## 16. Build & distribution
 
 - [x] Résoudre le problème de linker Linux (Flutter réinstallé via git + lld-18)
 - [ ] Build Windows

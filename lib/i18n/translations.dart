@@ -130,6 +130,11 @@ const Map<String, Map<String, String>> translations = {
     'info.copied': 'Copié !',
     'info.refresh': 'Rafraîchir',
     'info.notFound': 'Non trouvée',
+    'info.recommend.title': 'Recommandé : utilise Tailscale',
+    'info.recommend.content': 'Les adresses IP ci-dessus changent régulièrement et ne fonctionnent que sur ton réseau local. '
+        'Pour une connexion sécurisée et stable depuis n\'importe où, utilise plutôt ton adresse IP Tailscale. '
+        'Rends-toi sur l\'onglet Tailscale pour créer ton compte et te connecter.',
+    'info.recommend.button': 'Aller sur Tailscale',
 
     // Settings
     'settings.title': 'Réglages',
@@ -294,6 +299,11 @@ const Map<String, Map<String, String>> translations = {
     'info.copied': 'Copied!',
     'info.refresh': 'Refresh',
     'info.notFound': 'Not found',
+    'info.recommend.title': 'Recommended: use Tailscale',
+    'info.recommend.content': 'The IP addresses above change regularly and only work on your local network. '
+        'For a secure and stable connection from anywhere, use your Tailscale IP address instead. '
+        'Go to the Tailscale tab to create your account and connect.',
+    'info.recommend.button': 'Go to Tailscale',
 
     // Settings
     'settings.title': 'Settings',
