@@ -3,7 +3,8 @@ import '../../core/command_runner.dart';
 import '../../core/os_detector.dart';
 
 class ConnectionInfoState {
-  final String? ipAddress;
+  final String? ipEthernet;
+  final String? ipWifi;
   final String? macAddress;
   final String? username;
   final String? adapterName;
@@ -11,7 +12,8 @@ class ConnectionInfoState {
   final String? error;
 
   const ConnectionInfoState({
-    this.ipAddress,
+    this.ipEthernet,
+    this.ipWifi,
     this.macAddress,
     this.username,
     this.adapterName,
@@ -20,7 +22,8 @@ class ConnectionInfoState {
   });
 
   ConnectionInfoState copyWith({
-    String? ipAddress,
+    String? ipEthernet,
+    String? ipWifi,
     String? macAddress,
     String? username,
     String? adapterName,
@@ -28,7 +31,8 @@ class ConnectionInfoState {
     String? error,
   }) {
     return ConnectionInfoState(
-      ipAddress: ipAddress ?? this.ipAddress,
+      ipEthernet: ipEthernet ?? this.ipEthernet,
+      ipWifi: ipWifi ?? this.ipWifi,
       macAddress: macAddress ?? this.macAddress,
       username: username ?? this.username,
       adapterName: adapterName ?? this.adapterName,
@@ -76,12 +80,28 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
   // WINDOWS
   // ============================================
   Future<void> _fetchWindows() async {
-    // IP
-    final ipResult = await CommandRunner.runPowerShell(
-      "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { "
-      "\$_.InterfaceAlias -notlike '*Loopback*' -and "
-      "\$_.IPAddress -ne '127.0.0.1' } | "
-      "Select-Object -First 1).IPAddress",
+    // IP Ethernet
+    final ethIpResult = await CommandRunner.runPowerShell(
+      "\$a = Get-NetAdapter | Where-Object { "
+      "\$_.Status -eq 'Up' -and "
+      "\$_.InterfaceDescription -notlike '*Wi-Fi*' -and "
+      "\$_.InterfaceDescription -notlike '*Wireless*' -and "
+      "\$_.InterfaceDescription -notlike '*Bluetooth*' -and "
+      "\$_.InterfaceDescription -notlike '*Virtual*' "
+      "} | Select-Object -First 1; "
+      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
+      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
+    );
+
+    // IP WiFi
+    final wifiIpResult = await CommandRunner.runPowerShell(
+      "\$a = Get-NetAdapter | Where-Object { "
+      "\$_.Status -eq 'Up' -and "
+      "(\$_.InterfaceDescription -like '*Wi-Fi*' -or "
+      "\$_.InterfaceDescription -like '*Wireless*') "
+      "} | Select-Object -First 1; "
+      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
+      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
     );
 
     // Carte réseau Ethernet + MAC
@@ -108,7 +128,8 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
     }
 
     state = state.copyWith(
-      ipAddress: ipResult.stdout.isNotEmpty ? ipResult.stdout : null,
+      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
+      ipWifi: wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null,
       macAddress: macAddress,
       username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
       adapterName: adapterName,
@@ -119,15 +140,11 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
   // LINUX
   // ============================================
   Future<void> _fetchLinux() async {
-    // IP
-    final ipResult = await CommandRunner.run('hostname', ['-I']);
-    final ip = ipResult.stdout.split(' ').firstWhere((s) => s.isNotEmpty, orElse: () => '');
-
     // Username
     final userResult = await CommandRunner.run('whoami', []);
 
-    // Trouver l'interface Ethernet + MAC
-    final findResult = await CommandRunner.run('bash', ['-c',
+    // Trouver l'interface Ethernet + IP + MAC
+    final ethResult = await CommandRunner.run('bash', ['-c',
       'FALLBACK=""; '
       'for iface in \$(ls /sys/class/net/); do '
       'if [ "\$iface" = "lo" ]; then continue; fi; '
@@ -144,14 +161,39 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
 
     String? macAddress;
     String? adapterName;
-    if (findResult.success && findResult.stdout.isNotEmpty) {
-      adapterName = findResult.stdout.trim();
+    String? ipEthernet;
+    if (ethResult.success && ethResult.stdout.isNotEmpty) {
+      adapterName = ethResult.stdout.trim();
       final macResult = await CommandRunner.run('cat', ['/sys/class/net/$adapterName/address']);
       macAddress = macResult.stdout.isNotEmpty ? macResult.stdout : null;
+      final ethIpResult = await CommandRunner.run('bash', ['-c',
+        "ip -4 addr show $adapterName 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
+      ]);
+      ipEthernet = ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null;
+    }
+
+    // Trouver l'interface WiFi + IP
+    String? ipWifi;
+    final wifiResult = await CommandRunner.run('bash', ['-c',
+      'for iface in \$(ls /sys/class/net/); do '
+      'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
+      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+      'fi; '
+      'done; '
+      'exit 1',
+    ]);
+    if (wifiResult.success && wifiResult.stdout.isNotEmpty) {
+      final wifiIface = wifiResult.stdout.trim();
+      final wifiIpResult = await CommandRunner.run('bash', ['-c',
+        "ip -4 addr show $wifiIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
+      ]);
+      ipWifi = wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null;
     }
 
     state = state.copyWith(
-      ipAddress: ip.isNotEmpty ? ip : null,
+      ipEthernet: ipEthernet,
+      ipWifi: ipWifi,
       macAddress: macAddress,
       username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
       adapterName: adapterName,
@@ -162,19 +204,58 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
   // MAC
   // ============================================
   Future<void> _fetchMac() async {
-    // IP
-    var ipResult = await CommandRunner.run('ipconfig', ['getifaddr', 'en0']);
-    if (!ipResult.success || ipResult.stdout.isEmpty) {
-      ipResult = await CommandRunner.run('ipconfig', ['getifaddr', 'en1']);
+    // WiFi = en0 sur Mac, Ethernet = en1 (ou inversé selon le modèle)
+    final en0Result = await CommandRunner.run('ipconfig', ['getifaddr', 'en0']);
+    final en1Result = await CommandRunner.run('ipconfig', ['getifaddr', 'en1']);
+
+    // Détecter lequel est WiFi via networksetup
+    final hwResult = await CommandRunner.run('networksetup', ['-listallhardwareports']);
+    final hwOutput = hwResult.stdout;
+    String? wifiIface;
+    String? ethIface;
+    final lines = hwOutput.split('\n');
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i].contains('Wi-Fi')) {
+        // La ligne suivante contient "Device: enX"
+        if (i + 1 < lines.length) {
+          final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
+          if (match != null) wifiIface = match.group(1);
+        }
+      } else if (lines[i].contains('Ethernet') || lines[i].contains('Thunderbolt')) {
+        if (i + 1 < lines.length) {
+          final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
+          if (match != null) ethIface = match.group(1);
+        }
+      }
+    }
+
+    String? ipWifi;
+    String? ipEthernet;
+    if (wifiIface != null) {
+      final r = await CommandRunner.run('ipconfig', ['getifaddr', wifiIface]);
+      ipWifi = r.stdout.isNotEmpty ? r.stdout : null;
+    }
+    if (ethIface != null) {
+      final r = await CommandRunner.run('ipconfig', ['getifaddr', ethIface]);
+      ipEthernet = r.stdout.isNotEmpty ? r.stdout : null;
+    }
+    // Fallback si on n'a pas trouvé les interfaces
+    if (ipWifi == null && ipEthernet == null) {
+      if (en0Result.success && en0Result.stdout.isNotEmpty) {
+        ipWifi = en0Result.stdout;
+      }
+      if (en1Result.success && en1Result.stdout.isNotEmpty) {
+        ipEthernet = en1Result.stdout;
+      }
     }
 
     // Username
     final userResult = await CommandRunner.run('whoami', []);
 
     state = state.copyWith(
-      ipAddress: ipResult.stdout.isNotEmpty ? ipResult.stdout : null,
+      ipEthernet: ipEthernet,
+      ipWifi: ipWifi,
       username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
-      // MAC non disponible sur Mac en V1
     );
   }
 }

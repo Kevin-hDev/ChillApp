@@ -140,11 +140,21 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                 ),
                                 child: Column(
                                   children: [
-                                    // IP
+                                    // IP Ethernet
                                     _InfoRow(
-                                      icon: Icons.language,
-                                      label: t(locale, 'info.ip'),
-                                      value: info.ipAddress,
+                                      icon: Icons.settings_ethernet,
+                                      label: t(locale, 'info.ipEthernet'),
+                                      value: info.ipEthernet,
+                                      notFoundLabel: t(locale, 'info.notFound'),
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(height: 20),
+
+                                    // IP WiFi
+                                    _InfoRow(
+                                      icon: Icons.wifi,
+                                      label: t(locale, 'info.ipWifi'),
+                                      value: info.ipWifi,
                                       notFoundLabel: t(locale, 'info.notFound'),
                                       isDark: isDark,
                                     ),

@@ -159,7 +159,8 @@ class SshSetupScreen extends ConsumerWidget {
                             locale: locale,
                             isDark: isDark,
                             accent: accent,
-                            ipAddress: sshState.ipAddress,
+                            ipEthernet: sshState.ipEthernet,
+                            ipWifi: sshState.ipWifi,
                             username: sshState.username,
                           ),
                         ],
@@ -339,26 +340,29 @@ class _PatienceMessageState extends State<_PatienceMessage> with SingleTickerPro
   }
 }
 
-/// Carte résultat avec IP et nom d'utilisateur
+/// Carte résultat avec IPs Ethernet/WiFi et nom d'utilisateur
 class _ResultCard extends StatelessWidget {
   final String locale;
   final bool isDark;
   final Color accent;
-  final String? ipAddress;
+  final String? ipEthernet;
+  final String? ipWifi;
   final String? username;
 
   const _ResultCard({
     required this.locale,
     required this.isDark,
     required this.accent,
-    this.ipAddress,
+    this.ipEthernet,
+    this.ipWifi,
     this.username,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final connectString = username != null && ipAddress != null ? '$username@$ipAddress' : '';
+    final connectEthernet = username != null && ipEthernet != null ? '$username@$ipEthernet' : '';
+    final connectWifi = username != null && ipWifi != null ? '$username@$ipWifi' : '';
 
     return Container(
       width: double.infinity,
@@ -383,11 +387,19 @@ class _ResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // IP
-          if (ipAddress != null) ...[
-            Text(t(locale, 'ssh.result.ip'), style: theme.textTheme.bodyMedium),
+          // IP Ethernet
+          if (ipEthernet != null) ...[
+            Text(t(locale, 'ssh.result.ipEthernet'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: ipAddress!, isDark: isDark),
+            _CopyableInfo(value: ipEthernet!, isDark: isDark),
+            const SizedBox(height: 16),
+          ],
+
+          // IP WiFi
+          if (ipWifi != null) ...[
+            Text(t(locale, 'ssh.result.ipWifi'), style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            _CopyableInfo(value: ipWifi!, isDark: isDark),
             const SizedBox(height: 16),
           ],
 
@@ -399,11 +411,19 @@ class _ResultCard extends StatelessWidget {
             const SizedBox(height: 16),
           ],
 
-          // Connexion string
-          if (connectString.isNotEmpty) ...[
-            Text(t(locale, 'ssh.result.connect'), style: theme.textTheme.bodyMedium),
+          // Connexion Ethernet
+          if (connectEthernet.isNotEmpty) ...[
+            Text(t(locale, 'ssh.result.connectEthernet'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: connectString, isDark: isDark),
+            _CopyableInfo(value: connectEthernet, isDark: isDark),
+            const SizedBox(height: 16),
+          ],
+
+          // Connexion WiFi
+          if (connectWifi.isNotEmpty) ...[
+            Text(t(locale, 'ssh.result.connectWifi'), style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            _CopyableInfo(value: connectWifi, isDark: isDark),
           ],
         ],
       ),

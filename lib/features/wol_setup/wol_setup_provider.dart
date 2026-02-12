@@ -9,7 +9,8 @@ class WolSetupState {
   final bool isRunning;
   final bool isComplete;
   final String? macAddress;
-  final String? ipAddress;
+  final String? ipEthernet;
+  final String? ipWifi;
   final String? adapterName;
   final String? errorMessage;
 
@@ -18,7 +19,8 @@ class WolSetupState {
     this.isRunning = false,
     this.isComplete = false,
     this.macAddress,
-    this.ipAddress,
+    this.ipEthernet,
+    this.ipWifi,
     this.adapterName,
     this.errorMessage,
   });
@@ -28,7 +30,8 @@ class WolSetupState {
     bool? isRunning,
     bool? isComplete,
     String? macAddress,
-    String? ipAddress,
+    String? ipEthernet,
+    String? ipWifi,
     String? adapterName,
     String? errorMessage,
   }) {
@@ -37,7 +40,8 @@ class WolSetupState {
       isRunning: isRunning ?? this.isRunning,
       isComplete: isComplete ?? this.isComplete,
       macAddress: macAddress ?? this.macAddress,
-      ipAddress: ipAddress ?? this.ipAddress,
+      ipEthernet: ipEthernet ?? this.ipEthernet,
+      ipWifi: ipWifi ?? this.ipWifi,
       adapterName: adapterName ?? this.adapterName,
       errorMessage: errorMessage,
     );
@@ -174,55 +178,71 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     }
     _updateStep('disableFastStartup', StepStatus.success);
 
-    // 5. Récupérer l'adresse MAC
+    // 5. Récupérer l'adresse MAC + IPs
     _updateStep('showMac', StepStatus.running);
     final macResult = await CommandRunner.runPowerShell(
       "(Get-NetAdapter -Name '$adapterName').MacAddress",
     );
-    final ipResult = await CommandRunner.runPowerShell(
+    // IP Ethernet
+    final ethIpResult = await CommandRunner.runPowerShell(
       "(Get-NetIPAddress -InterfaceAlias '$adapterName' "
       "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress",
     );
+    // IP WiFi
+    final wifiIpResult = await CommandRunner.runPowerShell(
+      "\$a = Get-NetAdapter | Where-Object { "
+      "\$_.Status -eq 'Up' -and "
+      "(\$_.InterfaceDescription -like '*Wi-Fi*' -or "
+      "\$_.InterfaceDescription -like '*Wireless*') "
+      "} | Select-Object -First 1; "
+      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
+      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
+    );
     state = state.copyWith(
       macAddress: macResult.stdout.isNotEmpty ? macResult.stdout : null,
-      ipAddress: ipResult.stdout.isNotEmpty ? ipResult.stdout : null,
+      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
+      ipWifi: wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null,
     );
     _updateStep('showMac', StepStatus.success);
   }
 
   // ============================================
-  // LINUX
+  // LINUX (1 seul mot de passe pour toutes les commandes admin)
   // ============================================
   Future<void> _runLinux() async {
     final distro = await OsDetector.detectLinuxDistro();
 
-    // 1. Installer ethtool
+    // 1. Vérifier si ethtool est installé (pas d'élévation)
     _updateStep('installEthtool', StepStatus.running);
     final checkResult = await CommandRunner.run('bash', ['-c', 'command -v ethtool']);
-    if (!checkResult.success) {
-      CommandResult result;
+    final needsEthtoolInstall = !checkResult.success;
+    if (!needsEthtoolInstall) {
+      _updateStep('installEthtool', StepStatus.success);
+    }
+
+    // Préparer la commande d'installation si nécessaire
+    String installCmd = '';
+    if (needsEthtoolInstall) {
       switch (distro) {
         case LinuxDistro.debian:
-          result = await CommandRunner.runElevated('bash', ['-c', 'apt update -qq && apt install ethtool -y -qq']);
+          installCmd = 'apt update -qq && apt install ethtool -y -qq\n'
+              'if [ \$? -ne 0 ]; then exit 10; fi\n';
           break;
         case LinuxDistro.fedora:
-          result = await CommandRunner.runElevated('bash', ['-c', 'dnf install ethtool -y -q']);
+          installCmd = 'dnf install ethtool -y -q\n'
+              'if [ \$? -ne 0 ]; then exit 10; fi\n';
           break;
         case LinuxDistro.arch:
-          result = await CommandRunner.runElevated('bash', ['-c', 'pacman -S --noconfirm ethtool']);
+          installCmd = 'pacman -S --noconfirm ethtool\n'
+              'if [ \$? -ne 0 ]; then exit 10; fi\n';
           break;
         case LinuxDistro.unknown:
           _updateStep('installEthtool', StepStatus.error, errorDetail: 'Distribution non reconnue');
           throw Exception('Distribution Linux non reconnue');
       }
-      if (!result.success) {
-        _updateStep('installEthtool', StepStatus.error, errorDetail: result.stderr);
-        throw Exception('Échec installation ethtool');
-      }
     }
-    _updateStep('installEthtool', StepStatus.success);
 
-    // 2. Trouver l'interface Ethernet
+    // 2. Trouver l'interface Ethernet (pas d'élévation)
     _updateStep('findAdapter', StepStatus.running);
     final findResult = await CommandRunner.run('bash', ['-c',
       'FALLBACK=""; '
@@ -247,27 +267,7 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     state = state.copyWith(adapterName: ethIface);
     _updateStep('findAdapter', StepStatus.success);
 
-    // 3. Activer le Wake-on-LAN
-    _updateStep('enableWol', StepStatus.running);
-    var result = await CommandRunner.runElevated('ethtool', ['-s', ethIface, 'wol', 'g']);
-    if (!result.success) {
-      _updateStep('enableWol', StepStatus.error, errorDetail: result.stderr);
-      throw Exception('Échec activation Wake-on-LAN');
-    }
-    // Vérifier que c'est bien actif
-    final verifyResult = await CommandRunner.runElevated('ethtool', [ethIface]);
-    final wolLine = verifyResult.stdout.split('\n')
-        .where((l) => l.contains('Wake-on:'))
-        .lastOrNull ?? '';
-    if (!wolLine.contains('g')) {
-      _updateStep('enableWol', StepStatus.error,
-          errorDetail: 'Le WoL ne semble pas actif. Ta carte ne le supporte peut-être pas.');
-      throw Exception('Wake-on-LAN non actif');
-    }
-    _updateStep('enableWol', StepStatus.success);
-
-    // 4. Rendre le WoL permanent (service systemd)
-    _updateStep('persist', StepStatus.running);
+    // 3. Écrire le fichier service temporaire (pas d'élévation)
     final serviceContent = '[Unit]\n'
         'Description=Enable Wake-on-LAN on $ethIface\n'
         'After=network-online.target\n'
@@ -280,35 +280,98 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
         '\n'
         '[Install]\n'
         'WantedBy=multi-user.target\n';
+    final tempServiceFile = File('/tmp/wol-enable.service');
+    await tempServiceFile.writeAsString(serviceContent);
 
-    // Écrire dans un fichier temporaire d'abord (pas besoin de sudo)
-    final tempFile = File('/tmp/wol-enable.service');
-    await tempFile.writeAsString(serviceContent);
+    // === Toutes les commandes admin en 1 seul pkexec ===
+    _updateStep('enableWol', StepStatus.running);
 
-    // Copier vers le dossier système + activer le service (besoin de sudo)
-    result = await CommandRunner.runElevated('bash', ['-c',
-      'cp /tmp/wol-enable.service /etc/systemd/system/wol-enable.service && '
-      'systemctl daemon-reload && '
-      'systemctl enable wol-enable.service',
-    ]);
-    // Nettoyer le fichier temporaire
-    try { await tempFile.delete(); } catch (_) {}
+    final script =
+        '#!/bin/bash\n'
+        '$installCmd'
+        '# Activer le WoL\n'
+        'ethtool -s $ethIface wol g\n'
+        'if [ \$? -ne 0 ]; then exit 20; fi\n'
+        '\n'
+        '# Vérifier que le WoL est actif\n'
+        'WOL_LINE=\$(ethtool $ethIface 2>/dev/null | grep "Wake-on:" | tail -1)\n'
+        'if ! echo "\$WOL_LINE" | grep -q "g"; then exit 30; fi\n'
+        '\n'
+        '# Rendre permanent (service systemd)\n'
+        'cp /tmp/wol-enable.service /etc/systemd/system/wol-enable.service\n'
+        'systemctl daemon-reload\n'
+        'systemctl enable wol-enable.service\n'
+        'if [ \$? -ne 0 ]; then exit 40; fi\n'
+        '\n'
+        'exit 0\n';
 
-    if (!result.success) {
+    final tempScript = File('/tmp/chill-wol-setup.sh');
+    await tempScript.writeAsString(script);
+
+    final result = await CommandRunner.runElevated('bash', [tempScript.path]);
+    try { await tempScript.delete(); } catch (_) {}
+    try { await tempServiceFile.delete(); } catch (_) {}
+
+    // Analyser le résultat par code de sortie
+    if (result.exitCode == 126 || result.exitCode == 127) {
+      if (needsEthtoolInstall) {
+        _updateStep('installEthtool', StepStatus.error, errorDetail: 'Autorisation refusée');
+      }
+      _updateStep('enableWol', StepStatus.error, errorDetail: 'Autorisation refusée');
+      throw Exception('Autorisation refusée');
+    }
+    if (result.exitCode == 10) {
+      _updateStep('installEthtool', StepStatus.error, errorDetail: result.stderr);
+      throw Exception('Échec installation ethtool');
+    }
+    if (needsEthtoolInstall) {
+      _updateStep('installEthtool', StepStatus.success);
+    }
+
+    if (result.exitCode == 20) {
+      _updateStep('enableWol', StepStatus.error, errorDetail: result.stderr);
+      throw Exception('Échec activation Wake-on-LAN');
+    }
+    if (result.exitCode == 30) {
+      _updateStep('enableWol', StepStatus.error,
+          errorDetail: 'Le WoL ne semble pas actif. Ta carte ne le supporte peut-être pas.');
+      throw Exception('Wake-on-LAN non actif');
+    }
+    _updateStep('enableWol', StepStatus.success);
+
+    if (result.exitCode == 40) {
       _updateStep('persist', StepStatus.error, errorDetail: result.stderr);
       throw Exception('Échec création du service WoL');
     }
     _updateStep('persist', StepStatus.success);
 
-    // 5. Récupérer l'adresse MAC
+    // === Récupération d'infos (pas d'élévation) ===
     _updateStep('showMac', StepStatus.running);
     final macResult = await CommandRunner.run('cat', ['/sys/class/net/$ethIface/address']);
-    final ipResult = await CommandRunner.run('bash', ['-c',
+    // IP Ethernet
+    final ethIpResult = await CommandRunner.run('bash', ['-c',
       "ip -4 addr show $ethIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
     ]);
+    // IP WiFi
+    String? ipWifi;
+    final wifiFind = await CommandRunner.run('bash', ['-c',
+      'for iface in \$(ls /sys/class/net/); do '
+      'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
+      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+      'fi; done; exit 1',
+    ]);
+    if (wifiFind.success && wifiFind.stdout.isNotEmpty) {
+      final wifiIface = wifiFind.stdout.trim();
+      final wifiIpResult = await CommandRunner.run('bash', ['-c',
+        "ip -4 addr show $wifiIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
+      ]);
+      ipWifi = wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null;
+    }
     state = state.copyWith(
       macAddress: macResult.stdout.isNotEmpty ? macResult.stdout : null,
-      ipAddress: ipResult.stdout.isNotEmpty ? ipResult.stdout : null,
+      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
+      ipWifi: ipWifi,
     );
     _updateStep('showMac', StepStatus.success);
   }

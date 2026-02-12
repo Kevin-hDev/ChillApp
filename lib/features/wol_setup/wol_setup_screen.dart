@@ -180,7 +180,8 @@ class WolSetupScreen extends ConsumerWidget {
                               isDark: isDark,
                               accent: accent,
                               macAddress: wolState.macAddress,
-                              ipAddress: wolState.ipAddress,
+                              ipEthernet: wolState.ipEthernet,
+                              ipWifi: wolState.ipWifi,
                               adapterName: wolState.adapterName,
                             ),
                           ],
@@ -475,13 +476,14 @@ class _PatienceMessageState extends State<_PatienceMessage> with SingleTickerPro
   }
 }
 
-/// Carte résultat avec MAC, carte réseau, IP et rappel BIOS
+/// Carte résultat avec MAC, carte réseau, IPs et rappel BIOS
 class _ResultCard extends StatelessWidget {
   final String locale;
   final bool isDark;
   final Color accent;
   final String? macAddress;
-  final String? ipAddress;
+  final String? ipEthernet;
+  final String? ipWifi;
   final String? adapterName;
 
   const _ResultCard({
@@ -489,7 +491,8 @@ class _ResultCard extends StatelessWidget {
     required this.isDark,
     required this.accent,
     this.macAddress,
-    this.ipAddress,
+    this.ipEthernet,
+    this.ipWifi,
     this.adapterName,
   });
 
@@ -537,11 +540,19 @@ class _ResultCard extends StatelessWidget {
             const SizedBox(height: 16),
           ],
 
-          // IP
-          if (ipAddress != null) ...[
-            Text(t(locale, 'wol.result.ip'), style: theme.textTheme.bodyMedium),
+          // IP Ethernet
+          if (ipEthernet != null) ...[
+            Text(t(locale, 'wol.result.ipEthernet'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: ipAddress!, isDark: isDark),
+            _CopyableInfo(value: ipEthernet!, isDark: isDark),
+            const SizedBox(height: 16),
+          ],
+
+          // IP WiFi
+          if (ipWifi != null) ...[
+            Text(t(locale, 'wol.result.ipWifi'), style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            _CopyableInfo(value: ipWifi!, isDark: isDark),
             const SizedBox(height: 16),
           ],
 
