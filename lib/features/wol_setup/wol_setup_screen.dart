@@ -29,39 +29,44 @@ class WolSetupScreen extends ConsumerWidget {
     final isMac = OsDetector.currentOS == SupportedOS.macos;
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header avec bouton retour
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.go('/'),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        t(locale, 'wol.title'),
-                        style: theme.textTheme.headlineLarge,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  t(locale, 'wol.intro'),
-                  style: theme.textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 24),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
 
-                // Contenu scrollable
-                Expanded(
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header avec bouton retour
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            t(locale, 'wol.title'),
+                            style: theme.textTheme.headlineLarge,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      t(locale, 'wol.intro'),
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Contenu scrollable
+                    Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,6 +201,8 @@ class WolSetupScreen extends ConsumerWidget {
             ),
           ),
         ),
+      );
+    },
       ),
     );
   }
@@ -373,17 +380,17 @@ class _AnimatedLoader extends StatefulWidget {
 
 class _AnimatedLoaderState extends State<_AnimatedLoader> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
+  late Animation<double> _floatAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
+    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -396,29 +403,21 @@ class _AnimatedLoaderState extends State<_AnimatedLoader> with SingleTickerProvi
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
     return Center(
       child: AnimatedBuilder(
-        animation: _scaleAnimation,
+        animation: _floatAnimation,
         builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: accent.withValues(alpha: 0.3), width: 2),
-              ),
-              child: Center(
-                child: Icon(Icons.power_settings_new, color: accent, size: 36),
-              ),
-            ),
+          return Transform.translate(
+            offset: Offset(0, _floatAnimation.value),
+            child: child,
           );
         },
+        child: Image.asset(
+          'assets/images/loader.png',
+          width: 100,
+          height: 100,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }

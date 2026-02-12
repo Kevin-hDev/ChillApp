@@ -16,32 +16,37 @@ class DashboardScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 48),
-                Text(
-                  t(locale, 'dashboard.welcome'),
-                  style: theme.textTheme.headlineLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  t(locale, 'dashboard.description'),
-                  style: theme.textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 48),
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 1.2,
-                    children: [
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+          final columns = width < 600 ? 2 : width < 1000 ? 3 : 3;
+          final topSpacing = width < 600 ? 24.0 : 48.0;
+
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: topSpacing),
+                  Text(
+                    t(locale, 'dashboard.welcome'),
+                    style: theme.textTheme.headlineLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    t(locale, 'dashboard.description'),
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  SizedBox(height: topSpacing),
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 1.2,
+                      children: [
                       ChillCard(
                         icon: Icons.terminal,
                         title: t(locale, 'dashboard.ssh.title'),
@@ -96,13 +101,27 @@ class DashboardScreen extends ConsumerWidget {
                         description: '',
                         onTap: () => context.go('/settings'),
                       ),
-                    ],
+                      // Mascotte
+                      Card(
+                        clipBehavior: Clip.antiAlias,
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Image.asset(
+                              'assets/images/mascot.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

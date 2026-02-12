@@ -18,29 +18,40 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.go('/'),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      t(locale, 'settings.title'),
-                      style: theme.textTheme.headlineLarge,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
 
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/'),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          t(locale, 'settings.title'),
+                          style: theme.textTheme.headlineLarge,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Contenu scrollable
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                 // Thème
                 Card(
                   child: ListTile(
@@ -140,10 +151,16 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

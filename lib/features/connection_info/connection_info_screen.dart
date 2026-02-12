@@ -19,30 +19,35 @@ class ConnectionInfoScreen extends ConsumerWidget {
     final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header avec bouton retour
-                Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.go('/'),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        t(locale, 'info.title'),
-                        style: theme.textTheme.headlineLarge,
-                      ),
-                    ),
-                    // Bouton Rafraîchir
-                    IconButton(
+                    // Header avec bouton retour
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            t(locale, 'info.title'),
+                            style: theme.textTheme.headlineLarge,
+                          ),
+                        ),
+                        // Bouton Rafraîchir
+                        IconButton(
                       icon: info.isLoading
                           ? SizedBox(
                               width: 20,
@@ -194,6 +199,15 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                 ),
                               ),
 
+                              // Carte recommandation Tailscale
+                              const SizedBox(height: 16),
+                              _TailscaleRecommendCard(
+                                locale: locale,
+                                isDark: isDark,
+                                accent: accent,
+                                onTap: () => context.go('/tailscale'),
+                              ),
+
                               const SizedBox(height: 32),
                             ],
                           ),
@@ -203,6 +217,8 @@ class ConnectionInfoScreen extends ConsumerWidget {
             ),
           ),
         ),
+      );
+    },
       ),
     );
   }
@@ -320,6 +336,67 @@ class _InfoRowState extends State<_InfoRow> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Carte de recommandation Tailscale
+class _TailscaleRecommendCard extends StatelessWidget {
+  final String locale;
+  final bool isDark;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _TailscaleRecommendCard({
+    required this.locale,
+    required this.isDark,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(ChillRadius.xl),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, color: accent, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  t(locale, 'info.recommend.title'),
+                  style: theme.textTheme.titleMedium?.copyWith(color: accent),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            t(locale, 'info.recommend.content'),
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              onPressed: onTap,
+              icon: const Icon(Icons.vpn_lock, size: 18),
+              label: Text(t(locale, 'info.recommend.button')),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

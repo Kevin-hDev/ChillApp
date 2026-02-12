@@ -20,61 +20,68 @@ class TailscaleScreen extends ConsumerWidget {
     final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header avec bouton retour
-                Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.go('/'),
+                    // Header avec bouton retour
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            t(locale, 'tailscale.title'),
+                            style: theme.textTheme.headlineLarge,
+                          ),
+                        ),
+                        if (tsState.status != TailscaleConnectionStatus.loading)
+                          IconButton(
+                            icon: const Icon(Icons.refresh),
+                            onPressed: () =>
+                                ref.read(tailscaleProvider.notifier).refreshStatus(),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 8),
+                    Text(
+                      t(locale, 'tailscale.intro'),
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Contenu selon l'état
                     Expanded(
-                      child: Text(
-                        t(locale, 'tailscale.title'),
-                        style: theme.textTheme.headlineLarge,
+                      child: SingleChildScrollView(
+                        child: _buildContent(
+                          context,
+                          ref,
+                          tsState,
+                          locale,
+                          isDark,
+                          accent,
+                          theme,
+                        ),
                       ),
                     ),
-                    if (tsState.status != TailscaleConnectionStatus.loading)
-                      IconButton(
-                        icon: const Icon(Icons.refresh),
-                        onPressed: () =>
-                            ref.read(tailscaleProvider.notifier).refreshStatus(),
-                      ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  t(locale, 'tailscale.intro'),
-                  style: theme.textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 24),
-
-                // Contenu selon l'état
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: _buildContent(
-                      context,
-                      ref,
-                      tsState,
-                      locale,
-                      isDark,
-                      accent,
-                      theme,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

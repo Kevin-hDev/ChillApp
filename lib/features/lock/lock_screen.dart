@@ -150,11 +150,14 @@ class _LockScreenState extends ConsumerState<LockScreen>
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
               // Logo
               Image.asset('assets/logo.png', width: 64, height: 64,
                 errorBuilder: (context, error, stackTrace) => Icon(
@@ -292,8 +295,10 @@ class _LockScreenState extends ConsumerState<LockScreen>
                   ],
                 ),
               ),
-            ],
+              ],
+            ),
           ),
+        ),
         ),
       ),
     ),
