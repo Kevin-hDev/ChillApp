@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/extensions/chill_theme.dart';
+import '../../shared/helpers/responsive.dart';
+import '../../shared/widgets/chill_background.dart';
+import '../../shared/widgets/error_banner.dart';
 import 'connection_info_provider.dart';
 
 class ConnectionInfoScreen extends ConsumerWidget {
@@ -15,14 +19,13 @@ class ConnectionInfoScreen extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final info = ref.watch(connectionInfoProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
 
     return Scaffold(
-      body: LayoutBuilder(
+      body: ChillBackground(
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+          final padding = responsivePadding(width);
 
           return Center(
             child: ConstrainedBox(
@@ -38,6 +41,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.arrow_back),
                           onPressed: () => context.go('/'),
+                          tooltip: 'Retour',
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -54,10 +58,10 @@ class ConnectionInfoScreen extends ConsumerWidget {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: accent,
+                                color: context.chillAccent,
                               ),
                             )
-                          : Icon(Icons.refresh, color: accent),
+                          : Icon(Icons.refresh, color: context.chillAccent),
                       onPressed: info.isLoading
                           ? null
                           : () => ref.read(connectionInfoProvider.notifier).fetchAll(),
@@ -79,14 +83,12 @@ class ConnectionInfoScreen extends ConsumerWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircularProgressIndicator(color: accent),
+                              CircularProgressIndicator(color: context.chillAccent),
                               const SizedBox(height: 16),
                               Text(
                                 '...',
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isDark
-                                      ? ChillColorsDark.textSecondary
-                                      : ChillColorsLight.textSecondary,
+                                  color: context.chillTextSecondary,
                                 ),
                               ),
                             ],
@@ -97,34 +99,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                             children: [
                               // Erreur
                               if (info.error != null) ...[
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: (isDark ? ChillColorsDark.red : ChillColorsLight.red)
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(ChillRadius.lg),
-                                    border: Border.all(
-                                      color: (isDark ? ChillColorsDark.red : ChillColorsLight.red)
-                                          .withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.warning_amber_rounded,
-                                          color: isDark ? ChillColorsDark.red : ChillColorsLight.red),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          info.error!,
-                                          style: TextStyle(
-                                            color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                ErrorBanner(message: info.error!),
                                 const SizedBox(height: 24),
                               ],
 
@@ -133,15 +108,9 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? ChillColorsDark.bgElevated
-                                      : ChillColorsLight.bgElevated,
+                                  color: context.chillBgElevated,
                                   borderRadius: BorderRadius.circular(ChillRadius.xl),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? ChillColorsDark.border
-                                        : ChillColorsLight.border,
-                                  ),
+                                  border: Border.all(color: context.chillBorder),
                                 ),
                                 child: Column(
                                   children: [
@@ -151,7 +120,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                       label: t(locale, 'info.ipEthernet'),
                                       value: info.ipEthernet,
                                       notFoundLabel: t(locale, 'info.notFound'),
-                                      isDark: isDark,
+                                      locale: locale,
                                     ),
                                     const SizedBox(height: 20),
 
@@ -161,7 +130,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                       label: t(locale, 'info.ipWifi'),
                                       value: info.ipWifi,
                                       notFoundLabel: t(locale, 'info.notFound'),
-                                      isDark: isDark,
+                                      locale: locale,
                                     ),
                                     const SizedBox(height: 20),
 
@@ -171,7 +140,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                       label: t(locale, 'info.mac'),
                                       value: info.macAddress,
                                       notFoundLabel: t(locale, 'info.notFound'),
-                                      isDark: isDark,
+                                      locale: locale,
                                     ),
                                     const SizedBox(height: 20),
 
@@ -181,7 +150,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                       label: t(locale, 'info.username'),
                                       value: info.username,
                                       notFoundLabel: t(locale, 'info.notFound'),
-                                      isDark: isDark,
+                                      locale: locale,
                                     ),
 
                                     // Adapter (si trouvé)
@@ -192,7 +161,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                         label: t(locale, 'info.adapter'),
                                         value: info.adapterName,
                                         notFoundLabel: t(locale, 'info.notFound'),
-                                        isDark: isDark,
+                                        locale: locale,
                                       ),
                                     ],
                                   ],
@@ -203,8 +172,6 @@ class ConnectionInfoScreen extends ConsumerWidget {
                               const SizedBox(height: 16),
                               _TailscaleRecommendCard(
                                 locale: locale,
-                                isDark: isDark,
-                                accent: accent,
                                 onTap: () => context.go('/tailscale'),
                               ),
 
@@ -220,6 +187,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
       );
     },
       ),
+      ),
     );
   }
 }
@@ -230,14 +198,14 @@ class _InfoRow extends StatefulWidget {
   final String label;
   final String? value;
   final String notFoundLabel;
-  final bool isDark;
+  final String locale;
 
   const _InfoRow({
     required this.icon,
     required this.label,
     required this.value,
     required this.notFoundLabel,
-    required this.isDark,
+    required this.locale,
   });
 
   @override
@@ -258,7 +226,6 @@ class _InfoRowState extends State<_InfoRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = widget.isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
     final hasValue = widget.value != null && widget.value!.isNotEmpty;
 
     return Column(
@@ -270,17 +237,13 @@ class _InfoRowState extends State<_InfoRow> {
             Icon(
               widget.icon,
               size: 18,
-              color: widget.isDark
-                  ? ChillColorsDark.textSecondary
-                  : ChillColorsLight.textSecondary,
+              color: context.chillTextSecondary,
             ),
             const SizedBox(width: 8),
             Text(
               widget.label,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: widget.isDark
-                    ? ChillColorsDark.textSecondary
-                    : ChillColorsLight.textSecondary,
+                color: context.chillTextSecondary,
               ),
             ),
           ],
@@ -290,11 +253,9 @@ class _InfoRowState extends State<_InfoRow> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: widget.isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface,
+            color: context.chillBgSurface,
             borderRadius: BorderRadius.circular(ChillRadius.lg),
-            border: Border.all(
-              color: widget.isDark ? ChillColorsDark.border : ChillColorsLight.border,
-            ),
+            border: Border.all(color: context.chillBorder),
           ),
           child: Row(
             children: [
@@ -305,16 +266,12 @@ class _InfoRowState extends State<_InfoRow> {
                       ? GoogleFonts.jetBrainsMono(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          color: widget.isDark
-                              ? ChillColorsDark.textPrimary
-                              : ChillColorsLight.textPrimary,
+                          color: context.chillTextPrimary,
                         )
                       : TextStyle(
                           fontSize: 14,
                           fontStyle: FontStyle.italic,
-                          color: widget.isDark
-                              ? ChillColorsDark.textMuted
-                              : ChillColorsLight.textMuted,
+                          color: context.chillTextMuted,
                         ),
                 ),
               ),
@@ -322,15 +279,13 @@ class _InfoRowState extends State<_InfoRow> {
                 IconButton(
                   icon: Icon(
                     _copied ? Icons.check : Icons.copy,
-                    color: _copied
-                        ? accent
-                        : (widget.isDark
-                            ? ChillColorsDark.textSecondary
-                            : ChillColorsLight.textSecondary),
+                    color: _copied ? context.chillAccent : context.chillTextSecondary,
                     size: 18,
                   ),
                   onPressed: _copy,
-                  tooltip: _copied ? 'Copié !' : 'Copier',
+                  tooltip: _copied
+                      ? t(widget.locale, 'info.copied')
+                      : t(widget.locale, 'info.copy'),
                 ),
             ],
           ),
@@ -343,14 +298,10 @@ class _InfoRowState extends State<_InfoRow> {
 /// Carte de recommandation Tailscale
 class _TailscaleRecommendCard extends StatelessWidget {
   final String locale;
-  final bool isDark;
-  final Color accent;
   final VoidCallback onTap;
 
   const _TailscaleRecommendCard({
     required this.locale,
-    required this.isDark,
-    required this.accent,
     required this.onTap,
   });
 
@@ -362,21 +313,21 @@ class _TailscaleRecommendCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.06),
+        color: context.chillAccent.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(ChillRadius.xl),
-        border: Border.all(color: accent.withValues(alpha: 0.25)),
+        border: Border.all(color: context.chillAccent.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.shield_outlined, color: accent, size: 22),
+              Icon(Icons.shield_outlined, color: context.chillAccent, size: 22),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   t(locale, 'info.recommend.title'),
-                  style: theme.textTheme.titleMedium?.copyWith(color: accent),
+                  style: theme.textTheme.titleMedium?.copyWith(color: context.chillAccent),
                 ),
               ),
             ],

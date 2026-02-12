@@ -67,6 +67,8 @@ final tailscaleProvider =
 class TailscaleNotifier extends Notifier<TailscaleState> {
   Process? _daemon;
   Timer? _pollTimer;
+  StreamSubscription<String>? _stdoutSub;
+  StreamSubscription<String>? _stderrSub;
 
   @override
   TailscaleState build() {
@@ -117,7 +119,7 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
       _daemon = await Process.start(daemonPath, []);
 
       // Écouter stdout ligne par ligne pour les événements JSON
-      _daemon!.stdout
+      _stdoutSub = _daemon!.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen(
@@ -127,7 +129,7 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
           );
 
       // Afficher stderr en debug (logs Go)
-      _daemon!.stderr
+      _stderrSub = _daemon!.stderr
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) => debugPrint('[Tailscale daemon] $line'));
@@ -164,7 +166,12 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
         case 'auth_url':
           final url = event['url'] as String?;
           if (url != null && url.isNotEmpty) {
-            _openUrl(url);
+            final uri = Uri.tryParse(url);
+            if (uri != null && uri.scheme == 'https') {
+              _openUrl(url);
+            } else {
+              debugPrint('[Tailscale] Auth URL invalide ignorée: $url');
+            }
           }
 
         case 'connected':
@@ -213,8 +220,8 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
           final message = event['message'] as String? ?? 'Erreur inconnue';
           state = state.copyWith(errorMessage: message, isLoggingIn: false);
       }
-    } catch (_) {
-      // Ignorer les lignes non-JSON
+    } catch (e) {
+      debugPrint('Chill: JSON parse error: $e');
     }
   }
 
@@ -244,8 +251,15 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
 
   /// Relance le daemon après une erreur
   Future<void> retry() async {
-    _daemon?.kill();
-    _daemon = null;
+    if (_daemon != null) {
+      final process = _daemon!;
+      _daemon = null;
+      process.kill();
+      await process.exitCode.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => -1,
+      );
+    }
     _stopPolling();
     await _startDaemon();
   }
@@ -264,10 +278,18 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
 
   /// Ouvre une URL dans le navigateur système
   Future<void> _openUrl(String url) async {
+    // Validation : accepter uniquement HTTPS
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https') {
+      debugPrint('[Tailscale] URL rejetée (non-HTTPS): $url');
+      return;
+    }
+
     if (Platform.isLinux) {
       await Process.run('xdg-open', [url]);
     } else if (Platform.isWindows) {
-      await Process.run('cmd', ['/c', 'start', url]);
+      // Le string vide comme titre empêche l'injection via caractères spéciaux dans l'URL
+      await Process.run('cmd', ['/c', 'start', '', url]);
     } else if (Platform.isMacOS) {
       await Process.run('open', [url]);
     }
@@ -290,6 +312,10 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
   /// Arrête le daemon proprement
   void _shutdownDaemon() {
     _stopPolling();
+    _stdoutSub?.cancel();
+    _stdoutSub = null;
+    _stderrSub?.cancel();
+    _stderrSub = null;
     if (_daemon != null) {
       final process = _daemon!;
       _daemon = null;
@@ -297,13 +323,13 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
         // Envoyer la commande shutdown
         process.stdin.writeln(jsonEncode({'cmd': 'shutdown'}));
         // Laisser le daemon se fermer proprement (max 3s)
-        process.exitCode.timeout(
+        unawaited(process.exitCode.timeout(
           const Duration(seconds: 3),
           onTimeout: () {
             process.kill();
             return -1;
           },
-        );
+        ));
       } catch (_) {
         process.kill();
       }

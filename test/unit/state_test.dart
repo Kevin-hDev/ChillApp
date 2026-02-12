@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:chill_app/shared/models/setup_step.dart';
 import 'package:chill_app/features/ssh_setup/ssh_setup_provider.dart';
 import 'package:chill_app/features/wol_setup/wol_setup_provider.dart';
 import 'package:chill_app/features/connection_info/connection_info_provider.dart';

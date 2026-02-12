@@ -2,6 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chill_app/app.dart';
+import 'package:chill_app/features/dashboard/dashboard_provider.dart';
+import 'package:chill_app/features/lock/lock_provider.dart' as lock;
+import 'package:chill_app/features/tailscale/tailscale_provider.dart';
+
+/// Notifier de test : pas de commandes système (évite les timers pendants)
+class _TestDashboardNotifier extends DashboardNotifier {
+  @override
+  DashboardState build() {
+    return const DashboardState();
+  }
+}
+
+/// Notifier de test : pas de daemon Tailscale
+class _TestTailscaleNotifier extends TailscaleNotifier {
+  @override
+  TailscaleState build() {
+    return const TailscaleState(status: TailscaleConnectionStatus.error);
+  }
+}
+
+/// Notifier de test : lock deja charge, pas de PIN actif
+class _TestLockNotifier extends lock.LockNotifier {
+  @override
+  lock.LockState build() {
+    return const lock.LockState(isLoading: false);
+  }
+}
 
 void main() {
   testWidgets('App loads dashboard', (WidgetTester tester) async {
@@ -14,11 +41,21 @@ void main() {
     });
 
     await tester.pumpWidget(
-      const ProviderScope(child: ChillApp()),
+      ProviderScope(
+        overrides: [
+          dashboardProvider.overrideWith(() => _TestDashboardNotifier()),
+          tailscaleProvider.overrideWith(() => _TestTailscaleNotifier()),
+          lock.lockProvider.overrideWith(() => _TestLockNotifier()),
+        ],
+        child: const ChillApp(),
+      ),
     );
-    // pump au lieu de pumpAndSettle car l'animation du fond tourne en boucle
+    // pump au lieu de pumpAndSettle car les animations tournent en boucle
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Bienvenue sur Chill'), findsOneWidget);
+
+    // Démonter le widget tree pour arrêter les timers des animations
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

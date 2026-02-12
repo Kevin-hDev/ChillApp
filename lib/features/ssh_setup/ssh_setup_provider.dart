@@ -1,30 +1,9 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
+import '../../core/network_info.dart';
 import '../../core/os_detector.dart';
-
-enum StepStatus { pending, running, success, error }
-
-/// Représente une étape de configuration
-class SetupStep {
-  final String id;
-  final StepStatus status;
-  final String? errorDetail;
-
-  const SetupStep({
-    required this.id,
-    this.status = StepStatus.pending,
-    this.errorDetail,
-  });
-
-  SetupStep copyWith({StepStatus? status, String? errorDetail}) {
-    return SetupStep(
-      id: id,
-      status: status ?? this.status,
-      errorDetail: errorDetail ?? this.errorDetail,
-    );
-  }
-}
+import '../../shared/models/setup_step.dart';
 
 class SshSetupState {
   final List<SetupStep> steps;
@@ -220,33 +199,10 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 7. Récupérer les infos
     _updateStep('info', StepStatus.running);
-    // IP Ethernet
-    final ethIpResult = await CommandRunner.runPowerShell(
-      "\$a = Get-NetAdapter | Where-Object { "
-      "\$_.Status -eq 'Up' -and "
-      "\$_.InterfaceDescription -notlike '*Wi-Fi*' -and "
-      "\$_.InterfaceDescription -notlike '*Wireless*' -and "
-      "\$_.InterfaceDescription -notlike '*Bluetooth*' -and "
-      "\$_.InterfaceDescription -notlike '*Virtual*' "
-      "} | Select-Object -First 1; "
-      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
-      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
-    );
-    // IP WiFi
-    final wifiIpResult = await CommandRunner.runPowerShell(
-      "\$a = Get-NetAdapter | Where-Object { "
-      "\$_.Status -eq 'Up' -and "
-      "(\$_.InterfaceDescription -like '*Wi-Fi*' -or "
-      "\$_.InterfaceDescription -like '*Wireless*') "
-      "} | Select-Object -First 1; "
-      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
-      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
-    );
-    final userResult = await CommandRunner.runPowerShell("\$env:USERNAME");
     state = state.copyWith(
-      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
-      ipWifi: wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null,
-      username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
+      ipEthernet: await NetworkInfo.getEthernetIp(),
+      ipWifi: await NetworkInfo.getWifiIp(),
+      username: await NetworkInfo.getUsername(),
     );
     _updateStep('info', StepStatus.success);
   }
@@ -298,11 +254,23 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
         '\n'
         'exit 0\n';
 
-    final tempScript = File('/tmp/chill-ssh-setup.sh');
+    final tempDir = await Directory.systemTemp.createTemp('chill-');
+    final tempScript = File('${tempDir.path}/setup.sh');
     await tempScript.writeAsString(script);
 
-    final result = await CommandRunner.runElevated('bash', [tempScript.path]);
-    try { await tempScript.delete(); } catch (_) {}
+    // SÉCURITÉ : Fenêtre TOCTOU entre écriture et exécution pkexec.
+    // Mitigé par : permissions 700 sur le dossier temp (createTemp),
+    // et chmod 700 explicite sur le script.
+    // Risque résiduel : un attaquant root pourrait modifier le fichier.
+    await Process.run('chmod', ['700', tempDir.path]);
+    await Process.run('chmod', ['700', tempScript.path]);
+
+    CommandResult result;
+    try {
+      result = await CommandRunner.runElevated('bash', [tempScript.path]);
+    } finally {
+      try { await tempDir.delete(recursive: true); } catch (_) {}
+    }
 
     // Analyser le résultat par code de sortie
     if (result.exitCode == 126 || result.exitCode == 127) {
@@ -338,48 +306,10 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 5. Récupérer les infos
     _updateStep('info', StepStatus.running);
-    final userResult = await CommandRunner.run('whoami', []);
-
-    // IP Ethernet
-    String? ipEthernet;
-    final ethFind = await CommandRunner.run('bash', ['-c',
-      'for iface in \$(ls /sys/class/net/); do '
-      'if [ "\$iface" = "lo" ]; then continue; fi; '
-      'if [ -d "/sys/class/net/\$iface/wireless" ]; then continue; fi; '
-      'if [ -e "/sys/class/net/\$iface/device" ]; then '
-      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
-      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
-      'fi; done; exit 1',
-    ]);
-    if (ethFind.success && ethFind.stdout.isNotEmpty) {
-      final ethIface = ethFind.stdout.trim();
-      final ethIpResult = await CommandRunner.run('bash', ['-c',
-        "ip -4 addr show $ethIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
-      ]);
-      ipEthernet = ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null;
-    }
-
-    // IP WiFi
-    String? ipWifi;
-    final wifiFind = await CommandRunner.run('bash', ['-c',
-      'for iface in \$(ls /sys/class/net/); do '
-      'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
-      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
-      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
-      'fi; done; exit 1',
-    ]);
-    if (wifiFind.success && wifiFind.stdout.isNotEmpty) {
-      final wifiIface = wifiFind.stdout.trim();
-      final wifiIpResult = await CommandRunner.run('bash', ['-c',
-        "ip -4 addr show $wifiIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
-      ]);
-      ipWifi = wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null;
-    }
-
     state = state.copyWith(
-      ipEthernet: ipEthernet,
-      ipWifi: ipWifi,
-      username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
+      ipEthernet: await NetworkInfo.getEthernetIp(),
+      ipWifi: await NetworkInfo.getWifiIp(),
+      username: await NetworkInfo.getUsername(),
     );
     _updateStep('info', StepStatus.success);
   }
@@ -408,44 +338,10 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 3. Récupérer les infos
     _updateStep('info', StepStatus.running);
-    final userResult = await CommandRunner.run('whoami', []);
-
-    // Détecter les interfaces WiFi et Ethernet
-    String? ipWifi;
-    String? ipEthernet;
-    final hwResult = await CommandRunner.run('networksetup', ['-listallhardwareports']);
-    final lines = hwResult.stdout.split('\n');
-    for (int i = 0; i < lines.length; i++) {
-      if (lines[i].contains('Wi-Fi')) {
-        if (i + 1 < lines.length) {
-          final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
-          if (match != null) {
-            final r = await CommandRunner.run('ipconfig', ['getifaddr', match.group(1)!]);
-            ipWifi = r.stdout.isNotEmpty ? r.stdout : null;
-          }
-        }
-      } else if (lines[i].contains('Ethernet') || lines[i].contains('Thunderbolt')) {
-        if (i + 1 < lines.length) {
-          final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
-          if (match != null) {
-            final r = await CommandRunner.run('ipconfig', ['getifaddr', match.group(1)!]);
-            ipEthernet = r.stdout.isNotEmpty ? r.stdout : null;
-          }
-        }
-      }
-    }
-    // Fallback
-    if (ipWifi == null && ipEthernet == null) {
-      final en0 = await CommandRunner.run('ipconfig', ['getifaddr', 'en0']);
-      if (en0.success && en0.stdout.isNotEmpty) ipWifi = en0.stdout;
-      final en1 = await CommandRunner.run('ipconfig', ['getifaddr', 'en1']);
-      if (en1.success && en1.stdout.isNotEmpty) ipEthernet = en1.stdout;
-    }
-
     state = state.copyWith(
-      ipEthernet: ipEthernet,
-      ipWifi: ipWifi,
-      username: userResult.stdout.isNotEmpty ? userResult.stdout : null,
+      ipEthernet: await NetworkInfo.getEthernetIp(),
+      ipWifi: await NetworkInfo.getWifiIp(),
+      username: await NetworkInfo.getUsername(),
     );
     _updateStep('info', StepStatus.success);
   }

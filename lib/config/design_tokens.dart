@@ -49,8 +49,5 @@ class ChillRadius {
 
 /// Espacements
 class ChillSpacing {
-  static const double headerHeight = 64;
-  static const double pagePadding = 24;
   static const double pageMaxWidth = 1024;
-  static const double sectionGap = 120;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/design_tokens.dart';
+import '../extensions/chill_theme.dart';
 
 class ChillCard extends StatelessWidget {
   final IconData icon;
@@ -20,8 +21,6 @@ class ChillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accentColor = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -49,7 +48,7 @@ class ChillCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(icon, color: accentColor, size: iconSize),
+                      Icon(icon, color: context.chillAccent, size: iconSize),
                       if (badge != null) Flexible(child: badge!),
                     ],
                   ),

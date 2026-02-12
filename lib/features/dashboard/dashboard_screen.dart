@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/helpers/responsive.dart';
 import '../../shared/widgets/chill_background.dart';
 import '../../shared/widgets/chill_card.dart';
 import '../../shared/widgets/status_badge.dart';
@@ -21,8 +22,8 @@ class DashboardScreen extends ConsumerWidget {
         child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
-          final columns = width < 600 ? 2 : width < 1000 ? 3 : 3;
+          final padding = responsivePadding(width);
+          final columns = width < 600 ? 2 : 3;
           final topSpacing = width < 600 ? 24.0 : 48.0;
 
           // Calculer la hauteur disponible pour la grille
@@ -130,6 +131,7 @@ class DashboardScreen extends ConsumerWidget {
                             child: Image.asset(
                               'assets/images/mascot.png',
                               fit: BoxFit.contain,
+                              semanticLabel: 'Mascotte Chill',
                             ),
                           ),
                         ),
