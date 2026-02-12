@@ -69,12 +69,23 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
   Timer? _pollTimer;
   StreamSubscription<String>? _stdoutSub;
   StreamSubscription<String>? _stderrSub;
+  bool _isRetrying = false;
 
   @override
   TailscaleState build() {
     Future.microtask(() => _startDaemon());
     ref.onDispose(() => _shutdownDaemon());
     return const TailscaleState();
+  }
+
+  /// Vérifie qu'un binaire trouvé est exécutable (non-Windows uniquement)
+  void _checkExecutable(String path) {
+    if (Platform.isWindows) return;
+    final stat = FileStat.statSync(path);
+    final isExecutable = (stat.mode & 0x49) != 0; // owner|group|other execute
+    if (!isExecutable) {
+      debugPrint('[Tailscale] WARNING: Daemon found but not executable: $path');
+    }
   }
 
   /// Trouve le binaire chill-tailscale à côté de l'exécutable Flutter
@@ -86,7 +97,10 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
     // Production : à côté de l'exécutable Flutter
     for (final sub in ['', '${sep}lib', '${sep}data']) {
       final path = '$exeDir$sub$sep$name';
-      if (File(path).existsSync()) return path;
+      if (File(path).existsSync()) {
+        _checkExecutable(path);
+        return path;
+      }
     }
 
     // Debug : remonter depuis build/<os>/x64/debug/bundle/ vers la racine du projet
@@ -95,15 +109,23 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
         : RegExp(r'/build/.*$');
     final projectDir = exeDir.replaceFirst(buildPattern, '');
     final debugPath = '$projectDir${sep}tailscale-daemon$sep$name';
-    if (File(debugPath).existsSync()) return debugPath;
+    if (File(debugPath).existsSync()) {
+      _checkExecutable(debugPath);
+      return debugPath;
+    }
 
     // macOS debug : le binaire peut avoir un suffixe -macos
     if (Platform.isMacOS) {
       final macDebugPath = '$projectDir${sep}tailscale-daemon${sep}chill-tailscale-macos';
-      if (File(macDebugPath).existsSync()) return macDebugPath;
+      if (File(macDebugPath).existsSync()) {
+        _checkExecutable(macDebugPath);
+        return macDebugPath;
+      }
     }
 
-    return name; // fallback PATH
+    // fallback PATH
+    debugPrint('[Tailscale] WARNING: Using PATH fallback for daemon. Binary not found at expected locations.');
+    return name;
   }
 
   /// Démarre le daemon Go chill-tailscale
@@ -181,15 +203,7 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
             final selfHostname = event['self_hostname'] as String?;
             final selfIp = event['self_ip'] as String?;
             final peersJson = event['peers'] as List<dynamic>? ?? [];
-            final peers = peersJson.map((p) {
-              final peer = p as Map<String, dynamic>;
-              return TailscalePeer(
-                hostname: (peer['hostname'] as String?) ?? 'Unknown',
-                ipv4: (peer['ip'] as String?) ?? '',
-                os: (peer['os'] as String?) ?? '',
-                isOnline: peer['online'] == true,
-              );
-            }).toList();
+            final peers = peersJson.map(_parsePeer).whereType<TailscalePeer>().toList();
 
             state = state.copyWith(
               status: TailscaleConnectionStatus.connected,
@@ -251,17 +265,23 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
 
   /// Relance le daemon après une erreur
   Future<void> retry() async {
-    if (_daemon != null) {
-      final process = _daemon!;
-      _daemon = null;
-      process.kill();
-      await process.exitCode.timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => -1,
-      );
+    if (_isRetrying) return;
+    _isRetrying = true;
+    try {
+      if (_daemon != null) {
+        final process = _daemon!;
+        _daemon = null;
+        process.kill();
+        await process.exitCode.timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => -1,
+        );
+      }
+      _stopPolling();
+      await _startDaemon();
+    } finally {
+      _isRetrying = false;
     }
-    _stopPolling();
-    await _startDaemon();
   }
 
   /// Demande un rafraîchissement du statut
@@ -286,12 +306,21 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
     }
 
     if (Platform.isLinux) {
-      await Process.run('xdg-open', [url]);
+      final result = await Process.run('xdg-open', [url]);
+      if (result.exitCode != 0) {
+        debugPrint('[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}');
+      }
     } else if (Platform.isWindows) {
       // Le string vide comme titre empêche l'injection via caractères spéciaux dans l'URL
-      await Process.run('cmd', ['/c', 'start', '', url]);
+      final result = await Process.run('cmd', ['/c', 'start', '', url]);
+      if (result.exitCode != 0) {
+        debugPrint('[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}');
+      }
     } else if (Platform.isMacOS) {
-      await Process.run('open', [url]);
+      final result = await Process.run('open', [url]);
+      if (result.exitCode != 0) {
+        debugPrint('[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}');
+      }
     }
   }
 
@@ -307,6 +336,22 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
   void _stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
+  }
+
+  /// Parse un peer JSON de manière robuste, retourne null si invalide
+  TailscalePeer? _parsePeer(dynamic p) {
+    try {
+      final peer = p as Map<String, dynamic>;
+      return TailscalePeer(
+        hostname: (peer['hostname'] as String?) ?? 'Unknown',
+        ipv4: (peer['ip'] as String?) ?? '',
+        os: (peer['os'] as String?) ?? '',
+        isOnline: peer['online'] == true,
+      );
+    } catch (e) {
+      debugPrint('[Tailscale] Invalid peer data: $e');
+      return null;
+    }
   }
 
   /// Arrête le daemon proprement
@@ -330,7 +375,8 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
             return -1;
           },
         ));
-      } catch (_) {
+      } catch (e) {
+        debugPrint('[Tailscale] Shutdown error: $e');
         process.kill();
       }
     }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
 import '../../core/network_info.dart';
@@ -109,6 +110,7 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       }
       state = state.copyWith(isRunning: false, isComplete: true);
     } catch (e) {
+      debugPrint('[WoL] Setup error: $e');
       state = state.copyWith(isRunning: false, errorMessage: e.toString());
     }
   }
@@ -181,7 +183,7 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     // 3. Autoriser le réveil par le réseau
     _updateStep('enableWake', StepStatus.running);
     result = await CommandRunner.runPowerShell(
-      "powercfg /deviceenablewake \"$safeDesc\"",
+      "powercfg /deviceenablewake '$safeDesc'",
     );
     // Vérifier que l'appareil est dans la liste de réveil
     final wakeCheck = await CommandRunner.runPowerShell(
@@ -350,7 +352,7 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     try {
       result = await CommandRunner.runElevated('bash', [tempScript.path]);
     } finally {
-      try { await tempDir.delete(recursive: true); } catch (_) {}
+      try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[WoL] Cleanup error: $e'); }
     }
 
     // Analyser le résultat par code de sortie
@@ -362,7 +364,8 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       throw Exception('Autorisation refusée');
     }
     if (result.exitCode == 10) {
-      _updateStep('installEthtool', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[WoL] installEthtool stderr: ${result.stderr}');
+      _updateStep('installEthtool', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
       throw Exception('Échec installation ethtool');
     }
     if (needsEthtoolInstall) {
@@ -370,7 +373,8 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     }
 
     if (result.exitCode == 20) {
-      _updateStep('enableWol', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[WoL] enableWol stderr: ${result.stderr}');
+      _updateStep('enableWol', StepStatus.error, errorDetail: 'WoL activation failed. Check system logs.');
       throw Exception('Échec activation Wake-on-LAN');
     }
     if (result.exitCode == 30) {
@@ -381,7 +385,8 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     _updateStep('enableWol', StepStatus.success);
 
     if (result.exitCode == 40) {
-      _updateStep('persist', StepStatus.error, errorDetail: result.stderr);
+      debugPrint('[WoL] persist stderr: ${result.stderr}');
+      _updateStep('persist', StepStatus.error, errorDetail: 'Service creation failed. Check system logs.');
       throw Exception('Échec création du service WoL');
     }
     _updateStep('persist', StepStatus.success);

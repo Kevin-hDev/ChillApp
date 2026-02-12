@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 /// Résultat d'une commande exécutée
 class CommandResult {
@@ -22,6 +23,10 @@ class CommandRunner {
   static const _defaultTimeout = Duration(seconds: 120);
 
   /// Exécute une commande simple (sans privilèges élevés)
+  // NOTE: Process.run().timeout() does not kill the underlying process on timeout.
+  // The process continues running in the background. This is a known Dart limitation.
+  // For long-running commands (pkexec, apt), orphan processes may accumulate.
+  // A future improvement would be to use Process.start() with explicit kill on timeout.
   static Future<CommandResult> run(
     String executable,
     List<String> args, {
@@ -93,7 +98,7 @@ class CommandRunner {
               '@("-NoProfile","-ExecutionPolicy","Bypass","-File","$scriptPath") -Wait',
         ]);
       } finally {
-        try { await tempDir.delete(recursive: true); } catch (_) {}
+        try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[CommandRunner] Cleanup error: $e'); }
       }
     } else if (Platform.isLinux) {
       // Sur Linux : utiliser pkexec (boîte de dialogue graphique)
@@ -119,7 +124,7 @@ class CommandRunner {
           'do shell script "bash \\"$escapedPath\\"" with administrator privileges',
         ]);
       } finally {
-        try { await tempDir.delete(recursive: true); } catch (_) {}
+        try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[CommandRunner] Cleanup error: $e'); }
       }
     }
     throw UnsupportedError('OS non supporté');

@@ -10,6 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Cependant, un attaquant avec acces au systeme de fichiers peut supprimer le hash
 /// pour desactiver le lock. Le PIN protege contre l'utilisation occasionnelle,
 /// pas contre un attaquant determine avec acces physique complet.
+///
+/// KNOWN LIMITATION (SE-PIN-011): Dart strings are immutable and managed by the GC,
+/// so the PIN plaintext cannot be reliably zeroed from memory after use.
+/// Mitigating this would require FFI (dart:ffi) with a native secure-memory
+/// allocator, which is out of scope for the current threat model.
+/// The PIN is only held in a local variable for the duration of hash computation.
 
 class LockState {
   final bool isEnabled;
@@ -59,6 +65,8 @@ class LockNotifier extends Notifier<LockState> {
     return const LockState(isLoading: true);
   }
 
+  // SECURITY: Rate limiting state is persisted in SharedPreferences.
+  // The isLoading splash screen prevents any PIN attempt during load.
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPin = prefs.getString(_pinHashKey) != null;
@@ -115,6 +123,16 @@ class LockNotifier extends Notifier<LockState> {
     return base64Encode(derived);
   }
 
+  /// Constant-time string comparison to prevent timing attacks
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    int result = 0;
+    for (int i = 0; i < a.length; i++) {
+      result |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return result == 0;
+  }
+
   /// Ancien format SHA-256 pour migration
   String _hashPinLegacy(String pin, String salt) {
     return sha256.convert(utf8.encode('$salt:$pin')).toString();
@@ -130,6 +148,9 @@ class LockNotifier extends Notifier<LockState> {
   }
 
   Future<void> setPin(String pin) async {
+    if (pin.length != 8 || !RegExp(r'^\d{8}$').hasMatch(pin)) {
+      throw ArgumentError('PIN must be exactly 8 digits');
+    }
     final prefs = await SharedPreferences.getInstance();
     final salt = _generateSalt();
     await prefs.setString(_pinSaltKey, salt);
@@ -152,13 +173,19 @@ class LockNotifier extends Notifier<LockState> {
     final salt = prefs.getString(_pinSaltKey);
     bool match = false;
 
+    // MIGRATION: Legacy hash formats are supported for backward compatibility:
+    // - No salt (pre-v1): sha256(pin) → 64 char hex
+    // - Salt + SHA-256 (v1): sha256('$salt:$pin') → 64 char hex
+    // - Salt + PBKDF2 (v2, current): pbkdf2(pin, salt, 100k iter) → 44 char base64
+    // Legacy formats are automatically migrated to v2 on successful verification.
+    // TODO: Remove legacy migration in a future major version.
     if (salt != null && stored.length == 44) {
       // Nouveau format PBKDF2 (base64 = 44 chars)
-      match = _hashPin(pin, salt) == stored;
+      match = _constantTimeEquals(_hashPin(pin, salt), stored);
     } else if (salt != null && stored.length == 64) {
       // Ancien format SHA-256 avec sel (hex = 64 chars) : migration
       final legacyHash = _hashPinLegacy(pin, salt);
-      if (legacyHash == stored) {
+      if (_constantTimeEquals(legacyHash, stored)) {
         match = true;
         // Migrer vers PBKDF2
         await prefs.setString(_pinHashKey, _hashPin(pin, salt));
@@ -166,7 +193,7 @@ class LockNotifier extends Notifier<LockState> {
     } else if (salt == null) {
       // Tres ancien format sans sel : migration
       final oldHash = sha256.convert(utf8.encode(pin)).toString();
-      if (oldHash == stored) {
+      if (_constantTimeEquals(oldHash, stored)) {
         match = true;
         final newSalt = _generateSalt();
         await prefs.setString(_pinSaltKey, newSalt);
