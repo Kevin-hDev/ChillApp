@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
 import '../../core/os_detector.dart';
@@ -5,13 +6,15 @@ import '../../core/os_detector.dart';
 class DashboardState {
   final bool? sshConfigured;
   final bool? wolConfigured;
+  final bool? tailscaleConnected;
 
-  const DashboardState({this.sshConfigured, this.wolConfigured});
+  const DashboardState({this.sshConfigured, this.wolConfigured, this.tailscaleConnected});
 
-  DashboardState copyWith({bool? sshConfigured, bool? wolConfigured}) {
+  DashboardState copyWith({bool? sshConfigured, bool? wolConfigured, bool? tailscaleConnected}) {
     return DashboardState(
       sshConfigured: sshConfigured ?? this.sshConfigured,
       wolConfigured: wolConfigured ?? this.wolConfigured,
+      tailscaleConnected: tailscaleConnected ?? this.tailscaleConnected,
     );
   }
 }
@@ -28,14 +31,16 @@ class DashboardNotifier extends Notifier<DashboardState> {
 
   Future<void> checkAll() async {
     final os = OsDetector.currentOS;
-    // Lancer les deux vérifications en parallèle
+    // Lancer les vérifications en parallèle
     final results = await Future.wait([
       _checkSsh(os),
       _checkWol(os),
+      _checkTailscale(os),
     ]);
     state = DashboardState(
       sshConfigured: results[0],
       wolConfigured: results[1],
+      tailscaleConnected: results[2],
     );
   }
 
@@ -94,6 +99,33 @@ class DashboardNotifier extends Notifier<DashboardState> {
         case SupportedOS.macos:
           return false; // WoL non disponible sur Mac
       }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Vérifie si Tailscale est connecté
+  Future<bool> _checkTailscale(SupportedOS os) async {
+    try {
+      // Vérifier si tailscale est installé
+      CommandResult whichResult;
+      switch (os) {
+        case SupportedOS.windows:
+          whichResult = await CommandRunner.runPowerShell(
+            'Get-Command tailscale -ErrorAction SilentlyContinue',
+          );
+          if (!whichResult.success || whichResult.stdout.isEmpty) return false;
+        case SupportedOS.linux:
+        case SupportedOS.macos:
+          whichResult = await CommandRunner.run('which', ['tailscale']);
+          if (!whichResult.success) return false;
+      }
+      // Vérifier si connecté
+      final result = await CommandRunner.run('tailscale', ['status', '--json']);
+      if (!result.success) return false;
+      final json = jsonDecode(result.stdout) as Map<String, dynamic>;
+      final backendState = json['BackendState'] as String? ?? '';
+      return backendState == 'Running';
     } catch (_) {
       return false;
     }

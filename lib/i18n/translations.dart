@@ -87,6 +87,43 @@ const Map<String, Map<String, String>> translations = {
         'est éteint depuis Windows. Si tu fais du dual-boot, éteins depuis Windows '
         'avant d\'essayer d\'allumer à distance.',
 
+    // Tailscale
+    'dashboard.tailscale.title': 'Tailscale',
+    'dashboard.tailscale.desc': 'Accède à ton PC de n\'importe où.',
+    'tailscale.title': 'Tailscale',
+    'tailscale.intro': 'Connecte ce PC à ton réseau Tailscale pour y accéder depuis n\'importe où avec ChillShell.',
+    'tailscale.explanation.title': 'Qu\'est-ce que Tailscale ?',
+    'tailscale.explanation.content': 'Tailscale crée un réseau privé entre tes appareils, accessible depuis n\'importe où dans le monde. '
+        'Contrairement au WiFi local, Tailscale fonctionne même si tu es dans un café, au travail ou en 4G. '
+        'ChillShell peut se connecter à ce PC via son adresse Tailscale, sans configuration de routeur ni ouverture de ports. '
+        'C\'est comme un VPN, mais simple et gratuit pour un usage personnel.',
+    'tailscale.notInstalled.title': 'Tailscale n\'est pas installé',
+    'tailscale.notInstalled.desc': 'Installe Tailscale sur ce PC pour continuer.',
+    'tailscale.install.windows': 'Télécharge Tailscale depuis le site officiel :',
+    'tailscale.install.linux': 'Ouvre un terminal et lance cette commande :',
+    'tailscale.install.mac': 'Télécharge depuis le site officiel ou installe avec Homebrew :',
+    'tailscale.install.checkAgain': 'Vérifier à nouveau',
+    'tailscale.daemon.title': 'Le service Tailscale n\'est pas démarré',
+    'tailscale.daemon.desc': 'Le service Tailscale doit tourner pour pouvoir se connecter.',
+    'tailscale.daemon.startLinux': 'Démarrer le service',
+    'tailscale.daemon.startOther': 'Ouvre l\'application Tailscale sur ton PC pour démarrer le service.',
+    'tailscale.login.title': 'Se connecter à Tailscale',
+    'tailscale.login.desc': 'Connecte-toi à ton compte Tailscale. Une fenêtre de navigateur va s\'ouvrir.',
+    'tailscale.login.button': 'Se connecter',
+    'tailscale.login.waiting': 'En attente de connexion... Vérifie ton navigateur.',
+    'tailscale.connected.title': 'Connecté',
+    'tailscale.connected.selfTitle': 'Ce PC sur Tailscale',
+    'tailscale.connected.hostname': 'Nom de la machine',
+    'tailscale.connected.ip': 'Adresse Tailscale',
+    'tailscale.connected.peersTitle': 'Appareils sur ton réseau',
+    'tailscale.connected.noPeers': 'Aucun autre appareil trouvé. Installe Tailscale sur un autre appareil pour le voir ici.',
+    'tailscale.connected.online': 'En ligne',
+    'tailscale.connected.offline': 'Hors ligne',
+    'tailscale.connected.logout': 'Se déconnecter',
+    'tailscale.error.title': 'Une erreur est survenue',
+    'status.connected': 'Connecté',
+    'status.notConnected': 'Non connecté',
+
     // Connection Info
     'info.title': 'Infos de connexion',
     'info.intro': 'Voici les informations à entrer dans ChillShell.',
@@ -203,6 +240,43 @@ const Map<String, Map<String, String>> translations = {
     'wol.linuxWarning': 'On Linux, Wake-on-LAN may not work depending on your network card '
         'and Linux kernel. WoL works more reliably when the PC is shut down from Windows. '
         'If you dual-boot, shut down from Windows before trying to wake remotely.',
+
+    // Tailscale
+    'dashboard.tailscale.title': 'Tailscale',
+    'dashboard.tailscale.desc': 'Access your PC from anywhere.',
+    'tailscale.title': 'Tailscale',
+    'tailscale.intro': 'Connect this PC to your Tailscale network to access it from anywhere with ChillShell.',
+    'tailscale.explanation.title': 'What is Tailscale?',
+    'tailscale.explanation.content': 'Tailscale creates a private network between your devices, accessible from anywhere in the world. '
+        'Unlike local WiFi, Tailscale works even if you\'re at a cafe, at work, or on cellular data. '
+        'ChillShell can connect to this PC via its Tailscale address, without router configuration or opening ports. '
+        'It\'s like a VPN, but simple and free for personal use.',
+    'tailscale.notInstalled.title': 'Tailscale is not installed',
+    'tailscale.notInstalled.desc': 'Install Tailscale on this PC to continue.',
+    'tailscale.install.windows': 'Download Tailscale from the official website:',
+    'tailscale.install.linux': 'Open a terminal and run this command:',
+    'tailscale.install.mac': 'Download from the official website or install with Homebrew:',
+    'tailscale.install.checkAgain': 'Check again',
+    'tailscale.daemon.title': 'Tailscale service is not running',
+    'tailscale.daemon.desc': 'The Tailscale service must be running to connect.',
+    'tailscale.daemon.startLinux': 'Start the service',
+    'tailscale.daemon.startOther': 'Open the Tailscale app on your PC to start the service.',
+    'tailscale.login.title': 'Connect to Tailscale',
+    'tailscale.login.desc': 'Sign in to your Tailscale account. A browser window will open.',
+    'tailscale.login.button': 'Sign in',
+    'tailscale.login.waiting': 'Waiting for sign-in... Check your browser.',
+    'tailscale.connected.title': 'Connected',
+    'tailscale.connected.selfTitle': 'This PC on Tailscale',
+    'tailscale.connected.hostname': 'Machine name',
+    'tailscale.connected.ip': 'Tailscale address',
+    'tailscale.connected.peersTitle': 'Devices on your network',
+    'tailscale.connected.noPeers': 'No other devices found. Install Tailscale on another device to see it here.',
+    'tailscale.connected.online': 'Online',
+    'tailscale.connected.offline': 'Offline',
+    'tailscale.connected.logout': 'Sign out',
+    'tailscale.error.title': 'An error occurred',
+    'status.connected': 'Connected',
+    'status.notConnected': 'Not connected',
 
     // Connection Info
     'info.title': 'Connection Info',

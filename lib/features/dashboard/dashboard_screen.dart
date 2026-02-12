@@ -37,10 +37,10 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 48),
                 Expanded(
                   child: GridView.count(
-                    crossAxisCount: 2,
+                    crossAxisCount: 3,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 1.8,
+                    childAspectRatio: 1.2,
                     children: [
                       ChillCard(
                         icon: Icons.terminal,
@@ -67,6 +67,20 @@ class DashboardScreen extends ConsumerWidget {
                                     ? t(locale, 'status.configured')
                                     : t(locale, 'status.notConfigured'),
                                 isConfigured: dashboard.wolConfigured!,
+                              )
+                            : null,
+                      ),
+                      ChillCard(
+                        icon: Icons.vpn_lock,
+                        title: t(locale, 'dashboard.tailscale.title'),
+                        description: t(locale, 'dashboard.tailscale.desc'),
+                        onTap: () => context.go('/tailscale'),
+                        badge: dashboard.tailscaleConnected != null
+                            ? StatusBadge(
+                                label: dashboard.tailscaleConnected!
+                                    ? t(locale, 'status.connected')
+                                    : t(locale, 'status.notConnected'),
+                                isConfigured: dashboard.tailscaleConnected!,
                               )
                             : null,
                       ),

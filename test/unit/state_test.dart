@@ -3,6 +3,7 @@ import 'package:chill_app/features/ssh_setup/ssh_setup_provider.dart';
 import 'package:chill_app/features/wol_setup/wol_setup_provider.dart';
 import 'package:chill_app/features/connection_info/connection_info_provider.dart';
 import 'package:chill_app/features/dashboard/dashboard_provider.dart';
+import 'package:chill_app/features/tailscale/tailscale_provider.dart';
 
 void main() {
   // ============================================
@@ -190,6 +191,84 @@ void main() {
       expect(StepStatus.values, contains(StepStatus.running));
       expect(StepStatus.values, contains(StepStatus.success));
       expect(StepStatus.values, contains(StepStatus.error));
+    });
+  });
+
+  // ============================================
+  // TailscaleState
+  // ============================================
+  group('TailscaleState', () {
+    test('valeurs par défaut', () {
+      const state = TailscaleState();
+      expect(state.status, TailscaleConnectionStatus.loading);
+      expect(state.selfHostname, isNull);
+      expect(state.selfIp, isNull);
+      expect(state.peers, isEmpty);
+      expect(state.errorMessage, isNull);
+      expect(state.isLoggingIn, false);
+    });
+
+    test('copyWith met à jour le statut et les infos', () {
+      const state = TailscaleState();
+      final updated = state.copyWith(
+        status: TailscaleConnectionStatus.connected,
+        selfHostname: 'my-pc',
+        selfIp: '100.64.0.1',
+      );
+      expect(updated.status, TailscaleConnectionStatus.connected);
+      expect(updated.selfHostname, 'my-pc');
+      expect(updated.selfIp, '100.64.0.1');
+    });
+
+    test('copyWith met à jour la liste de peers', () {
+      const state = TailscaleState();
+      final peers = [
+        TailscalePeer(hostname: 'phone', ipv4: '100.64.0.2', os: 'android', isOnline: true),
+        TailscalePeer(hostname: 'laptop', ipv4: '100.64.0.3', os: 'windows', isOnline: false),
+      ];
+      final updated = state.copyWith(peers: peers);
+      expect(updated.peers.length, 2);
+      expect(updated.peers[0].hostname, 'phone');
+      expect(updated.peers[1].isOnline, false);
+    });
+
+    test('copyWith efface errorMessage quand null passé', () {
+      final state = const TailscaleState().copyWith(errorMessage: 'erreur');
+      expect(state.errorMessage, 'erreur');
+      final cleared = state.copyWith(errorMessage: null);
+      expect(cleared.errorMessage, isNull);
+    });
+  });
+
+  // ============================================
+  // TailscalePeer
+  // ============================================
+  group('TailscalePeer', () {
+    test('crée un peer avec toutes les infos', () {
+      const peer = TailscalePeer(
+        hostname: 'my-phone',
+        ipv4: '100.64.0.5',
+        os: 'iOS',
+        isOnline: true,
+      );
+      expect(peer.hostname, 'my-phone');
+      expect(peer.ipv4, '100.64.0.5');
+      expect(peer.os, 'iOS');
+      expect(peer.isOnline, true);
+    });
+  });
+
+  // ============================================
+  // TailscaleConnectionStatus
+  // ============================================
+  group('TailscaleConnectionStatus', () {
+    test('contient les 5 valeurs attendues', () {
+      expect(TailscaleConnectionStatus.values.length, 5);
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.notInstalled));
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.daemonStopped));
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loggedOut));
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.connected));
+      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loading));
     });
   });
 }

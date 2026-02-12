@@ -79,6 +79,16 @@ void main() {
         'settings.title',
         'status.configured',
         'status.notConfigured',
+        'tailscale.title',
+        'tailscale.intro',
+        'dashboard.tailscale.title',
+        'tailscale.explanation.title',
+        'tailscale.notInstalled.title',
+        'tailscale.login.button',
+        'tailscale.connected.title',
+        'tailscale.connected.peersTitle',
+        'status.connected',
+        'status.notConnected',
       ];
       for (final key in criticalKeys) {
         expect(fr.containsKey(key), true,

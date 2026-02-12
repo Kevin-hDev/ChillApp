@@ -4,6 +4,7 @@ import '../features/ssh_setup/ssh_setup_screen.dart';
 import '../features/wol_setup/wol_setup_screen.dart';
 import '../features/connection_info/connection_info_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/tailscale/tailscale_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/',
@@ -27,6 +28,10 @@ final router = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/tailscale',
+      builder: (context, state) => const TailscaleScreen(),
     ),
   ],
 );
