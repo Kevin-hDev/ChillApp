@@ -6,6 +6,7 @@ class ChillCard extends StatelessWidget {
   final String title;
   final String description;
   final VoidCallback? onTap;
+  final Widget? badge;
 
   const ChillCard({
     super.key,
@@ -13,6 +14,7 @@ class ChillCard extends StatelessWidget {
     required this.title,
     required this.description,
     this.onTap,
+    this.badge,
   });
 
   @override
@@ -32,7 +34,13 @@ class ChillCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: accentColor, size: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(icon, color: accentColor, size: 32),
+                  ?badge,
+                ],
+              ),
               const SizedBox(height: 12),
               Text(title, style: theme.textTheme.titleLarge),
               if (description.isNotEmpty) ...[
