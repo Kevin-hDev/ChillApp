@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../config/design_tokens.dart';
 import '../../i18n/locale_provider.dart';
 import '../lock/lock_provider.dart';
 import '../lock/lock_screen.dart';
@@ -105,6 +106,38 @@ class SettingsScreen extends ConsumerWidget {
                           onTap: () => _showChangePinDialog(context, ref, locale),
                         ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Avertissement PIN
+                Card(
+                  color: isDark
+                      ? ChillColorsDark.orange.withValues(alpha: 0.08)
+                      : ChillColorsLight.orange.withValues(alpha: 0.08),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: isDark ? ChillColorsDark.orange : ChillColorsLight.orange,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            t(locale, 'settings.lock.warning'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark
+                                  ? ChillColorsDark.textSecondary
+                                  : ChillColorsLight.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
