@@ -16,7 +16,8 @@ void main() {
     await tester.pumpWidget(
       const ProviderScope(child: ChillApp()),
     );
-    await tester.pumpAndSettle();
+    // pump au lieu de pumpAndSettle car l'animation du fond tourne en boucle
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Bienvenue sur Chill'), findsOneWidget);
   });
