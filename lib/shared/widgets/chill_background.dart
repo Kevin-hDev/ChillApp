@@ -4,38 +4,13 @@ import '../../config/design_tokens.dart';
 
 /// Fond d'écran reproduisant les effets visuels du site web Chill :
 /// dot grid, lueur verte, ondulations subtiles.
-class ChillBackground extends StatefulWidget {
+class ChillBackground extends StatelessWidget {
   final Widget child;
-  final bool showDividerAfterHeader;
 
   const ChillBackground({
     super.key,
     required this.child,
-    this.showDividerAfterHeader = false,
   });
-
-  @override
-  State<ChillBackground> createState() => _ChillBackgroundState();
-}
-
-class _ChillBackgroundState extends State<ChillBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _driftController;
-
-  @override
-  void initState() {
-    super.initState();
-    _driftController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 25),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _driftController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,22 +18,19 @@ class _ChillBackgroundState extends State<ChillBackground>
 
     return Stack(
       children: [
-        // Lueur verte en haut
-        Positioned(
-          top: -100,
-          left: 0,
-          right: 0,
-          height: 500,
+        // Lueur verte en haut — couvre toute la fenêtre, positionnée en haut
+        Positioned.fill(
           child: IgnorePointer(
             child: Container(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: const Alignment(0, -0.3),
-                  radius: 1.2,
+                  // Centré en haut au milieu (comme le CSS: top: -20%, left: 50%)
+                  center: const Alignment(0.0, -1.2),
+                  radius: 1.0,
                   colors: [
                     isDark
-                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                        : const Color(0xFF059669).withValues(alpha: 0.06),
+                        ? const Color(0xFF10B981).withValues(alpha: 0.10)
+                        : const Color(0xFF059669).withValues(alpha: 0.05),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -69,11 +41,7 @@ class _ChillBackgroundState extends State<ChillBackground>
         ),
 
         // Ondulations concentriques (ripple arcs)
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 400,
+        Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(
               painter: _RippleArcsPainter(isDark: isDark),
@@ -81,25 +49,17 @@ class _ChillBackgroundState extends State<ChillBackground>
           ),
         ),
 
-        // Grille de points avec dérive
+        // Grille de points — statique, pas d'animation pour éviter le clignotement
         Positioned.fill(
           child: IgnorePointer(
-            child: AnimatedBuilder(
-              animation: _driftController,
-              builder: (context, child) {
-                return CustomPaint(
-                  painter: _DotGridPainter(
-                    isDark: isDark,
-                    driftProgress: _driftController.value,
-                  ),
-                );
-              },
+            child: CustomPaint(
+              painter: _DotGridPainter(isDark: isDark),
             ),
           ),
         ),
 
         // Contenu
-        widget.child,
+        child,
       ],
     );
   }
@@ -132,12 +92,12 @@ class ChillDivider extends StatelessWidget {
   }
 }
 
-/// Peint la grille de points (dot grid) avec masque radial et animation de dérive
+/// Peint la grille de points (dot grid) avec masque radial
+/// Centré en haut comme sur le site (ellipse 70% 60% at 50% 40%)
 class _DotGridPainter extends CustomPainter {
   final bool isDark;
-  final double driftProgress;
 
-  _DotGridPainter({required this.isDark, required this.driftProgress});
+  _DotGridPainter({required this.isDark});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -147,27 +107,26 @@ class _DotGridPainter extends CustomPainter {
         ? const Color(0xFF3A3D45)
         : const Color(0xFF9CA3AF);
 
-    // Décalage de dérive (animation lente)
-    final driftOffset = driftProgress * spacing;
+    // Centre du masque elliptique : 50% horizontal, 40% vertical (comme le CSS)
+    final centerX = size.width * 0.5;
+    final centerY = size.height * 0.35;
 
-    final center = Offset(size.width / 2, size.height * 0.4);
+    // Rayons de l'ellipse du masque (comme le CSS : 70% x 60%)
+    final maskRx = size.width * 0.45;
+    final maskRy = size.height * 0.45;
 
     final paint = Paint()..style = PaintingStyle.fill;
 
-    for (double x = -spacing + driftOffset;
-        x < size.width + spacing;
-        x += spacing) {
-      for (double y = -spacing + driftOffset;
-          y < size.height + spacing;
-          y += spacing) {
-        // Masque radial elliptique (comme le site : 70% x 60% au centre)
-        final dx = (x - center.dx) / (size.width * 0.35);
-        final dy = (y - center.dy) / (size.height * 0.3);
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        // Distance normalisée dans l'ellipse du masque
+        final dx = (x - centerX) / maskRx;
+        final dy = (y - centerY) / maskRy;
         final dist = sqrt(dx * dx + dy * dy);
 
         if (dist > 1.0) continue;
 
-        // Opacité qui diminue vers les bords (comme mask-image)
+        // Opacité : pleine au centre (< 30%), puis dégradé jusqu'au bord
         double opacity;
         if (dist < 0.3) {
           opacity = 0.55;
@@ -175,7 +134,7 @@ class _DotGridPainter extends CustomPainter {
           opacity = 0.55 * (1.0 - (dist - 0.3) / 0.7);
         }
 
-        paint.color = dotColor.withValues(alpha: opacity.clamp(0.0, 0.55));
+        paint.color = dotColor.withValues(alpha: opacity);
         canvas.drawCircle(Offset(x, y), dotRadius, paint);
       }
     }
@@ -183,7 +142,6 @@ class _DotGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DotGridPainter oldDelegate) =>
-      oldDelegate.driftProgress != driftProgress ||
       oldDelegate.isDark != isDark;
 }
 
@@ -195,24 +153,23 @@ class _RippleArcsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!isDark) return; // Les arcs sont très subtils, visibles surtout en dark
+    if (!isDark) return;
 
     final paint = Paint()
-      ..color = const Color(0xFF1E8232).withValues(alpha: 0.07)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
     final centerX = size.width / 2;
-    const centerY = -120.0; // Au-dessus de la fenêtre, comme le site
+    const centerY = -120.0;
 
-    // Arcs concentriques espacés de 40px (comme le CSS : transparent 40px)
+    // Arcs concentriques (comme le CSS : ellipse 900x450 at 50% -120px, gap 40px)
     for (double r = 40; r < 500; r += 40) {
-      final rx = r * 2.0; // Ellipse plus large que haute
+      final rx = r * 2.0;
       final ry = r;
 
       // Masque : opacité qui diminue avec la distance
       final fade = (1.0 - (r / 500)).clamp(0.0, 1.0);
-      paint.color = Color(0xFF1E8232).withValues(alpha: 0.07 * fade);
+      paint.color = const Color(0xFF1E8232).withValues(alpha: 0.07 * fade);
 
       canvas.drawOval(
         Rect.fromCenter(
