@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../config/design_tokens.dart';
-import '../../features/ssh_setup/ssh_setup_provider.dart';
+import '../extensions/chill_theme.dart';
+import '../models/setup_step.dart';
 
 class StepIndicator extends StatelessWidget {
   final String label;
@@ -15,13 +15,12 @@ class StepIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          _buildIcon(isDark),
+          _buildIcon(context),
           const SizedBox(width: 12),
           Expanded(
             child: Text(label, style: theme.textTheme.bodyLarge),
@@ -31,12 +30,12 @@ class StepIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildIcon(bool isDark) {
+  Widget _buildIcon(BuildContext context) {
     switch (status) {
       case StepStatus.pending:
         return Icon(
           Icons.radio_button_unchecked,
-          color: isDark ? ChillColorsDark.textMuted : ChillColorsLight.textMuted,
+          color: context.chillTextMuted,
           size: 24,
         );
       case StepStatus.running:
@@ -48,13 +47,13 @@ class StepIndicator extends StatelessWidget {
       case StepStatus.success:
         return Icon(
           Icons.check_circle,
-          color: isDark ? ChillColorsDark.accent : ChillColorsLight.accent,
+          color: context.chillAccent,
           size: 24,
         );
       case StepStatus.error:
         return Icon(
           Icons.error,
-          color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
+          color: context.chillRed,
           size: 24,
         );
     }

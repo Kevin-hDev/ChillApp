@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/ssh_setup/ssh_setup_screen.dart';
@@ -6,8 +7,35 @@ import '../features/connection_info/connection_info_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/tailscale/tailscale_screen.dart';
 
+/// SECURITE : La protection PIN est geree dans app.dart via un swap
+/// MaterialApp / MaterialApp.router. Quand le PIN est actif et non deverrouille,
+/// app.dart affiche LockScreen au lieu du router, ce qui bloque l'acces a TOUTES
+/// les routes ci-dessous. Flutter desktop n'a pas de deep-linking, donc cette
+/// approche est suffisante. TOUTE nouvelle route ajoutee ici est automatiquement
+/// protegee par le lock dans app.dart.
 final router = GoRouter(
   initialLocation: '/',
+  errorBuilder: (context, state) => Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'Page non trouvée',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => context.go('/'),
+            icon: const Icon(Icons.home),
+            label: const Text('Retour à l\'accueil'),
+          ),
+        ],
+      ),
+    ),
+  ),
   routes: [
     GoRoute(
       path: '/',

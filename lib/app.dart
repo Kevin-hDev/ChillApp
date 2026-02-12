@@ -15,6 +15,20 @@ class ChillApp extends ConsumerWidget {
     final lockState = ref.watch(lockProvider);
     final themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
 
+    // Attendre que l'etat du lock soit charge depuis SharedPreferences
+    if (lockState.isLoading) {
+      return MaterialApp(
+        title: 'Chill',
+        debugShowCheckedModeBanner: false,
+        theme: chillLightTheme(),
+        darkTheme: chillDarkTheme(),
+        themeMode: themeMode,
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     if (lockState.isEnabled && !lockState.isUnlocked) {
       return MaterialApp(
         title: 'Chill',

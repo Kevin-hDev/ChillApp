@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../config/design_tokens.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/extensions/chill_theme.dart';
+import '../../shared/helpers/responsive.dart';
+import '../../shared/widgets/chill_background.dart';
 import '../lock/lock_provider.dart';
 import '../lock/lock_screen.dart';
 import 'settings_provider.dart';
@@ -18,10 +20,11 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: LayoutBuilder(
+      body: ChillBackground(
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+          final padding = responsivePadding(width);
 
           return Center(
             child: ConstrainedBox(
@@ -35,6 +38,7 @@ class SettingsScreen extends ConsumerWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.arrow_back),
+                          tooltip: 'Retour',
                           onPressed: () => context.go('/'),
                         ),
                         const SizedBox(width: 8),
@@ -123,9 +127,7 @@ class SettingsScreen extends ConsumerWidget {
 
                 // Avertissement PIN
                 Card(
-                  color: isDark
-                      ? ChillColorsDark.orange.withValues(alpha: 0.08)
-                      : ChillColorsLight.orange.withValues(alpha: 0.08),
+                  color: context.chillOrange.withValues(alpha: 0.08),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(
@@ -134,16 +136,14 @@ class SettingsScreen extends ConsumerWidget {
                         Icon(
                           Icons.info_outline,
                           size: 20,
-                          color: isDark ? ChillColorsDark.orange : ChillColorsLight.orange,
+                          color: context.chillOrange,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             t(locale, 'settings.lock.warning'),
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: isDark
-                                  ? ChillColorsDark.textSecondary
-                                  : ChillColorsLight.textSecondary,
+                              color: context.chillTextSecondary,
                             ),
                           ),
                         ),
@@ -161,6 +161,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           );
         },
+      ),
       ),
     );
   }

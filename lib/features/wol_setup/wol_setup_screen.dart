@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
 import '../../core/os_detector.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/extensions/chill_theme.dart';
+import '../../shared/helpers/responsive.dart';
+import '../../shared/models/setup_step.dart';
+import '../../shared/widgets/animated_loader.dart';
+import '../../shared/widgets/copyable_info.dart';
+import '../../shared/widgets/error_banner.dart';
+import '../../shared/widgets/explanation_card.dart';
+import '../../shared/widgets/patience_message.dart';
+import '../../shared/widgets/chill_background.dart';
 import '../../shared/widgets/step_indicator.dart';
-import '../ssh_setup/ssh_setup_provider.dart';
 import 'wol_setup_provider.dart';
 
 class WolSetupScreen extends ConsumerWidget {
   const WolSetupScreen({super.key});
 
-  /// Convertit un ID d'étape en clé de traduction
+  /// Convertit un ID d'etape en cle de traduction
   String _stepLabel(String locale, String stepId) {
     final key = 'wol.step.$stepId';
     return t(locale, key);
@@ -24,15 +30,14 @@ class WolSetupScreen extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final wolState = ref.watch(wolSetupProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
     final isMac = OsDetector.currentOS == SupportedOS.macos;
 
     return Scaffold(
-      body: LayoutBuilder(
+      body: ChillBackground(
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+          final padding = responsivePadding(width);
 
           return Center(
             child: ConstrainedBox(
@@ -47,6 +52,7 @@ class WolSetupScreen extends ConsumerWidget {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.arrow_back),
+                          tooltip: 'Retour',
                           onPressed: () => context.go('/'),
                         ),
                         const SizedBox(width: 8),
@@ -72,27 +78,31 @@ class WolSetupScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Carte explicative
-                        _ExplanationCard(locale: locale, isDark: isDark),
+                        ExplanationCard(
+                          titleKey: 'wol.explanation.title',
+                          contentKey: 'wol.explanation.content',
+                          locale: locale,
+                        ),
                         const SizedBox(height: 16),
 
                         // Avertissement BIOS (toujours visible)
-                        _BiosWarningCard(locale: locale, isDark: isDark),
+                        _BiosWarningCard(locale: locale),
 
                         // Avertissement Linux (uniquement sur Linux)
                         if (OsDetector.currentOS == SupportedOS.linux) ...[
                           const SizedBox(height: 12),
-                          _LinuxWarningCard(locale: locale, isDark: isDark),
+                          _LinuxWarningCard(locale: locale),
                         ],
                         const SizedBox(height: 24),
 
                         // Sur Mac : message "non disponible"
                         if (isMac) ...[
-                          _MacUnavailableCard(locale: locale, isDark: isDark),
+                          _MacUnavailableCard(locale: locale),
                         ],
 
                         // Sur Windows/Linux : interface de configuration
                         if (!isMac) ...[
-                          // Bouton "Tout configurer" ou "Réessayer"
+                          // Bouton "Tout configurer" ou "Reessayer"
                           if (!wolState.isRunning && !wolState.isComplete)
                             Center(
                               child: ElevatedButton.icon(
@@ -115,55 +125,31 @@ class WolSetupScreen extends ConsumerWidget {
                           // Message d'erreur global
                           if (wolState.errorMessage != null && !wolState.isRunning) ...[
                             const SizedBox(height: 16),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: (isDark ? ChillColorsDark.red : ChillColorsLight.red)
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(ChillRadius.lg),
-                                border: Border.all(
-                                  color: (isDark ? ChillColorsDark.red : ChillColorsLight.red)
-                                      .withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded,
-                                      color: isDark ? ChillColorsDark.red : ChillColorsLight.red),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      wolState.errorMessage!,
-                                      style: TextStyle(
-                                        color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            ErrorBanner(message: wolState.errorMessage!),
                           ],
 
                           const SizedBox(height: 24),
 
-                          // Loader animé + message de patience
+                          // Loader anime + message de patience
                           if (wolState.isRunning) ...[
-                            const _AnimatedLoader(),
+                            const AnimatedLoader(),
                             const SizedBox(height: 12),
-                            _PatienceMessage(locale: locale, accent: accent),
+                            PatienceMessage(
+                              text: t(locale, 'wol.patience'),
+                              color: context.chillAccent,
+                            ),
                             const SizedBox(height: 24),
                           ],
 
-                          // Liste des étapes (visible dès qu'on lance)
+                          // Liste des etapes (visible des qu'on lance)
                           if (wolState.steps.any((s) => s.status != StepStatus.pending)) ...[
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: isDark ? ChillColorsDark.bgElevated : ChillColorsLight.bgElevated,
+                                color: context.chillBgElevated,
                                 borderRadius: BorderRadius.circular(ChillRadius.xl),
                                 border: Border.all(
-                                  color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
+                                  color: context.chillBorder,
                                 ),
                               ),
                               child: Column(
@@ -177,13 +163,11 @@ class WolSetupScreen extends ConsumerWidget {
                             ),
                           ],
 
-                          // Résultat final
+                          // Resultat final
                           if (wolState.isComplete) ...[
                             const SizedBox(height: 24),
                             _ResultCard(
                               locale: locale,
-                              isDark: isDark,
-                              accent: accent,
                               macAddress: wolState.macAddress,
                               ipEthernet: wolState.ipEthernet,
                               ipWifi: wolState.ipWifi,
@@ -204,85 +188,39 @@ class WolSetupScreen extends ConsumerWidget {
       );
     },
       ),
-    );
-  }
-}
-
-/// Carte explicative "Qu'est-ce que ça fait ?"
-class _ExplanationCard extends StatelessWidget {
-  final String locale;
-  final bool isDark;
-
-  const _ExplanationCard({required this.locale, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? ChillColorsDark.bgElevated : ChillColorsLight.bgElevated,
-        borderRadius: BorderRadius.circular(ChillRadius.xl),
-        border: Border.all(
-          color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: accent, size: 22),
-              const SizedBox(width: 10),
-              Text(
-                t(locale, 'wol.explanation.title'),
-                style: theme.textTheme.titleMedium?.copyWith(color: accent),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            t(locale, 'wol.explanation.content'),
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-          ),
-        ],
       ),
     );
   }
 }
 
-/// Avertissement BIOS (carte ambre)
+/// Avertissement BIOS (carte orange)
 class _BiosWarningCard extends StatelessWidget {
   final String locale;
-  final bool isDark;
 
-  const _BiosWarningCard({required this.locale, required this.isDark});
+  const _BiosWarningCard({required this.locale});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final amber = isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706);
+    final orange = context.chillOrange;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: amber.withValues(alpha: 0.1),
+        color: orange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(ChillRadius.lg),
-        border: Border.all(color: amber.withValues(alpha: 0.3)),
+        border: Border.all(color: orange.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, color: amber, size: 24),
+          Icon(Icons.warning_amber_rounded, color: orange, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               t(locale, 'wol.biosWarning'),
-              style: theme.textTheme.bodyMedium?.copyWith(color: amber, height: 1.5),
+              style: theme.textTheme.bodyMedium?.copyWith(color: orange, height: 1.5),
             ),
           ),
         ],
@@ -294,14 +232,13 @@ class _BiosWarningCard extends StatelessWidget {
 /// Avertissement Linux (WoL pas toujours fiable)
 class _LinuxWarningCard extends StatelessWidget {
   final String locale;
-  final bool isDark;
 
-  const _LinuxWarningCard({required this.locale, required this.isDark});
+  const _LinuxWarningCard({required this.locale});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final blue = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+    final blue = context.chillBlue;
 
     return Container(
       width: double.infinity,
@@ -331,9 +268,8 @@ class _LinuxWarningCard extends StatelessWidget {
 /// Message "Non disponible sur Mac"
 class _MacUnavailableCard extends StatelessWidget {
   final String locale;
-  final bool isDark;
 
-  const _MacUnavailableCard({required this.locale, required this.isDark});
+  const _MacUnavailableCard({required this.locale});
 
   @override
   Widget build(BuildContext context) {
@@ -343,24 +279,24 @@ class _MacUnavailableCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? ChillColorsDark.bgElevated : ChillColorsLight.bgElevated,
+        color: context.chillBgElevated,
         borderRadius: BorderRadius.circular(ChillRadius.xl),
         border: Border.all(
-          color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
+          color: context.chillBorder,
         ),
       ),
       child: Column(
         children: [
           Icon(
             Icons.desktop_mac_outlined,
-            color: isDark ? ChillColorsDark.textMuted : ChillColorsLight.textMuted,
+            color: context.chillTextMuted,
             size: 48,
           ),
           const SizedBox(height: 16),
           Text(
             t(locale, 'wol.notAvailableMac'),
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
+              color: context.chillTextSecondary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -370,116 +306,9 @@ class _MacUnavailableCard extends StatelessWidget {
   }
 }
 
-/// Loader animé avec espace pour le logo
-class _AnimatedLoader extends StatefulWidget {
-  const _AnimatedLoader();
-
-  @override
-  State<_AnimatedLoader> createState() => _AnimatedLoaderState();
-}
-
-class _AnimatedLoaderState extends State<_AnimatedLoader> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _floatAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _floatAnimation,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(0, _floatAnimation.value),
-            child: child,
-          );
-        },
-        child: Image.asset(
-          'assets/images/loader.png',
-          width: 100,
-          height: 100,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-}
-
-/// Message "Cela peut prendre plusieurs minutes" avec animation fade
-class _PatienceMessage extends StatefulWidget {
-  final String locale;
-  final Color accent;
-
-  const _PatienceMessage({required this.locale, required this.accent});
-
-  @override
-  State<_PatienceMessage> createState() => _PatienceMessageState();
-}
-
-class _PatienceMessageState extends State<_PatienceMessage> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _opacityAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: FadeTransition(
-        opacity: _opacityAnimation,
-        child: Text(
-          t(widget.locale, 'wol.patience'),
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: widget.accent,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Carte résultat avec MAC, carte réseau, IPs et rappel BIOS
+/// Carte resultat avec MAC, carte reseau, IPs et rappel BIOS
 class _ResultCard extends StatelessWidget {
   final String locale;
-  final bool isDark;
-  final Color accent;
   final String? macAddress;
   final String? ipEthernet;
   final String? ipWifi;
@@ -487,8 +316,6 @@ class _ResultCard extends StatelessWidget {
 
   const _ResultCard({
     required this.locale,
-    required this.isDark,
-    required this.accent,
     this.macAddress,
     this.ipEthernet,
     this.ipWifi,
@@ -498,7 +325,8 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final amber = isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706);
+    final accent = context.chillAccent;
+    final orange = context.chillOrange;
 
     return Container(
       width: double.infinity,
@@ -527,15 +355,15 @@ class _ResultCard extends StatelessWidget {
           if (macAddress != null) ...[
             Text(t(locale, 'wol.result.mac'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: macAddress!, isDark: isDark),
+            CopyableInfo(value: macAddress!, locale: locale),
             const SizedBox(height: 16),
           ],
 
-          // Carte réseau
+          // Carte reseau
           if (adapterName != null) ...[
             Text(t(locale, 'wol.result.adapter'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: adapterName!, isDark: isDark),
+            CopyableInfo(value: adapterName!, locale: locale),
             const SizedBox(height: 16),
           ],
 
@@ -543,7 +371,7 @@ class _ResultCard extends StatelessWidget {
           if (ipEthernet != null) ...[
             Text(t(locale, 'wol.result.ipEthernet'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: ipEthernet!, isDark: isDark),
+            CopyableInfo(value: ipEthernet!, locale: locale),
             const SizedBox(height: 16),
           ],
 
@@ -551,7 +379,7 @@ class _ResultCard extends StatelessWidget {
           if (ipWifi != null) ...[
             Text(t(locale, 'wol.result.ipWifi'), style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: ipWifi!, isDark: isDark),
+            CopyableInfo(value: ipWifi!, locale: locale),
             const SizedBox(height: 16),
           ],
 
@@ -560,84 +388,23 @@ class _ResultCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: amber.withValues(alpha: 0.1),
+              color: orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(ChillRadius.lg),
-              border: Border.all(color: amber.withValues(alpha: 0.3)),
+              border: Border.all(color: orange.withValues(alpha: 0.3)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.lightbulb_outline, color: amber, size: 20),
+                Icon(Icons.lightbulb_outline, color: orange, size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     t(locale, 'wol.result.reminder'),
-                    style: theme.textTheme.bodySmall?.copyWith(color: amber, height: 1.5),
+                    style: theme.textTheme.bodySmall?.copyWith(color: orange, height: 1.5),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Ligne d'info avec bouton copier
-class _CopyableInfo extends StatefulWidget {
-  final String value;
-  final bool isDark;
-
-  const _CopyableInfo({required this.value, required this.isDark});
-
-  @override
-  State<_CopyableInfo> createState() => _CopyableInfoState();
-}
-
-class _CopyableInfoState extends State<_CopyableInfo> {
-  bool _copied = false;
-
-  void _copy() async {
-    await Clipboard.setData(ClipboardData(text: widget.value));
-    setState(() => _copied = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => _copied = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = widget.isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: widget.isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface,
-        borderRadius: BorderRadius.circular(ChillRadius.lg),
-        border: Border.all(
-          color: widget.isDark ? ChillColorsDark.border : ChillColorsLight.border,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              widget.value,
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: widget.isDark ? ChillColorsDark.textPrimary : ChillColorsLight.textPrimary,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              _copied ? Icons.check : Icons.copy,
-              color: _copied ? accent : (widget.isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary),
-              size: 18,
-            ),
-            onPressed: _copy,
-            tooltip: _copied ? 'Copié !' : 'Copier',
           ),
         ],
       ),

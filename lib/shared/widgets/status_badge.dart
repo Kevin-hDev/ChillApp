@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/design_tokens.dart';
+import '../extensions/chill_theme.dart';
 
 class StatusBadge extends StatelessWidget {
   final String label;
@@ -13,10 +14,7 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isConfigured
-        ? (isDark ? ChillColorsDark.accent : ChillColorsLight.accent)
-        : (isDark ? ChillColorsDark.textMuted : ChillColorsLight.textMuted);
+    final color = isConfigured ? context.chillAccent : context.chillTextMuted;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -1,11 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../config/design_tokens.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/extensions/chill_theme.dart';
+import '../../shared/helpers/responsive.dart';
+import '../../shared/widgets/animated_loader.dart';
+import '../../shared/widgets/copyable_info.dart';
+import '../../shared/widgets/error_banner.dart';
+import '../../shared/widgets/explanation_card.dart';
+import '../../shared/widgets/chill_background.dart';
+import '../../shared/widgets/patience_message.dart';
 import 'tailscale_provider.dart';
 
 class TailscaleScreen extends ConsumerWidget {
@@ -16,14 +22,13 @@ class TailscaleScreen extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final tsState = ref.watch(tailscaleProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
 
     return Scaffold(
-      body: LayoutBuilder(
+      body: ChillBackground(
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
+          final padding = responsivePadding(width);
 
           return Center(
             child: ConstrainedBox(
@@ -39,6 +44,7 @@ class TailscaleScreen extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.arrow_back),
                           onPressed: () => context.go('/'),
+                          tooltip: 'Retour',
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -65,15 +71,7 @@ class TailscaleScreen extends ConsumerWidget {
                     // Contenu selon l'état
                     Expanded(
                       child: SingleChildScrollView(
-                        child: _buildContent(
-                          context,
-                          ref,
-                          tsState,
-                          locale,
-                          isDark,
-                          accent,
-                          theme,
-                        ),
+                        child: _buildContent(context, ref, tsState, locale, theme),
                       ),
                     ),
                   ],
@@ -83,6 +81,7 @@ class TailscaleScreen extends ConsumerWidget {
           );
         },
       ),
+      ),
     );
   }
 
@@ -91,19 +90,17 @@ class TailscaleScreen extends ConsumerWidget {
     WidgetRef ref,
     TailscaleState tsState,
     String locale,
-    bool isDark,
-    Color accent,
     ThemeData theme,
   ) {
     switch (tsState.status) {
       case TailscaleConnectionStatus.loading:
-        return Center(child: CircularProgressIndicator(color: accent));
+        return Center(child: CircularProgressIndicator(color: context.chillAccent));
       case TailscaleConnectionStatus.loggedOut:
-        return _buildLoggedOut(context, ref, tsState, locale, isDark, accent, theme);
+        return _buildLoggedOut(context, ref, tsState, locale, theme);
       case TailscaleConnectionStatus.connected:
-        return _buildConnected(context, ref, tsState, locale, isDark, accent, theme);
+        return _buildConnected(context, ref, tsState, locale, theme);
       case TailscaleConnectionStatus.error:
-        return _buildError(context, ref, tsState, locale, isDark, accent, theme);
+        return _buildError(context, ref, tsState, locale, theme);
     }
   }
 
@@ -112,20 +109,41 @@ class TailscaleScreen extends ConsumerWidget {
     WidgetRef ref,
     TailscaleState tsState,
     String locale,
-    bool isDark,
-    Color accent,
     ThemeData theme,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ExplanationCard(locale: locale, isDark: isDark),
+        ExplanationCard(
+          titleKey: 'tailscale.explanation.title',
+          contentKey: 'tailscale.explanation.content',
+          locale: locale,
+        ),
         const SizedBox(height: 24),
 
         if (tsState.isLoggingIn) ...[
-          const _AnimatedLoader(),
+          AnimatedLoader(
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: context.chillAccent.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: context.chillAccent.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Icon(Icons.vpn_lock, color: context.chillAccent, size: 36),
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
-          _PatienceMessage(locale: locale, accent: accent),
+          PatienceMessage(
+            text: t(locale, 'tailscale.login.waiting'),
+            color: context.chillAccent,
+          ),
         ] else
           Column(
             children: [
@@ -146,7 +164,7 @@ class TailscaleScreen extends ConsumerWidget {
               Text(
                 t(locale, 'tailscale.signup.desc'),
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
+                  color: context.chillTextSecondary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -167,34 +185,7 @@ class TailscaleScreen extends ConsumerWidget {
         // Message d'erreur
         if (tsState.errorMessage != null) ...[
           const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: (isDark ? ChillColorsDark.red : ChillColorsLight.red)
-                  .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(ChillRadius.lg),
-              border: Border.all(
-                color: (isDark ? ChillColorsDark.red : ChillColorsLight.red)
-                    .withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber_rounded,
-                    color: isDark ? ChillColorsDark.red : ChillColorsLight.red),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    tsState.errorMessage!,
-                    style: TextStyle(
-                      color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ErrorBanner(message: tsState.errorMessage!),
         ],
       ],
     );
@@ -205,8 +196,6 @@ class TailscaleScreen extends ConsumerWidget {
     WidgetRef ref,
     TailscaleState tsState,
     String locale,
-    bool isDark,
-    Color accent,
     ThemeData theme,
   ) {
     return Column(
@@ -217,17 +206,17 @@ class TailscaleScreen extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.1),
+            color: context.chillAccent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(ChillRadius.xl),
-            border: Border.all(color: accent),
+            border: Border.all(color: context.chillAccent),
           ),
           child: Row(
             children: [
-              Icon(Icons.check_circle, color: accent, size: 24),
+              Icon(Icons.check_circle, color: context.chillAccent, size: 24),
               const SizedBox(width: 12),
               Text(
                 t(locale, 'tailscale.connected.title'),
-                style: theme.textTheme.titleMedium?.copyWith(color: accent),
+                style: theme.textTheme.titleMedium?.copyWith(color: context.chillAccent),
               ),
             ],
           ),
@@ -237,8 +226,6 @@ class TailscaleScreen extends ConsumerWidget {
         // Self info card
         _SelfInfoCard(
           locale: locale,
-          isDark: isDark,
-          accent: accent,
           hostname: tsState.selfHostname,
           ip: tsState.selfIp,
         ),
@@ -256,22 +243,20 @@ class TailscaleScreen extends ConsumerWidget {
           Text(
             t(locale, 'tailscale.connected.noPeers'),
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
+              color: context.chillTextSecondary,
             ),
           )
         else
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: isDark ? ChillColorsDark.bgElevated : ChillColorsLight.bgElevated,
+              color: context.chillBgElevated,
               borderRadius: BorderRadius.circular(ChillRadius.xl),
-              border: Border.all(
-                color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
-              ),
+              border: Border.all(color: context.chillBorder),
             ),
             child: Column(
               children: tsState.peers.map((peer) {
-                return _PeerTile(peer: peer, isDark: isDark);
+                return _PeerTile(peer: peer);
               }).toList(),
             ),
           ),
@@ -282,12 +267,10 @@ class TailscaleScreen extends ConsumerWidget {
         Center(
           child: TextButton.icon(
             onPressed: () => ref.read(tailscaleProvider.notifier).logout(),
-            icon: Icon(Icons.logout, color: isDark ? ChillColorsDark.red : ChillColorsLight.red),
+            icon: Icon(Icons.logout, color: context.chillRed),
             label: Text(
               t(locale, 'tailscale.connected.logout'),
-              style: TextStyle(
-                color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
-              ),
+              style: TextStyle(color: context.chillRed),
             ),
           ),
         ),
@@ -299,9 +282,8 @@ class TailscaleScreen extends ConsumerWidget {
 
   Widget _buildError(
     BuildContext context, WidgetRef ref, TailscaleState tsState,
-    String locale, bool isDark, Color accent, ThemeData theme,
+    String locale, ThemeData theme,
   ) {
-    final red = isDark ? ChillColorsDark.red : ChillColorsLight.red;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -309,21 +291,21 @@ class TailscaleScreen extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: red.withValues(alpha: 0.1),
+            color: context.chillRed.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(ChillRadius.xl),
-            border: Border.all(color: red.withValues(alpha: 0.3)),
+            border: Border.all(color: context.chillRed.withValues(alpha: 0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.error_outline, color: red, size: 22),
+                  Icon(Icons.error_outline, color: context.chillRed, size: 22),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       t(locale, 'tailscale.error.title'),
-                      style: theme.textTheme.titleMedium?.copyWith(color: red),
+                      style: theme.textTheme.titleMedium?.copyWith(color: context.chillRed),
                     ),
                   ),
                 ],
@@ -351,64 +333,14 @@ class TailscaleScreen extends ConsumerWidget {
   }
 }
 
-/// Carte explicative "Qu'est-ce que Tailscale ?"
-class _ExplanationCard extends StatelessWidget {
-  final String locale;
-  final bool isDark;
-
-  const _ExplanationCard({required this.locale, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? ChillColorsDark.bgElevated : ChillColorsLight.bgElevated,
-        borderRadius: BorderRadius.circular(ChillRadius.xl),
-        border: Border.all(
-          color: isDark ? ChillColorsDark.border : ChillColorsLight.border,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: accent, size: 22),
-              const SizedBox(width: 10),
-              Text(
-                t(locale, 'tailscale.explanation.title'),
-                style: theme.textTheme.titleMedium?.copyWith(color: accent),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            t(locale, 'tailscale.explanation.content'),
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Carte d'info personnelle (hostname + IP Tailscale)
 class _SelfInfoCard extends StatelessWidget {
   final String locale;
-  final bool isDark;
-  final Color accent;
   final String? hostname;
   final String? ip;
 
   const _SelfInfoCard({
     required this.locale,
-    required this.isDark,
-    required this.accent,
     this.hostname,
     this.ip,
   });
@@ -421,30 +353,30 @@ class _SelfInfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.05),
+        color: context.chillAccent.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(ChillRadius.xl),
-        border: Border.all(color: accent.withValues(alpha: 0.3)),
+        border: Border.all(color: context.chillAccent.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             t(locale, 'tailscale.connected.selfTitle'),
-            style: theme.textTheme.headlineSmall?.copyWith(color: accent),
+            style: theme.textTheme.headlineSmall?.copyWith(color: context.chillAccent),
           ),
           const SizedBox(height: 16),
           if (hostname != null) ...[
             Text(t(locale, 'tailscale.connected.hostname'),
                 style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: hostname!, isDark: isDark),
+            CopyableInfo(value: hostname!, locale: locale),
             const SizedBox(height: 16),
           ],
           if (ip != null) ...[
             Text(t(locale, 'tailscale.connected.ip'),
                 style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            _CopyableInfo(value: ip!, isDark: isDark),
+            CopyableInfo(value: ip!, locale: locale),
           ],
         ],
       ),
@@ -455,13 +387,13 @@ class _SelfInfoCard extends StatelessWidget {
 /// Tuile d'un peer Tailscale
 class _PeerTile extends StatelessWidget {
   final TailscalePeer peer;
-  final bool isDark;
 
-  const _PeerTile({required this.peer, required this.isDark});
+  const _PeerTile({required this.peer});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final locale = 'fr'; // Default locale for peer tiles
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -472,9 +404,7 @@ class _PeerTile extends StatelessWidget {
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: peer.isOnline
-                  ? (isDark ? ChillColorsDark.green : ChillColorsLight.green)
-                  : (isDark ? ChillColorsDark.textMuted : ChillColorsLight.textMuted),
+              color: peer.isOnline ? context.chillGreen : context.chillTextMuted,
               shape: BoxShape.circle,
             ),
           ),
@@ -494,244 +424,15 @@ class _PeerTile extends StatelessWidget {
                   Text(
                     peer.os,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark
-                          ? ChillColorsDark.textSecondary
-                          : ChillColorsLight.textSecondary,
+                      color: context.chillTextSecondary,
                     ),
                   ),
               ],
             ),
           ),
           // IP copiable
-          _CopyableIp(ip: peer.ipv4, isDark: isDark),
+          Flexible(child: CopyableInfo(value: peer.ipv4, compact: true, locale: locale)),
         ],
-      ),
-    );
-  }
-}
-
-/// IP copiable compacte pour les peers
-class _CopyableIp extends StatefulWidget {
-  final String ip;
-  final bool isDark;
-
-  const _CopyableIp({required this.ip, required this.isDark});
-
-  @override
-  State<_CopyableIp> createState() => _CopyableIpState();
-}
-
-class _CopyableIpState extends State<_CopyableIp> {
-  bool _copied = false;
-
-  void _copy() async {
-    await Clipboard.setData(ClipboardData(text: widget.ip));
-    setState(() => _copied = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => _copied = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = widget.isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          widget.ip,
-          style: GoogleFonts.jetBrainsMono(
-            fontSize: 13,
-            color: widget.isDark ? ChillColorsDark.textPrimary : ChillColorsLight.textPrimary,
-          ),
-        ),
-        IconButton(
-          icon: Icon(
-            _copied ? Icons.check : Icons.copy,
-            color: _copied
-                ? accent
-                : (widget.isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary),
-            size: 16,
-          ),
-          onPressed: _copy,
-          tooltip: _copied ? 'Copié !' : 'Copier',
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          padding: EdgeInsets.zero,
-        ),
-      ],
-    );
-  }
-}
-
-/// Ligne d'info avec bouton copier
-class _CopyableInfo extends StatefulWidget {
-  final String value;
-  final bool isDark;
-
-  const _CopyableInfo({required this.value, required this.isDark});
-
-  @override
-  State<_CopyableInfo> createState() => _CopyableInfoState();
-}
-
-class _CopyableInfoState extends State<_CopyableInfo> {
-  bool _copied = false;
-
-  void _copy() async {
-    await Clipboard.setData(ClipboardData(text: widget.value));
-    setState(() => _copied = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => _copied = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = widget.isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: widget.isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface,
-        borderRadius: BorderRadius.circular(ChillRadius.lg),
-        border: Border.all(
-          color: widget.isDark ? ChillColorsDark.border : ChillColorsLight.border,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              widget.value,
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: widget.isDark ? ChillColorsDark.textPrimary : ChillColorsLight.textPrimary,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              _copied ? Icons.check : Icons.copy,
-              color: _copied ? accent : (widget.isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary),
-              size: 18,
-            ),
-            onPressed: _copy,
-            tooltip: _copied ? 'Copié !' : 'Copier',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Loader animé avec icône vpn_lock
-class _AnimatedLoader extends StatefulWidget {
-  const _AnimatedLoader();
-
-  @override
-  State<_AnimatedLoader> createState() => _AnimatedLoaderState();
-}
-
-class _AnimatedLoaderState extends State<_AnimatedLoader> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-
-    return Center(
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: accent.withValues(alpha: 0.3), width: 2),
-              ),
-              child: Center(
-                child: Icon(Icons.vpn_lock, color: accent, size: 36),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Message "En attente de connexion..." avec animation fade
-class _PatienceMessage extends StatefulWidget {
-  final String locale;
-  final Color accent;
-
-  const _PatienceMessage({required this.locale, required this.accent});
-
-  @override
-  State<_PatienceMessage> createState() => _PatienceMessageState();
-}
-
-class _PatienceMessageState extends State<_PatienceMessage> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _opacityAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: FadeTransition(
-        opacity: _opacityAnimation,
-        child: Text(
-          t(widget.locale, 'tailscale.login.waiting'),
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: widget.accent,
-          ),
-        ),
       ),
     );
   }

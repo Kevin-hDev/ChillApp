@@ -24,27 +24,45 @@ class OsDetector {
 
       final id = idMatch.group(1)!.replaceAll('"', '').trim();
 
-      switch (id) {
-        case 'ubuntu':
-        case 'debian':
-        case 'linuxmint':
-        case 'pop':
-          return LinuxDistro.debian;
-        case 'fedora':
-        case 'rhel':
-        case 'centos':
-        case 'rocky':
-        case 'alma':
-          return LinuxDistro.fedora;
-        case 'arch':
-        case 'manjaro':
-        case 'endeavouros':
-          return LinuxDistro.arch;
-        default:
-          return LinuxDistro.unknown;
+      final result = _matchDistro(id);
+      if (result != LinuxDistro.unknown) return result;
+
+      // Fallback : lire ID_LIKE pour les distros dérivées
+      final idLikeMatch = RegExp(r'^ID_LIKE=(.+)$', multiLine: true).firstMatch(content);
+      if (idLikeMatch != null) {
+        final parents = idLikeMatch.group(1)!.replaceAll('"', '').trim().split(RegExp(r'\s+'));
+        for (final parent in parents) {
+          final parentResult = _matchDistro(parent);
+          if (parentResult != LinuxDistro.unknown) return parentResult;
+        }
       }
+
+      return LinuxDistro.unknown;
     } catch (_) {
       return LinuxDistro.unknown;
+    }
+  }
+
+  /// Associe un identifiant de distro à un LinuxDistro connu.
+  static LinuxDistro _matchDistro(String id) {
+    switch (id) {
+      case 'ubuntu':
+      case 'debian':
+      case 'linuxmint':
+      case 'pop':
+        return LinuxDistro.debian;
+      case 'fedora':
+      case 'rhel':
+      case 'centos':
+      case 'rocky':
+      case 'alma':
+        return LinuxDistro.fedora;
+      case 'arch':
+      case 'manjaro':
+      case 'endeavouros':
+        return LinuxDistro.arch;
+      default:
+        return LinuxDistro.unknown;
     }
   }
 }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/design_tokens.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/extensions/chill_theme.dart';
+import '../../shared/widgets/num_pad.dart';
 import 'lock_provider.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
@@ -116,7 +117,8 @@ class _LockScreenState extends ConsumerState<LockScreen>
     final locale = ref.read(localeProvider);
     final lockState = ref.read(lockProvider);
 
-    if (lockState.failedAttempts >= 5) {
+    if (lockState.lockedUntil != null &&
+        DateTime.now().isBefore(lockState.lockedUntil!)) {
       setState(() {
         _error = t(locale, 'lock.tooMany');
         _pin = '';
@@ -127,8 +129,12 @@ class _LockScreenState extends ConsumerState<LockScreen>
 
     final ok = await ref.read(lockProvider.notifier).verifyPin(_pin);
     if (!ok) {
+      final updatedState = ref.read(lockProvider);
       setState(() {
-        _error = t(locale, 'lock.error');
+        _error = updatedState.lockedUntil != null &&
+                DateTime.now().isBefore(updatedState.lockedUntil!)
+            ? t(locale, 'lock.tooMany')
+            : t(locale, 'lock.error');
         _pin = '';
       });
       _shakeController.forward(from: 0);
@@ -138,11 +144,9 @@ class _LockScreenState extends ConsumerState<LockScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final locale = ref.watch(localeProvider);
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-    final borderColor = isDark ? ChillColorsDark.border : ChillColorsLight.border;
-    final surfaceColor = isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface;
+    final accent = context.chillAccent;
+    final borderColor = context.chillBorder;
 
     return Focus(
       focusNode: _focusNode,
@@ -177,7 +181,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
               Text(
                 t(locale, 'lock.enter'),
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
+                  color: context.chillTextSecondary,
                 ),
               ),
               const SizedBox(height: 32),
@@ -223,7 +227,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                     ? Text(
                         _error!,
                         style: TextStyle(
-                          color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
+                          color: context.chillRed,
                           fontSize: 14,
                         ),
                       )
@@ -231,69 +235,10 @@ class _LockScreenState extends ConsumerState<LockScreen>
               ),
               const SizedBox(height: 24),
 
-              // Pavé numérique
-              SizedBox(
-                width: 280,
-                child: Column(
-                  children: [
-                    for (final row in [
-                      ['1', '2', '3'],
-                      ['4', '5', '6'],
-                      ['7', '8', '9'],
-                      ['', '0', 'del'],
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: row.map((key) {
-                            if (key.isEmpty) {
-                              return const SizedBox(width: 72, height: 72);
-                            }
-                            if (key == 'del') {
-                              return SizedBox(
-                                width: 72,
-                                height: 72,
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: _onDelete,
-                                    borderRadius: BorderRadius.circular(36),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.backspace_outlined,
-                                        color: isDark
-                                            ? ChillColorsDark.textSecondary
-                                            : ChillColorsLight.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                            return SizedBox(
-                              width: 72,
-                              height: 72,
-                              child: Material(
-                                color: surfaceColor,
-                                shape: const CircleBorder(),
-                                clipBehavior: Clip.antiAlias,
-                                child: InkWell(
-                                  onTap: () => _onDigit(key),
-                                  child: Center(
-                                    child: Text(
-                                      key,
-                                      style: theme.textTheme.headlineSmall,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                  ],
-                ),
+              // Pave numerique
+              NumPad(
+                onDigit: _onDigit,
+                onDelete: _onDelete,
               ),
               ],
             ),
@@ -394,10 +339,8 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = isDark ? ChillColorsDark.accent : ChillColorsLight.accent;
-    final borderColor = isDark ? ChillColorsDark.border : ChillColorsLight.border;
-    final surfaceColor = isDark ? ChillColorsDark.bgSurface : ChillColorsLight.bgSurface;
+    final accent = context.chillAccent;
+    final borderColor = context.chillBorder;
 
     return Focus(
       focusNode: _focusNode,
@@ -415,7 +358,7 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
               Text(
                 widget.subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? ChillColorsDark.textSecondary : ChillColorsLight.textSecondary,
+                  color: context.chillTextSecondary,
                 ),
               ),
             ],
@@ -450,77 +393,19 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
                 child: Text(
                   _error!,
                   style: TextStyle(
-                    color: isDark ? ChillColorsDark.red : ChillColorsLight.red,
+                    color: context.chillRed,
                     fontSize: 13,
                   ),
                 ),
               ),
             const SizedBox(height: 12),
 
-            // Pavé numérique compact
-            SizedBox(
+            // Pave numerique compact
+            NumPad(
+              buttonSize: 60,
               width: 240,
-              child: Column(
-                children: [
-                  for (final row in [
-                    ['1', '2', '3'],
-                    ['4', '5', '6'],
-                    ['7', '8', '9'],
-                    ['', '0', 'del'],
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: row.map((key) {
-                          if (key.isEmpty) {
-                            return const SizedBox(width: 60, height: 60);
-                          }
-                          if (key == 'del') {
-                            return SizedBox(
-                              width: 60,
-                              height: 60,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _onDelete,
-                                  borderRadius: BorderRadius.circular(30),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.backspace_outlined,
-                                      size: 20,
-                                      color: isDark
-                                          ? ChillColorsDark.textSecondary
-                                          : ChillColorsLight.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                          return SizedBox(
-                            width: 60,
-                            height: 60,
-                            child: Material(
-                              color: surfaceColor,
-                              shape: const CircleBorder(),
-                              clipBehavior: Clip.antiAlias,
-                              child: InkWell(
-                                onTap: () => _onDigit(key),
-                                child: Center(
-                                  child: Text(
-                                    key,
-                                    style: theme.textTheme.titleLarge,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                ],
-              ),
+              onDigit: _onDigit,
+              onDelete: _onDelete,
             ),
           ],
         ),

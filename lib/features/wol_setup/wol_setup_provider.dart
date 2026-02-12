@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/command_runner.dart';
+import '../../core/network_info.dart';
 import '../../core/os_detector.dart';
-import '../ssh_setup/ssh_setup_provider.dart';
+import '../../shared/models/setup_step.dart';
 
 class WolSetupState {
   final List<SetupStep> steps;
@@ -142,24 +143,27 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     final parts = result.stdout.split('|||');
     final adapterName = parts[0].trim();
     final adapterDesc = parts.length > 1 ? parts[1].trim() : adapterName;
+    // Échapper les apostrophes pour les commandes PowerShell
+    final safeName = adapterName.replaceAll("'", "''");
+    final safeDesc = adapterDesc.replaceAll("'", "''");
     state = state.copyWith(adapterName: adapterName);
     _updateStep('findAdapter', StepStatus.success);
 
     // 2. Activer Wake on Magic Packet
     _updateStep('enableMagicPacket', StepStatus.running);
     result = await CommandRunner.runPowerShell(
-      "\$props = Get-NetAdapterAdvancedProperty -Name '$adapterName' "
+      "\$props = Get-NetAdapterAdvancedProperty -Name '$safeName' "
       "-ErrorAction SilentlyContinue | Where-Object { "
       "\$_.DisplayName -like '*Wake*Magic*' -or "
       "\$_.DisplayName -like '*WOL*Magic*' }; "
       "if (\$props) { foreach (\$p in \$props) { "
-      "Set-NetAdapterAdvancedProperty -Name '$adapterName' "
+      "Set-NetAdapterAdvancedProperty -Name '$safeName' "
       "-DisplayName \$p.DisplayName -DisplayValue 'Enabled' "
       "-ErrorAction SilentlyContinue } }",
     );
     // Vérifier que le Magic Packet est bien activé
     final magicCheck = await CommandRunner.runPowerShell(
-      "\$props = Get-NetAdapterAdvancedProperty -Name '$adapterName' "
+      "\$props = Get-NetAdapterAdvancedProperty -Name '$safeName' "
       "-ErrorAction SilentlyContinue | Where-Object { "
       "(\$_.DisplayName -like '*Wake*Magic*' -or "
       "\$_.DisplayName -like '*WOL*Magic*') -and "
@@ -177,12 +181,12 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     // 3. Autoriser le réveil par le réseau
     _updateStep('enableWake', StepStatus.running);
     result = await CommandRunner.runPowerShell(
-      "powercfg /deviceenablewake \"$adapterDesc\"",
+      "powercfg /deviceenablewake \"$safeDesc\"",
     );
     // Vérifier que l'appareil est dans la liste de réveil
     final wakeCheck = await CommandRunner.runPowerShell(
       "\$devices = powercfg /devicequery wake_armed; "
-      "if (\$devices -match [regex]::Escape('$adapterDesc')) { Write-Output 'OK' } else { exit 1 }",
+      "if (\$devices -match [regex]::Escape('$safeDesc')) { Write-Output 'OK' } else { exit 1 }",
     );
     if (!wakeCheck.success || !wakeCheck.stdout.contains('OK')) {
       _updateStep('enableWake', StepStatus.error,
@@ -216,27 +220,12 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     // 5. Récupérer l'adresse MAC + IPs
     _updateStep('showMac', StepStatus.running);
     final macResult = await CommandRunner.runPowerShell(
-      "(Get-NetAdapter -Name '$adapterName').MacAddress",
-    );
-    // IP Ethernet
-    final ethIpResult = await CommandRunner.runPowerShell(
-      "(Get-NetIPAddress -InterfaceAlias '$adapterName' "
-      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress",
-    );
-    // IP WiFi
-    final wifiIpResult = await CommandRunner.runPowerShell(
-      "\$a = Get-NetAdapter | Where-Object { "
-      "\$_.Status -eq 'Up' -and "
-      "(\$_.InterfaceDescription -like '*Wi-Fi*' -or "
-      "\$_.InterfaceDescription -like '*Wireless*') "
-      "} | Select-Object -First 1; "
-      "if (\$a) { (Get-NetIPAddress -InterfaceIndex \$a.ifIndex "
-      "-AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress }",
+      "(Get-NetAdapter -Name '$safeName').MacAddress",
     );
     state = state.copyWith(
       macAddress: macResult.stdout.isNotEmpty ? macResult.stdout : null,
-      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
-      ipWifi: wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null,
+      ipEthernet: await NetworkInfo.getEthernetIp(),
+      ipWifi: await NetworkInfo.getWifiIp(),
     );
     _updateStep('showMac', StepStatus.success);
   }
@@ -299,10 +288,16 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       throw Exception('Aucune carte Ethernet trouvée');
     }
     final ethIface = findResult.stdout.trim();
+    if (!NetworkInfo.isValidInterfaceName(ethIface)) {
+      _updateStep('findAdapter', StepStatus.error,
+          errorDetail: 'Nom d\'interface réseau invalide : contient des caractères non autorisés.');
+      throw Exception('Invalid network interface name');
+    }
     state = state.copyWith(adapterName: ethIface);
     _updateStep('findAdapter', StepStatus.success);
 
-    // 3. Écrire le fichier service temporaire (pas d'élévation)
+    // 3. Écrire les fichiers temporaires dans un dossier unique
+    final tempDir = await Directory.systemTemp.createTemp('chill-');
     final serviceContent = '[Unit]\n'
         'Description=Enable Wake-on-LAN on $ethIface\n'
         'After=network-online.target\n'
@@ -315,8 +310,15 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
         '\n'
         '[Install]\n'
         'WantedBy=multi-user.target\n';
-    final tempServiceFile = File('/tmp/wol-enable.service');
+    final tempServiceFile = File('${tempDir.path}/wol-enable.service');
     await tempServiceFile.writeAsString(serviceContent);
+
+    // SÉCURITÉ : Fenêtre TOCTOU entre écriture et exécution pkexec.
+    // Mitigé par : permissions 700 sur le dossier temp (createTemp),
+    // et chmod 700 explicite sur les fichiers.
+    // Risque résiduel : un attaquant root pourrait modifier les fichiers.
+    await Process.run('chmod', ['700', tempDir.path]);
+    await Process.run('chmod', ['600', tempServiceFile.path]);
 
     // === Toutes les commandes admin en 1 seul pkexec ===
     _updateStep('enableWol', StepStatus.running);
@@ -333,19 +335,23 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
         'if ! echo "\$WOL_LINE" | grep -q "g"; then exit 30; fi\n'
         '\n'
         '# Rendre permanent (service systemd)\n'
-        'cp /tmp/wol-enable.service /etc/systemd/system/wol-enable.service\n'
+        'cp ${tempServiceFile.path} /etc/systemd/system/wol-enable.service\n'
         'systemctl daemon-reload\n'
         'systemctl enable wol-enable.service\n'
         'if [ \$? -ne 0 ]; then exit 40; fi\n'
         '\n'
         'exit 0\n';
 
-    final tempScript = File('/tmp/chill-wol-setup.sh');
+    final tempScript = File('${tempDir.path}/setup.sh');
     await tempScript.writeAsString(script);
+    await Process.run('chmod', ['700', tempScript.path]);
 
-    final result = await CommandRunner.runElevated('bash', [tempScript.path]);
-    try { await tempScript.delete(); } catch (_) {}
-    try { await tempServiceFile.delete(); } catch (_) {}
+    CommandResult result;
+    try {
+      result = await CommandRunner.runElevated('bash', [tempScript.path]);
+    } finally {
+      try { await tempDir.delete(recursive: true); } catch (_) {}
+    }
 
     // Analyser le résultat par code de sortie
     if (result.exitCode == 126 || result.exitCode == 127) {
@@ -382,31 +388,10 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
 
     // === Récupération d'infos (pas d'élévation) ===
     _updateStep('showMac', StepStatus.running);
-    final macResult = await CommandRunner.run('cat', ['/sys/class/net/$ethIface/address']);
-    // IP Ethernet
-    final ethIpResult = await CommandRunner.run('bash', ['-c',
-      "ip -4 addr show $ethIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
-    ]);
-    // IP WiFi
-    String? ipWifi;
-    final wifiFind = await CommandRunner.run('bash', ['-c',
-      'for iface in \$(ls /sys/class/net/); do '
-      'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
-      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
-      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
-      'fi; done; exit 1',
-    ]);
-    if (wifiFind.success && wifiFind.stdout.isNotEmpty) {
-      final wifiIface = wifiFind.stdout.trim();
-      final wifiIpResult = await CommandRunner.run('bash', ['-c',
-        "ip -4 addr show $wifiIface 2>/dev/null | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | head -1",
-      ]);
-      ipWifi = wifiIpResult.stdout.isNotEmpty ? wifiIpResult.stdout : null;
-    }
     state = state.copyWith(
-      macAddress: macResult.stdout.isNotEmpty ? macResult.stdout : null,
-      ipEthernet: ethIpResult.stdout.isNotEmpty ? ethIpResult.stdout : null,
-      ipWifi: ipWifi,
+      macAddress: await NetworkInfo.getMacAddress(ethIface),
+      ipEthernet: await NetworkInfo.getEthernetIp(),
+      ipWifi: await NetworkInfo.getWifiIp(),
     );
     _updateStep('showMac', StepStatus.success);
   }
