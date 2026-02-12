@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../i18n/locale_provider.dart';
+import '../../shared/widgets/chill_card.dart';
+
+class DashboardScreen extends ConsumerWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 48),
+                Text(
+                  t(locale, 'dashboard.welcome'),
+                  style: theme.textTheme.headlineLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  t(locale, 'dashboard.description'),
+                  style: theme.textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 48),
+                Expanded(
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1.8,
+                    children: [
+                      ChillCard(
+                        icon: Icons.terminal,
+                        title: t(locale, 'dashboard.ssh.title'),
+                        description: t(locale, 'dashboard.ssh.desc'),
+                        onTap: () => context.go('/ssh'),
+                      ),
+                      ChillCard(
+                        icon: Icons.power_settings_new,
+                        title: t(locale, 'dashboard.wol.title'),
+                        description: t(locale, 'dashboard.wol.desc'),
+                        onTap: () => context.go('/wol'),
+                      ),
+                      ChillCard(
+                        icon: Icons.info_outline,
+                        title: t(locale, 'dashboard.info.title'),
+                        description: t(locale, 'dashboard.info.desc'),
+                        onTap: () => context.go('/info'),
+                      ),
+                      ChillCard(
+                        icon: Icons.settings,
+                        title: t(locale, 'nav.settings'),
+                        description: '',
+                        onTap: () => context.go('/settings'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
