@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../i18n/locale_provider.dart';
+import '../../shared/widgets/chill_background.dart';
 import '../../shared/widgets/chill_card.dart';
 import '../../shared/widgets/status_badge.dart';
 import 'dashboard_provider.dart';
@@ -16,7 +17,8 @@ class DashboardScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: LayoutBuilder(
+      body: ChillBackground(
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final padding = width < 600 ? 16.0 : width < 900 ? 24.0 : 32.0;
@@ -24,8 +26,10 @@ class DashboardScreen extends ConsumerWidget {
           final topSpacing = width < 600 ? 24.0 : 48.0;
 
           // Calculer la hauteur disponible pour la grille
+          // +1 pour la ligne séparatrice
           final height = constraints.maxHeight;
-          final headerHeight = topSpacing + 40 + 8 + 20 + topSpacing; // titre + desc + espacement
+          final dividerHeight = 1.0 + 8.0; // divider + spacing après
+          final headerHeight = topSpacing + 40 + 8 + 20 + 16 + dividerHeight + 8;
           final gridHeight = height - headerHeight - padding * 2;
           final rows = (6 / columns).ceil();
           final totalSpacing = (rows - 1) * 16.0;
@@ -51,7 +55,10 @@ class DashboardScreen extends ConsumerWidget {
                     t(locale, 'dashboard.description'),
                     style: theme.textTheme.bodyLarge,
                   ),
-                  SizedBox(height: topSpacing),
+                  const SizedBox(height: 16),
+                  // Ligne séparatrice fine (comme le site)
+                  const ChillDivider(),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: GridView.count(
                       crossAxisCount: columns,
@@ -135,6 +142,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
           );
         },
+      ),
       ),
     );
   }
