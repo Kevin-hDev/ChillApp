@@ -4,6 +4,20 @@ const Map<String, Map<String, String>> translations = {
     'app.title': 'Chill',
     'app.subtitle': 'Hub de configuration',
 
+    // Onboarding
+    'onboarding.continue': 'Continuer',
+    'onboarding.start': 'C\'est parti !',
+    'onboarding.welcome.title': 'Bienvenue sur ChillApp',
+    'onboarding.welcome.desc': 'Configure ton PC en quelques clics, sans toucher au terminal. SSH, Wake-on-LAN, Tailscale — tout est regroupé ici.',
+    'onboarding.ssh.title': 'SSH sans prise de tête',
+    'onboarding.ssh.desc': 'Active le serveur SSH de ton PC automatiquement. Connecte-toi depuis n\'importe quel appareil en toute sécurité.',
+    'onboarding.wol.title': 'Allume ton PC avec ton téléphone',
+    'onboarding.wol.desc': 'Configure le Wake-on-LAN pour allumer ton PC depuis ton téléphone quand tu es chez toi, connecté au même WiFi.',
+    'onboarding.tailscale.title': 'Accès depuis n\'importe où',
+    'onboarding.tailscale.desc': 'Tailscale crée un tunnel sécurisé entre tes appareils. Accède à ton PC depuis le travail, un café ou en 4G — sans ouvrir de ports.',
+    'onboarding.ready.title': 'Tout est prêt !',
+    'onboarding.ready.desc': 'Choisis ce que tu veux configurer et laisse-toi guider. ChillApp s\'occupe de tout.',
+
     // Navigation
     'nav.dashboard': 'Accueil',
     'nav.ssh': 'Configuration SSH',
@@ -173,6 +187,20 @@ const Map<String, Map<String, String>> translations = {
     // General
     'app.title': 'Chill',
     'app.subtitle': 'Configuration Hub',
+
+    // Onboarding
+    'onboarding.continue': 'Continue',
+    'onboarding.start': 'Let\'s go!',
+    'onboarding.welcome.title': 'Welcome to ChillApp',
+    'onboarding.welcome.desc': 'Set up your PC in a few clicks, no terminal needed. SSH, Wake-on-LAN, Tailscale — all in one place.',
+    'onboarding.ssh.title': 'SSH made simple',
+    'onboarding.ssh.desc': 'Activate your PC\'s SSH server automatically. Connect from any device securely.',
+    'onboarding.wol.title': 'Turn on your PC with your phone',
+    'onboarding.wol.desc': 'Set up Wake-on-LAN to power on your PC from your phone when you\'re home, connected to the same WiFi.',
+    'onboarding.tailscale.title': 'Access from anywhere',
+    'onboarding.tailscale.desc': 'Tailscale creates a secure tunnel between your devices. Access your PC from work, a cafe or on mobile data — no port forwarding needed.',
+    'onboarding.ready.title': 'All set!',
+    'onboarding.ready.desc': 'Pick what you want to configure and follow the steps. ChillApp handles everything.',
 
     // Navigation
     'nav.dashboard': 'Home',

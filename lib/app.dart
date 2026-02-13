@@ -5,6 +5,8 @@ import 'config/router.dart';
 import 'config/theme.dart';
 import 'features/lock/lock_provider.dart';
 import 'features/lock/lock_screen.dart';
+import 'features/onboarding/onboarding_provider.dart';
+import 'features/onboarding/onboarding_screen.dart';
 import 'features/settings/settings_provider.dart';
 
 class ChillApp extends ConsumerWidget {
@@ -14,6 +16,7 @@ class ChillApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = ref.watch(themeModeProvider);
     final lockState = ref.watch(lockProvider);
+    final onboardingDone = ref.watch(onboardingProvider);
     final themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     final borderColor =
         isDark ? ChillColorsDark.border : ChillColorsLight.border;
@@ -31,6 +34,21 @@ class ChillApp extends ConsumerWidget {
           home: const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           ),
+        ),
+      );
+    }
+
+    // Onboarding au premier lancement
+    if (!onboardingDone) {
+      return _withWindowBorder(
+        borderColor,
+        MaterialApp(
+          title: 'Chill',
+          debugShowCheckedModeBanner: false,
+          theme: chillLightTheme(),
+          darkTheme: chillDarkTheme(),
+          themeMode: themeMode,
+          home: const OnboardingScreen(),
         ),
       );
     }

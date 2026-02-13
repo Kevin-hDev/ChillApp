@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chill_app/app.dart';
 import 'package:chill_app/features/dashboard/dashboard_provider.dart';
 import 'package:chill_app/features/lock/lock_provider.dart' as lock;
+import 'package:chill_app/features/onboarding/onboarding_provider.dart';
 import 'package:chill_app/features/tailscale/tailscale_provider.dart';
 
 /// Notifier de test : pas de commandes système (évite les timers pendants)
@@ -30,6 +31,14 @@ class _TestLockNotifier extends lock.LockNotifier {
   }
 }
 
+/// Notifier de test : onboarding deja vu
+class _TestOnboardingNotifier extends OnboardingNotifier {
+  @override
+  bool build() {
+    return true; // deja vu
+  }
+}
+
 void main() {
   testWidgets('App loads dashboard', (WidgetTester tester) async {
     // Surface plus grande pour éviter les overflow en test
@@ -46,6 +55,7 @@ void main() {
           dashboardProvider.overrideWith(() => _TestDashboardNotifier()),
           tailscaleProvider.overrideWith(() => _TestTailscaleNotifier()),
           lock.lockProvider.overrideWith(() => _TestLockNotifier()),
+          onboardingProvider.overrideWith(() => _TestOnboardingNotifier()),
         ],
         child: const ChillApp(),
       ),
