@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -44,10 +46,12 @@ type Event struct {
 }
 
 var (
-	srv   *tsnet.Server
-	lc    *tailscale.LocalClient
-	mu    sync.Mutex
-	outMu sync.Mutex
+	srv         *tsnet.Server
+	lc          *tailscale.LocalClient
+	mu          sync.Mutex
+	outMu       sync.Mutex
+	fwdListener net.Listener
+	fwdMu       sync.Mutex
 )
 
 func sendEvent(evt Event) {
@@ -136,6 +140,76 @@ func buildStatusEvent(eventName string) Event {
 	evt.Peers = peers
 
 	return evt
+}
+
+// startForwarding écoute le port 22 sur le réseau Tailscale
+// et redirige chaque connexion vers localhost:22 (serveur SSH local).
+func startForwarding() {
+	fwdMu.Lock()
+	defer fwdMu.Unlock()
+
+	if fwdListener != nil {
+		return // déjà actif
+	}
+	if srv == nil {
+		return
+	}
+
+	ln, err := srv.Listen("tcp", ":22")
+	if err != nil {
+		log.Printf("Échec démarrage forwarding SSH: %v", err)
+		return
+	}
+
+	fwdListener = ln
+	log.Println("SSH forwarding actif: Tailscale:22 → localhost:22")
+
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				log.Printf("Forwarding listener fermé: %v", err)
+				return
+			}
+			go forwardConnection(conn)
+		}
+	}()
+}
+
+// forwardConnection relie une connexion Tailscale entrante à localhost:22.
+func forwardConnection(tsConn net.Conn) {
+	defer tsConn.Close()
+
+	localConn, err := net.DialTimeout("tcp", "127.0.0.1:22", 5*time.Second)
+	if err != nil {
+		log.Printf("Connexion SSH locale échouée: %v", err)
+		return
+	}
+	defer localConn.Close()
+
+	done := make(chan struct{}, 2)
+	go func() {
+		io.Copy(localConn, tsConn)
+		done <- struct{}{}
+	}()
+	go func() {
+		io.Copy(tsConn, localConn)
+		done <- struct{}{}
+	}()
+
+	<-done
+}
+
+// stopForwarding arrête l'écoute sur le port 22 Tailscale.
+func stopForwarding() {
+	fwdMu.Lock()
+	defer fwdMu.Unlock()
+
+	if fwdListener != nil {
+		fwdListener.Close()
+		fwdListener = nil
+		log.Println("SSH forwarding arrêté")
+	}
 }
 
 func main() {
@@ -233,6 +307,7 @@ func handleStart() {
 		if status.BackendState == "Running" {
 			evt := buildStatusEvent("started")
 			sendEvent(evt)
+			go startForwarding()
 			return
 		}
 
@@ -294,6 +369,7 @@ func handleLogin() {
 			if status.BackendState == "Running" {
 				evt := buildStatusEvent("connected")
 				sendEvent(evt)
+				go startForwarding()
 				return
 			}
 		}
@@ -326,6 +402,8 @@ func handleLogout() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	stopForwarding()
+
 	if err := lc.Logout(ctx); err != nil {
 		sendEvent(Event{EventType: "error", Message: "Logout failed: " + err.Error()})
 		return
@@ -334,6 +412,8 @@ func handleLogout() {
 }
 
 func handleShutdown() {
+	stopForwarding()
+
 	mu.Lock()
 	defer mu.Unlock()
 
