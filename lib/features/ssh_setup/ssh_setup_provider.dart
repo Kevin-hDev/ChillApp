@@ -193,6 +193,17 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     }
     _updateStep('firewall', StepStatus.success);
 
+    // 5b. Désactiver le login root SSH (sécurité)
+    await CommandRunner.runPowerShell(
+      r"$configPath = '$env:ProgramData\ssh\sshd_config'; "
+      r"if (Test-Path $configPath) { "
+      r"$content = Get-Content $configPath; "
+      r"if ($content -match 'PermitRootLogin') { "
+      r"$content = $content -replace '#?PermitRootLogin.*', 'PermitRootLogin no'; "
+      r"} else { $content += 'PermitRootLogin no' }; "
+      r"Set-Content $configPath $content; Restart-Service sshd -ErrorAction SilentlyContinue }",
+    );
+
     // 6. Vérifier que SSH fonctionne
     _updateStep('verify', StepStatus.running);
     result = await CommandRunner.runPowerShell(
@@ -257,6 +268,16 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
         '  systemctl is-active --quiet firewalld 2>/dev/null && '
         'firewall-cmd --permanent --add-service=ssh 2>/dev/null && '
         'firewall-cmd --reload 2>/dev/null\n'
+        'fi\n'
+        '\n'
+        '# 4. Désactiver le login root SSH (sécurité)\n'
+        'if [ -f /etc/ssh/sshd_config ]; then\n'
+        '  if grep -q "^#*PermitRootLogin" /etc/ssh/sshd_config; then\n'
+        '    sed -i \'s/^#*PermitRootLogin.*/PermitRootLogin no/\' /etc/ssh/sshd_config\n'
+        '  else\n'
+        '    echo "PermitRootLogin no" >> /etc/ssh/sshd_config\n'
+        '  fi\n'
+        '  systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null\n'
         'fi\n'
         '\n'
         'exit 0\n';
@@ -336,6 +357,14 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       throw Exception('Échec activation accès à distance');
     }
     _updateStep('enableRemoteLogin', StepStatus.success);
+
+    // 1b. Désactiver le login root SSH (sécurité)
+    await CommandRunner.runElevated('bash', [
+      '-c',
+      'if grep -q "^#*PermitRootLogin" /etc/ssh/sshd_config; then '
+          'sed -i "" "s/^#*PermitRootLogin.*/PermitRootLogin no/" /etc/ssh/sshd_config; '
+          'else echo "PermitRootLogin no" >> /etc/ssh/sshd_config; fi',
+    ]);
 
     // 2. Vérifier
     _updateStep('verify', StepStatus.running);

@@ -27,7 +27,8 @@ class ConnectionInfoScreen extends ConsumerWidget {
           final width = constraints.maxWidth;
           final padding = responsivePadding(width);
 
-          return Center(
+          return SingleChildScrollView(
+            child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
               child: Padding(
@@ -77,26 +78,26 @@ class ConnectionInfoScreen extends ConsumerWidget {
                 const SizedBox(height: 32),
 
                 // Contenu
-                Expanded(
-                  child: info.isLoading
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(color: context.chillAccent),
-                              const SizedBox(height: 16),
-                              Text(
-                                '...',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: context.chillTextSecondary,
-                                ),
-                              ),
-                            ],
+                if (info.isLoading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: context.chillAccent),
+                          const SizedBox(height: 16),
+                          Text(
+                            '...',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: context.chillTextSecondary,
+                            ),
                           ),
-                        )
-                      : SingleChildScrollView(
-                          child: Column(
-                            children: [
+                        ],
+                      ),
+                    ),
+                  ),
+                if (!info.isLoading) ...[
                               // Erreur
                               if (info.error != null) ...[
                                 ErrorBanner(message: info.error!),
@@ -176,13 +177,11 @@ class ConnectionInfoScreen extends ConsumerWidget {
                               ),
 
                               const SizedBox(height: 32),
-                            ],
-                          ),
-                        ),
-                ),
+                ],
               ],
             ),
           ),
+        ),
         ),
       );
     },

@@ -30,7 +30,8 @@ class TailscaleScreen extends ConsumerWidget {
           final width = constraints.maxWidth;
           final padding = responsivePadding(width);
 
-          return Center(
+          return SingleChildScrollView(
+            child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
               child: Padding(
@@ -69,14 +70,11 @@ class TailscaleScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     // Contenu selon l'état
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: _buildContent(context, ref, tsState, locale, theme),
-                      ),
-                    ),
+                    _buildContent(context, ref, tsState, locale, theme),
                   ],
                 ),
               ),
+            ),
             ),
           );
         },
