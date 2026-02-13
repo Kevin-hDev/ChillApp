@@ -26,7 +26,8 @@ class SettingsScreen extends ConsumerWidget {
           final width = constraints.maxWidth;
           final padding = responsivePadding(width);
 
-          return Center(
+          return SingleChildScrollView(
+            child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
               child: Padding(
@@ -50,12 +51,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 32),
 
-                    // Contenu scrollable
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                    // Contenu
                 // Thème
                 Card(
                   child: ListTile(
@@ -151,13 +147,10 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
+            ),
             ),
           );
         },

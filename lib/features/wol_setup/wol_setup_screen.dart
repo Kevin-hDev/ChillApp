@@ -39,7 +39,8 @@ class WolSetupScreen extends ConsumerWidget {
           final width = constraints.maxWidth;
           final padding = responsivePadding(width);
 
-          return Center(
+          return SingleChildScrollView(
+            child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
               child: Padding(
@@ -71,12 +72,7 @@ class WolSetupScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // Contenu scrollable
-                    Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                    // Contenu
                         // Carte explicative
                         ExplanationCard(
                           titleKey: 'wol.explanation.title',
@@ -177,13 +173,10 @@ class WolSetupScreen extends ConsumerWidget {
                         ],
 
                         const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
+        ),
         ),
       );
     },

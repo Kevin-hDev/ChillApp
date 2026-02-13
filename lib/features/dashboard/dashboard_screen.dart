@@ -122,19 +122,11 @@ class DashboardScreen extends ConsumerWidget {
                         description: '',
                         onTap: () => context.go('/settings'),
                       ),
-                      // Mascotte
-                      Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Image.asset(
-                              'assets/images/mascot.png',
-                              fit: BoxFit.contain,
-                              semanticLabel: 'Mascotte Chill',
-                            ),
-                          ),
-                        ),
+                      ChillCard(
+                        icon: Icons.shield_outlined,
+                        title: t(locale, 'dashboard.security.title'),
+                        description: t(locale, 'dashboard.security.desc'),
+                        onTap: () => context.go('/security'),
                       ),
                       ],
                     ),

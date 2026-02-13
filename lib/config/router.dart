@@ -5,6 +5,7 @@ import '../features/ssh_setup/ssh_setup_screen.dart';
 import '../features/wol_setup/wol_setup_screen.dart';
 import '../features/connection_info/connection_info_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/security/security_screen.dart';
 import '../features/tailscale/tailscale_screen.dart';
 
 /// SECURITE : La protection PIN est geree dans app.dart via un swap
@@ -60,6 +61,10 @@ final router = GoRouter(
     GoRoute(
       path: '/tailscale',
       builder: (context, state) => const TailscaleScreen(),
+    ),
+    GoRoute(
+      path: '/security',
+      builder: (context, state) => const SecurityScreen(),
     ),
   ],
 );
