@@ -80,6 +80,7 @@ class DashboardNotifier extends Notifier<DashboardState> {
     try {
       switch (os) {
         case SupportedOS.windows:
+          // Utilise RegistryKeyword/RegistryValue pour être indépendant de la langue Windows
           final result = await CommandRunner.runPowerShell(
             "\$a = Get-NetAdapter | Where-Object { "
             "\$_.Status -eq 'Up' -and "
@@ -90,7 +91,7 @@ class DashboardNotifier extends Notifier<DashboardState> {
             "} | Select-Object -First 1; "
             "if (\$a) { "
             "\$p = Get-NetAdapterAdvancedProperty -Name \$a.Name -ErrorAction SilentlyContinue "
-            "| Where-Object { \$_.DisplayName -like '*Wake*Magic*' -and \$_.DisplayValue -eq 'Enabled' }; "
+            "| Where-Object { \$_.RegistryKeyword -eq '*WakeOnMagicPacket' -and \$_.RegistryValue -contains '1' }; "
             "if (\$p) { Write-Output 'OK' } }",
           );
           return result.stdout.contains('OK');

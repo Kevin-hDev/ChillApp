@@ -80,9 +80,11 @@ class AutostartNotifier extends Notifier<bool?> {
     final exePath = Platform.resolvedExecutable;
     switch (OsDetector.currentOS) {
       case SupportedOS.windows:
+        // Single quotes PS = littéral, pas d'interprétation des backslashes
+        final safePath = exePath.replaceAll("'", "''");
         await CommandRunner.runPowerShell(
-          'New-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" '
-          '-Name "Chill" -Value "\\"$exePath\\"" -PropertyType String -Force',
+          "New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' "
+          "-Name 'Chill' -Value '\"$safePath\"' -PropertyType String -Force",
         );
         break;
       case SupportedOS.linux:

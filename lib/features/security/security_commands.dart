@@ -127,47 +127,72 @@ class SecurityCommands {
   }
 
   // --- Audit des connexions ---
+  // Utilise le GUID au lieu du nom localisé ("Logon" en EN, "Ouvrir la session" en FR)
+  static const _auditLogonGuid = '{0CCE9215-69AE-11D9-BED3-505054503030}';
+
   static Future<bool?> checkWindowsAudit() async {
+    // La comparaison de texte se fait DANS PowerShell pour éviter les
+    // problèmes d'encodage des accents (é, è) entre PowerShell et Dart.
+    // On ne sort que du ASCII simple : TRUE, FALSE ou ERROR.
     final result = await CommandRunner.runPowerShell(
-      'auditpol /get /subcategory:"Logon"',
+      "\$out = auditpol /get /subcategory:\"$_auditLogonGuid\" 2>&1 | Out-String; "
+      "if (\$LASTEXITCODE -ne 0) { Write-Output 'ERROR' } "
+      "elseif (\$out -match 'Success.*Failure|Succ.*chec') { Write-Output 'TRUE' } "
+      "else { Write-Output 'FALSE' }",
     );
     if (!result.success) return null;
-    return result.stdout.contains('Success') && result.stdout.contains('Failure');
+    final val = result.stdout.trim();
+    if (val == 'ERROR') return null;
+    return val == 'TRUE';
   }
 
   static Future<bool> enableWindowsAudit() async {
     final result = await CommandRunner.runPowerShell(
-      'auditpol /set /subcategory:"Logon" /success:enable /failure:enable',
+      'auditpol /set /subcategory:"$_auditLogonGuid" /success:enable /failure:enable',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsAudit() async {
     final result = await CommandRunner.runPowerShell(
-      'auditpol /set /subcategory:"Logon" /success:disable /failure:disable',
+      'auditpol /set /subcategory:"$_auditLogonGuid" /success:disable /failure:disable',
     );
     return result.success;
   }
 
   // --- Mises à jour auto ---
+  // Vérifie les deux chemins possibles : Group Policy (prioritaire) puis standard
   static Future<bool?> checkWindowsUpdates() async {
     final result = await CommandRunner.runPowerShell(
-      'Get-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update" -Name "AUOptions" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty AUOptions',
+      "\$gp = Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' "
+      "-Name 'AUOptions' -ErrorAction SilentlyContinue; "
+      "\$std = Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update' "
+      "-Name 'AUOptions' -ErrorAction SilentlyContinue; "
+      "if (\$gp -and \$gp.AUOptions -ne \$null) { Write-Output \$gp.AUOptions } "
+      "elseif (\$std -and \$std.AUOptions -ne \$null) { Write-Output \$std.AUOptions } "
+      "else { Write-Output 'DEFAULT' }",
     );
     if (!result.success) return null;
-    return result.stdout.trim() == '4'; // 4 = auto install
+    final val = result.stdout.trim();
+    // DEFAULT = pas de config explicite = Windows auto-update par défaut
+    // 4 = téléchargement et installation automatiques
+    return val == 'DEFAULT' || val == '4';
   }
 
   static Future<bool> enableWindowsUpdates() async {
     final result = await CommandRunner.runPowerShell(
-      'Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update" -Name "AUOptions" -Value 4',
+      "New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Force -ErrorAction SilentlyContinue | Out-Null; "
+      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'AUOptions' -Value 4 -Type DWord; "
+      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Type DWord",
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsUpdates() async {
     final result = await CommandRunner.runPowerShell(
-      'Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update" -Name "AUOptions" -Value 2',
+      "New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Force -ErrorAction SilentlyContinue | Out-Null; "
+      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'AUOptions' -Value 2 -Type DWord; "
+      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Type DWord",
     );
     return result.success;
   }
@@ -840,8 +865,9 @@ class SecurityCommands {
     });
 
     // 2. Mises à jour (dernière date)
+    // Force le format ISO yyyy-MM-dd pour éviter les dates localisées (FR: "samedi 14 février...")
     final updates = await CommandRunner.runPowerShell(
-      'Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1 -ExpandProperty InstalledOn',
+      "(Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1).InstalledOn.ToString('yyyy-MM-dd')",
     );
     if (updates.success && updates.stdout.isNotEmpty) {
       try {

@@ -152,25 +152,26 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     _updateStep('findAdapter', StepStatus.success);
 
     // 2. Activer Wake on Magic Packet
+    // Utilise RegistryKeyword/RegistryValue au lieu de DisplayName/DisplayValue
+    // pour être indépendant de la langue de Windows (FR: "Activé(e)" vs EN: "Enabled")
     _updateStep('enableMagicPacket', StepStatus.running);
     result = await CommandRunner.runPowerShell(
       "\$props = Get-NetAdapterAdvancedProperty -Name '$safeName' "
       "-ErrorAction SilentlyContinue | Where-Object { "
-      "\$_.DisplayName -like '*Wake*Magic*' -or "
-      "\$_.DisplayName -like '*WOL*Magic*' }; "
+      "\$_.RegistryKeyword -like '*WakeOnMagicPacket*' }; "
       "if (\$props) { foreach (\$p in \$props) { "
       "Set-NetAdapterAdvancedProperty -Name '$safeName' "
-      "-DisplayName \$p.DisplayName -DisplayValue 'Enabled' "
+      "-RegistryKeyword \$(\$p.RegistryKeyword) "
+      "-RegistryValue '1' "
       "-ErrorAction SilentlyContinue } }",
     );
     // Vérifier que le Magic Packet est bien activé
     final magicCheck = await CommandRunner.runPowerShell(
-      "\$props = Get-NetAdapterAdvancedProperty -Name '$safeName' "
+      "\$prop = Get-NetAdapterAdvancedProperty -Name '$safeName' "
       "-ErrorAction SilentlyContinue | Where-Object { "
-      "(\$_.DisplayName -like '*Wake*Magic*' -or "
-      "\$_.DisplayName -like '*WOL*Magic*') -and "
-      "\$_.DisplayValue -eq 'Enabled' }; "
-      "if (\$props) { Write-Output 'OK' } else { exit 1 }",
+      "\$_.RegistryKeyword -eq '*WakeOnMagicPacket' -and "
+      "\$_.RegistryValue -contains '1' }; "
+      "if (\$prop) { Write-Output 'OK' } else { exit 1 }",
     );
     if (!magicCheck.success || !magicCheck.stdout.contains('OK')) {
       _updateStep('enableMagicPacket', StepStatus.error,

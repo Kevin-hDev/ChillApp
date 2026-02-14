@@ -108,13 +108,24 @@ class NetworkInfo {
     return null;
   }
 
-  /// Recupere le nom d'utilisateur.
+  /// Recupere le nom d'utilisateur SSH (celui à utiliser pour se connecter).
   static Future<String?> getUsername() async {
     if (Platform.isWindows) {
       final result = await CommandRunner.runPowerShell("\$env:USERNAME");
       return result.stdout.isNotEmpty ? result.stdout : null;
     } else {
       final result = await CommandRunner.run('whoami', []);
+      return result.stdout.isNotEmpty ? result.stdout : null;
+    }
+  }
+
+  /// Recupere le nom de la machine.
+  static Future<String?> getHostname() async {
+    if (Platform.isWindows) {
+      final result = await CommandRunner.runPowerShell("\$env:COMPUTERNAME");
+      return result.stdout.isNotEmpty ? result.stdout : null;
+    } else {
+      final result = await CommandRunner.run('hostname', []);
       return result.stdout.isNotEmpty ? result.stdout : null;
     }
   }

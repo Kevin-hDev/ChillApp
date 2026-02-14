@@ -145,13 +145,24 @@ class ConnectionInfoScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 20),
 
-                                    // Username
+                                    // Nom de la machine
                                     _InfoRow(
-                                      icon: Icons.person,
-                                      label: t(locale, 'info.username'),
+                                      icon: Icons.computer,
+                                      label: t(locale, 'info.hostname'),
+                                      value: info.hostname,
+                                      notFoundLabel: t(locale, 'info.notFound'),
+                                      locale: locale,
+                                    ),
+                                    const SizedBox(height: 20),
+
+                                    // Utilisateur SSH
+                                    _InfoRow(
+                                      icon: Icons.terminal,
+                                      label: t(locale, 'info.sshUser'),
                                       value: info.username,
                                       notFoundLabel: t(locale, 'info.notFound'),
                                       locale: locale,
+                                      hint: t(locale, 'info.sshUserHint'),
                                     ),
 
                                     // Adapter (si trouvé)
@@ -198,6 +209,7 @@ class _InfoRow extends StatefulWidget {
   final String? value;
   final String notFoundLabel;
   final String locale;
+  final String? hint;
 
   const _InfoRow({
     required this.icon,
@@ -205,6 +217,7 @@ class _InfoRow extends StatefulWidget {
     required this.value,
     required this.notFoundLabel,
     required this.locale,
+    this.hint,
   });
 
   @override
@@ -293,6 +306,16 @@ class _InfoRowState extends State<_InfoRow> {
             ],
           ),
         ),
+        if (widget.hint != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            widget.hint!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: context.chillAccent,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
       ],
     );
   }

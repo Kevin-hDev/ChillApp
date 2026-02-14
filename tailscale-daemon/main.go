@@ -178,26 +178,36 @@ func startForwarding() {
 
 // forwardConnection relie une connexion Tailscale entrante à localhost:22.
 func forwardConnection(tsConn net.Conn) {
-	defer tsConn.Close()
-
 	localConn, err := net.DialTimeout("tcp", "127.0.0.1:22", 5*time.Second)
 	if err != nil {
 		log.Printf("Connexion SSH locale échouée: %v", err)
+		tsConn.Close()
 		return
 	}
-	defer localConn.Close()
 
-	done := make(chan struct{}, 2)
+	// Désactiver Nagle pour envoyer les données immédiatement
+	if tc, ok := localConn.(*net.TCPConn); ok {
+		tc.SetNoDelay(true)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Téléphone → serveur SSH
 	go func() {
+		defer wg.Done()
 		io.Copy(localConn, tsConn)
-		done <- struct{}{}
-	}()
-	go func() {
-		io.Copy(tsConn, localConn)
-		done <- struct{}{}
 	}()
 
-	<-done
+	// Serveur SSH → téléphone
+	go func() {
+		defer wg.Done()
+		io.Copy(tsConn, localConn)
+	}()
+
+	wg.Wait()
+	localConn.Close()
+	tsConn.Close()
 }
 
 // stopForwarding arrête l'écoute sur le port 22 Tailscale.

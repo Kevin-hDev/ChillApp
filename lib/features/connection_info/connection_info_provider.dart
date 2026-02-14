@@ -7,6 +7,7 @@ class ConnectionInfoState {
   final String? ipEthernet;
   final String? ipWifi;
   final String? macAddress;
+  final String? hostname;
   final String? username;
   final String? adapterName;
   final bool isLoading;
@@ -16,6 +17,7 @@ class ConnectionInfoState {
     this.ipEthernet,
     this.ipWifi,
     this.macAddress,
+    this.hostname,
     this.username,
     this.adapterName,
     this.isLoading = false,
@@ -26,6 +28,7 @@ class ConnectionInfoState {
     String? ipEthernet,
     String? ipWifi,
     String? macAddress,
+    String? hostname,
     String? username,
     String? adapterName,
     bool? isLoading,
@@ -35,6 +38,7 @@ class ConnectionInfoState {
       ipEthernet: ipEthernet ?? this.ipEthernet,
       ipWifi: ipWifi ?? this.ipWifi,
       macAddress: macAddress ?? this.macAddress,
+      hostname: hostname ?? this.hostname,
       username: username ?? this.username,
       adapterName: adapterName ?? this.adapterName,
       isLoading: isLoading ?? this.isLoading,
@@ -61,6 +65,7 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
     try {
       final ipEthernet = await NetworkInfo.getEthernetIp();
       final ipWifi = await NetworkInfo.getWifiIp();
+      final hostname = await NetworkInfo.getHostname();
       final username = await NetworkInfo.getUsername();
 
       // MAC + adapter name (Linux seulement via NetworkInfo, Windows via PowerShell)
@@ -94,6 +99,7 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
         ipEthernet: ipEthernet,
         ipWifi: ipWifi,
         macAddress: macAddress,
+        hostname: hostname,
         username: username,
         adapterName: adapterName,
         isLoading: false,
