@@ -236,7 +236,7 @@ class TailscaleScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
 
-        // Liste des peers
+        // Liste des peers classés par catégorie
         if (tsState.peers.isEmpty)
           Text(
             t(locale, 'tailscale.connected.noPeers'),
@@ -245,19 +245,7 @@ class TailscaleScreen extends ConsumerWidget {
             ),
           )
         else
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: context.chillBgElevated,
-              borderRadius: BorderRadius.circular(ChillRadius.xl),
-              border: Border.all(color: context.chillBorder),
-            ),
-            child: Column(
-              children: tsState.peers.map((peer) {
-                return _PeerTile(peer: peer);
-              }).toList(),
-            ),
-          ),
+          ..._buildCategorizedPeers(context, tsState.peers, locale, theme),
 
         const SizedBox(height: 24),
 
@@ -276,6 +264,84 @@ class TailscaleScreen extends ConsumerWidget {
         const SizedBox(height: 32),
       ],
     );
+  }
+
+  static const _mobileOsList = {'android', 'ios'};
+
+  static bool _isMobile(TailscalePeer peer) =>
+      _mobileOsList.contains(peer.os.toLowerCase());
+
+  /// Sépare les peers en Ordinateurs et Mobiles, chacun dans sa propre section
+  List<Widget> _buildCategorizedPeers(
+    BuildContext context,
+    List<TailscalePeer> peers,
+    String locale,
+    ThemeData theme,
+  ) {
+    final pcPeers = peers.where((p) => !_isMobile(p)).toList();
+    final mobilePeers = peers.where((p) => _isMobile(p)).toList();
+    final widgets = <Widget>[];
+
+    if (pcPeers.isNotEmpty) {
+      widgets.addAll([
+        Row(
+          children: [
+            Icon(Icons.computer, size: 18, color: context.chillTextSecondary),
+            const SizedBox(width: 8),
+            Text(
+              '${t(locale, 'tailscale.connected.peersPC')} (${pcPeers.length})',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: context.chillTextSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: context.chillBgElevated,
+            borderRadius: BorderRadius.circular(ChillRadius.xl),
+            border: Border.all(color: context.chillBorder),
+          ),
+          child: Column(
+            children: pcPeers.map((peer) => _PeerTile(peer: peer, locale: locale)).toList(),
+          ),
+        ),
+      ]);
+    }
+
+    if (mobilePeers.isNotEmpty) {
+      if (pcPeers.isNotEmpty) widgets.add(const SizedBox(height: 20));
+      widgets.addAll([
+        Row(
+          children: [
+            Icon(Icons.phone_android, size: 18, color: context.chillTextSecondary),
+            const SizedBox(width: 8),
+            Text(
+              '${t(locale, 'tailscale.connected.peersMobile')} (${mobilePeers.length})',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: context.chillTextSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: context.chillBgElevated,
+            borderRadius: BorderRadius.circular(ChillRadius.xl),
+            border: Border.all(color: context.chillBorder),
+          ),
+          child: Column(
+            children: mobilePeers.map((peer) => _PeerTile(peer: peer, locale: locale)).toList(),
+          ),
+        ),
+      ]);
+    }
+
+    return widgets;
   }
 
   Widget _buildError(
@@ -385,13 +451,13 @@ class _SelfInfoCard extends StatelessWidget {
 /// Tuile d'un peer Tailscale
 class _PeerTile extends StatelessWidget {
   final TailscalePeer peer;
+  final String locale;
 
-  const _PeerTile({required this.peer});
+  const _PeerTile({required this.peer, this.locale = 'fr'});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final locale = 'fr'; // Default locale for peer tiles
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

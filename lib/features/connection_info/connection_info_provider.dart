@@ -51,6 +51,9 @@ final connectionInfoProvider =
     NotifierProvider<ConnectionInfoNotifier, ConnectionInfoState>(ConnectionInfoNotifier.new);
 
 class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
+  DateTime? _lastFetch;
+  static const _ttl = Duration(minutes: 5);
+
   @override
   ConnectionInfoState build() {
     // Auto-fetch dès que le provider est lu
@@ -58,8 +61,11 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
     return const ConnectionInfoState(isLoading: true);
   }
 
-  /// Récupère toutes les infos de connexion
-  Future<void> fetchAll() async {
+  /// Récupère toutes les infos de connexion (cache TTL 5 min)
+  Future<void> fetchAll({bool force = false}) async {
+    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!) < _ttl) {
+      return;
+    }
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -95,6 +101,7 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
         }
       }
 
+      _lastFetch = DateTime.now();
       state = state.copyWith(
         ipEthernet: ipEthernet,
         ipWifi: ipWifi,

@@ -5,24 +5,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/command_runner.dart';
 import '../../core/os_detector.dart';
 
+/// SharedPreferences pré-chargé dans main.dart (évite le flash de thème)
+final sharedPrefsProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('sharedPrefsProvider must be overridden in main()');
+});
+
 /// Provider pour le thème (true = sombre par défaut)
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, bool>(ThemeModeNotifier.new);
 
 class ThemeModeNotifier extends Notifier<bool> {
   @override
   bool build() {
-    _load();
-    return true; // sombre par défaut
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getBool('darkMode') ?? true;
+    final prefs = ref.read(sharedPrefsProvider);
+    return prefs.getBool('darkMode') ?? true;
   }
 
   Future<void> toggle() async {
     state = !state;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPrefsProvider);
     await prefs.setBool('darkMode', state);
   }
 }

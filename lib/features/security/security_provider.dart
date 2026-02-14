@@ -121,6 +121,9 @@ final securityProvider =
     NotifierProvider<SecurityNotifier, SecurityState>(SecurityNotifier.new);
 
 class SecurityNotifier extends Notifier<SecurityState> {
+  DateTime? _lastFetch;
+  static const _ttl = Duration(minutes: 2);
+
   @override
   SecurityState build() {
     // Lancer la vérification initiale de tous les toggles
@@ -128,8 +131,11 @@ class SecurityNotifier extends Notifier<SecurityState> {
     return const SecurityState();
   }
 
-  /// Vérifie l'état de chaque toggle selon l'OS
-  Future<void> checkAllStatuses() async {
+  /// Vérifie l'état de chaque toggle selon l'OS (cache TTL 2 min)
+  Future<void> checkAllStatuses({bool force = false}) async {
+    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!) < _ttl) {
+      return;
+    }
     state = state.copyWith(isCheckingAll: true);
 
     try {
@@ -150,6 +156,7 @@ class SecurityNotifier extends Notifier<SecurityState> {
       state = state.copyWith(error: e.toString());
     }
 
+    _lastFetch = DateTime.now();
     state = state.copyWith(isCheckingAll: false);
   }
 
