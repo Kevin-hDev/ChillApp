@@ -25,3 +25,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/onboarding/fr/dark/
+    - assets/images/onboarding/fr/light/
+    - assets/images/onboarding/en/dark/
+    - assets/images/onboarding/en/light/

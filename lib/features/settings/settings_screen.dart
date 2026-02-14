@@ -17,6 +17,7 @@ class SettingsScreen extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final isDark = ref.watch(themeModeProvider);
     final lockState = ref.watch(lockProvider);
+    final autostart = ref.watch(autostartProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -86,6 +87,30 @@ class SettingsScreen extends ConsumerWidget {
                         ref.read(localeProvider.notifier).setLocale(selection.first);
                       },
                     ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Lancement au démarrage
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.play_circle_outline),
+                    title: Text(t(locale, 'settings.autostart')),
+                    subtitle: Text(t(locale, 'settings.autostart.desc')),
+                    trailing: autostart == null
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: context.chillAccent,
+                            ),
+                          )
+                        : Switch(
+                            value: autostart,
+                            onChanged: (_) =>
+                                ref.read(autostartProvider.notifier).toggle(),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
