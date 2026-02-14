@@ -65,7 +65,7 @@ class ConnectionInfoScreen extends ConsumerWidget {
                           : Icon(Icons.refresh, color: context.chillAccent),
                       onPressed: info.isLoading
                           ? null
-                          : () => ref.read(connectionInfoProvider.notifier).fetchAll(),
+                          : () => ref.read(connectionInfoProvider.notifier).fetchAll(force: true),
                       tooltip: t(locale, 'info.refresh'),
                     ),
                   ],

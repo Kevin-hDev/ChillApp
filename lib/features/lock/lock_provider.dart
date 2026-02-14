@@ -3,7 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../settings/settings_provider.dart';
 
 /// NOTE SECURITE : Le PIN est stocke dans SharedPreferences (texte clair sur disque).
 /// PBKDF2 avec 100k iterations rend le brute force offline impraticable (~heures sur GPU).
@@ -61,21 +61,14 @@ class LockNotifier extends Notifier<LockState> {
 
   @override
   LockState build() {
-    _load();
-    return const LockState(isLoading: true);
-  }
-
-  // SECURITY: Rate limiting state is persisted in SharedPreferences.
-  // The isLoading splash screen prevents any PIN attempt during load.
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPrefsProvider);
     final hasPin = prefs.getString(_pinHashKey) != null;
     final failedAttempts = prefs.getInt(_failedAttemptsKey) ?? 0;
     final lockedUntilMs = prefs.getInt(_lockedUntilKey);
     final lockedUntil = lockedUntilMs != null
         ? DateTime.fromMillisecondsSinceEpoch(lockedUntilMs)
         : null;
-    state = state.copyWith(
+    return LockState(
       isEnabled: hasPin,
       failedAttempts: failedAttempts,
       lockedUntil: lockedUntil,
@@ -151,7 +144,7 @@ class LockNotifier extends Notifier<LockState> {
     if (pin.length != 8 || !RegExp(r'^\d{8}$').hasMatch(pin)) {
       throw ArgumentError('PIN must be exactly 8 digits');
     }
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPrefsProvider);
     final salt = _generateSalt();
     await prefs.setString(_pinSaltKey, salt);
     await prefs.setString(_pinHashKey, _hashPin(pin, salt));
@@ -159,7 +152,7 @@ class LockNotifier extends Notifier<LockState> {
   }
 
   Future<bool> verifyPin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPrefsProvider);
 
     // Rate limiting : bloquer si en periode de verrouillage
     if (state.lockedUntil != null &&
@@ -232,7 +225,7 @@ class LockNotifier extends Notifier<LockState> {
   }
 
   Future<void> removePin() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPrefsProvider);
     await prefs.remove(_pinHashKey);
     await prefs.remove(_pinSaltKey);
     await prefs.remove(_failedAttemptsKey);

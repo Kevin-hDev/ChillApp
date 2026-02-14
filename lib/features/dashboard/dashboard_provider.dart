@@ -23,6 +23,9 @@ final dashboardProvider =
     NotifierProvider<DashboardNotifier, DashboardState>(DashboardNotifier.new);
 
 class DashboardNotifier extends Notifier<DashboardState> {
+  DateTime? _lastFetch;
+  static const _ttl = Duration(seconds: 30);
+
   @override
   DashboardState build() {
     // Écouter les changements Tailscale pour le badge dashboard
@@ -37,12 +40,16 @@ class DashboardNotifier extends Notifier<DashboardState> {
     return const DashboardState();
   }
 
-  Future<void> checkAll() async {
+  Future<void> checkAll({bool force = false}) async {
+    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!) < _ttl) {
+      return;
+    }
     final os = OsDetector.currentOS;
     final results = await Future.wait([
       _checkSsh(os),
       _checkWol(os),
     ]);
+    _lastFetch = DateTime.now();
     state = DashboardState(
       sshConfigured: results[0],
       wolConfigured: results[1],
