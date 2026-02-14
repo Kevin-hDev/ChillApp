@@ -21,11 +21,11 @@ class ChillColorsDark {
 
 /// Couleurs du thème clair
 class ChillColorsLight {
-  static const bgPrimary = Color(0xFFF0F1F3);
-  static const bgElevated = Color(0xFFFAFAFA);
-  static const bgSurface = Color(0xFFEDEEF0);
-  static const border = Color(0xFFDEE0E5);
-  static const borderSubtle = Color(0xFFE8E9EC);
+  static const bgPrimary = Color(0xFFE4E5E9);
+  static const bgElevated = Color(0xFFEDEEF1);
+  static const bgSurface = Color(0xFFDCDEE3);
+  static const border = Color(0xFFD0D2D8);
+  static const borderSubtle = Color(0xFFDADBE0);
   static const textPrimary = Color(0xFF111214);
   static const textSecondary = Color(0xFF6B7280);
   static const textMuted = Color(0xFF9CA3AF);
