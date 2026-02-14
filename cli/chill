@@ -1,0 +1,581 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────
+#  Chill CLI — Commandes terminal pour gérer l'app Chill
+#  Linux / macOS
+# ──────────────────────────────────────────────────────────
+set -euo pipefail
+
+CHILL_DIR="${CHILL_DIR:-$HOME/.local/share/chill}"
+APP_BIN="$CHILL_DIR/chill_app"
+DAEMON_BIN="$CHILL_DIR/chill-tailscale"
+VERSION_FILE="$CHILL_DIR/VERSION"
+DESKTOP_FILE="$HOME/.local/share/applications/chill.desktop"
+AUTOSTART_FILE="$HOME/.config/autostart/chill.desktop"
+PREFS_DIR="$HOME/.local/share/chill_app"
+GITHUB_REPO="Kevin-hDev/ChillApp"
+
+# Couleurs
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m'
+
+# ── Helpers ──────────────────────────────────────────────
+
+print_ok()    { printf "${GREEN}✓${NC} %s\n" "$1"; }
+print_warn()  { printf "${YELLOW}!${NC} %s\n" "$1"; }
+print_err()   { printf "${RED}✗${NC} %s\n" "$1"; }
+print_info()  { printf "${CYAN}→${NC} %s\n" "$1"; }
+
+check_installed() {
+    if [ ! -f "$APP_BIN" ]; then
+        print_err "Chill n'est pas installé dans $CHILL_DIR"
+        print_info "Installe-le avec : curl -fsSL https://chill.app/install.sh | bash"
+        exit 1
+    fi
+}
+
+detect_os() {
+    case "$(uname -s)" in
+        Linux*)  echo "linux" ;;
+        Darwin*) echo "macos" ;;
+        *)       echo "unknown" ;;
+    esac
+}
+
+# ── Commandes ────────────────────────────────────────────
+
+cmd_version() {
+    if [ -f "$VERSION_FILE" ]; then
+        printf "${BOLD}Chill${NC} v%s\n" "$(cat "$VERSION_FILE")"
+    else
+        printf "${BOLD}Chill${NC} ${DIM}(version inconnue)${NC}\n"
+    fi
+}
+
+cmd_help() {
+    cat <<EOF
+
+${BOLD}Chill${NC} — Hub de configuration pour ChillShell
+
+${BOLD}Usage :${NC} chill <commande> [options]
+
+${BOLD}Commandes :${NC}
+  ${CYAN}version${NC}            Affiche la version installée
+  ${CYAN}status${NC}             Résumé SSH / WoL / Tailscale / sécurité
+  ${CYAN}info${NC}               Affiche IP, hostname, adresse MAC
+  ${CYAN}start${NC}              Lance l'application graphique
+  ${CYAN}stop${NC}               Ferme l'application
+  ${CYAN}update${NC}             Met à jour vers la dernière version
+  ${CYAN}uninstall${NC}          Désinstalle Chill proprement
+  ${CYAN}autostart on|off${NC}   Active/désactive le lancement au démarrage
+  ${CYAN}doctor${NC}             Diagnostic complet de l'installation
+  ${CYAN}security${NC}           Checkup de sécurité du système
+  ${CYAN}logs${NC}               Affiche les derniers logs
+  ${CYAN}reset${NC}              Remet tous les réglages à zéro
+  ${CYAN}help${NC}               Affiche cette aide
+
+EOF
+}
+
+cmd_status() {
+    check_installed
+    local os
+    os=$(detect_os)
+
+    printf "\n${BOLD}  État des services${NC}\n\n"
+
+    # SSH
+    if [ "$os" = "linux" ]; then
+        if systemctl is-active --quiet sshd 2>/dev/null || systemctl is-active --quiet ssh 2>/dev/null; then
+            print_ok "SSH          actif"
+        else
+            print_err "SSH          inactif"
+        fi
+    elif [ "$os" = "macos" ]; then
+        if systemsetup -getremotelogin 2>/dev/null | grep -q "On"; then
+            print_ok "SSH          actif"
+        else
+            print_err "SSH          inactif"
+        fi
+    fi
+
+    # WoL
+    if [ "$os" = "linux" ]; then
+        if systemctl is-enabled --quiet wol-enable.service 2>/dev/null; then
+            print_ok "Wake-on-LAN  actif"
+        else
+            print_warn "Wake-on-LAN  inactif"
+        fi
+    elif [ "$os" = "macos" ]; then
+        print_warn "Wake-on-LAN  non disponible sur macOS"
+    fi
+
+    # Tailscale
+    if command -v tailscale &>/dev/null; then
+        if tailscale status &>/dev/null; then
+            print_ok "Tailscale    connecté"
+        else
+            print_warn "Tailscale    déconnecté"
+        fi
+    else
+        print_err "Tailscale    non installé"
+    fi
+
+    # Firewall
+    if [ "$os" = "linux" ]; then
+        if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "active"; then
+            print_ok "Firewall     actif (UFW)"
+        else
+            print_warn "Firewall     inactif"
+        fi
+    elif [ "$os" = "macos" ]; then
+        if /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>/dev/null | grep -q "enabled"; then
+            print_ok "Firewall     actif"
+        else
+            print_warn "Firewall     inactif"
+        fi
+    fi
+
+    # App en cours
+    if pgrep -x chill_app &>/dev/null; then
+        print_ok "App Chill    en cours d'exécution"
+    else
+        print_info "App Chill    arrêtée"
+    fi
+
+    echo ""
+}
+
+cmd_info() {
+    local os
+    os=$(detect_os)
+
+    printf "\n${BOLD}  Infos de connexion${NC}\n\n"
+
+    # Hostname
+    printf "  ${DIM}Hostname :${NC}      %s\n" "$(hostname)"
+
+    # Username
+    printf "  ${DIM}Utilisateur :${NC}   %s\n" "$(whoami)"
+
+    # IP Ethernet
+    if [ "$os" = "linux" ]; then
+        local eth_adapter
+        eth_adapter=$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(eth|en|eno|enp|ens)' | head -1)
+        if [ -n "$eth_adapter" ]; then
+            local eth_ip
+            eth_ip=$(ip -4 addr show "$eth_adapter" 2>/dev/null | grep -oP 'inet \K[0-9.]+' | head -1)
+            if [ -n "$eth_ip" ]; then
+                printf "  ${DIM}IP Ethernet :${NC}   %s (%s)\n" "$eth_ip" "$eth_adapter"
+            fi
+            local mac
+            mac=$(cat "/sys/class/net/$eth_adapter/address" 2>/dev/null)
+            if [ -n "$mac" ]; then
+                printf "  ${DIM}MAC :${NC}           %s\n" "$mac"
+            fi
+        fi
+    elif [ "$os" = "macos" ]; then
+        local eth_ip
+        eth_ip=$(ipconfig getifaddr en0 2>/dev/null)
+        if [ -n "$eth_ip" ]; then
+            printf "  ${DIM}IP :${NC}            %s (en0)\n" "$eth_ip"
+        fi
+        local mac
+        mac=$(ifconfig en0 2>/dev/null | awk '/ether/{print $2}')
+        if [ -n "$mac" ]; then
+            printf "  ${DIM}MAC :${NC}           %s\n" "$mac"
+        fi
+    fi
+
+    # IP Wi-Fi
+    if [ "$os" = "linux" ]; then
+        local wifi_adapter
+        wifi_adapter=$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(wl|wlan)' | head -1)
+        if [ -n "$wifi_adapter" ]; then
+            local wifi_ip
+            wifi_ip=$(ip -4 addr show "$wifi_adapter" 2>/dev/null | grep -oP 'inet \K[0-9.]+' | head -1)
+            if [ -n "$wifi_ip" ]; then
+                printf "  ${DIM}IP Wi-Fi :${NC}      %s (%s)\n" "$wifi_ip" "$wifi_adapter"
+            fi
+        fi
+    elif [ "$os" = "macos" ]; then
+        local wifi_ip
+        wifi_ip=$(ipconfig getifaddr en1 2>/dev/null)
+        if [ -n "$wifi_ip" ]; then
+            printf "  ${DIM}IP Wi-Fi :${NC}      %s (en1)\n" "$wifi_ip"
+        fi
+    fi
+
+    # IP Tailscale
+    if command -v tailscale &>/dev/null; then
+        local ts_ip
+        ts_ip=$(tailscale ip -4 2>/dev/null)
+        if [ -n "$ts_ip" ]; then
+            printf "  ${DIM}IP Tailscale :${NC}  %s\n" "$ts_ip"
+        fi
+    fi
+
+    echo ""
+}
+
+cmd_start() {
+    check_installed
+    if pgrep -x chill_app &>/dev/null; then
+        print_warn "Chill est déjà en cours d'exécution"
+        return
+    fi
+    nohup "$APP_BIN" > /dev/null 2>&1 &
+    print_ok "Chill lancé (PID $!)"
+}
+
+cmd_stop() {
+    if pgrep -x chill_app &>/dev/null; then
+        pkill -x chill_app
+        print_ok "Chill arrêté"
+    else
+        print_info "Chill n'est pas en cours d'exécution"
+    fi
+}
+
+cmd_update() {
+    check_installed
+    print_info "Recherche de la dernière version..."
+
+    local os arch asset_name
+    os=$(detect_os)
+    arch=$(uname -m)
+
+    case "$arch" in
+        x86_64|amd64) arch="x64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *) print_err "Architecture non supportée : $arch"; exit 1 ;;
+    esac
+
+    asset_name="chill-${os}-${arch}.tar.gz"
+
+    local release_url
+    release_url=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" \
+        | grep "browser_download_url.*${asset_name}" \
+        | head -1 \
+        | cut -d'"' -f4)
+
+    if [ -z "$release_url" ]; then
+        print_err "Aucune release trouvée pour $asset_name"
+        exit 1
+    fi
+
+    local current_version new_version
+    current_version=$(cat "$VERSION_FILE" 2>/dev/null || echo "0.0.0")
+
+    # Stopper l'app si elle tourne
+    if pgrep -x chill_app &>/dev/null; then
+        print_info "Arrêt de l'app..."
+        pkill -x chill_app || true
+        sleep 1
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    print_info "Téléchargement..."
+    curl -fsSL "$release_url" -o "$tmp_dir/chill.tar.gz"
+    print_info "Extraction..."
+    tar -xzf "$tmp_dir/chill.tar.gz" -C "$tmp_dir"
+
+    # Copier les fichiers
+    local extracted_dir
+    extracted_dir=$(find "$tmp_dir" -mindepth 1 -maxdepth 1 -type d | head -1)
+    if [ -z "$extracted_dir" ]; then
+        extracted_dir="$tmp_dir"
+    fi
+    cp -rf "$extracted_dir"/* "$CHILL_DIR/"
+    chmod +x "$APP_BIN" "$CHILL_DIR/chill"
+    [ -f "$DAEMON_BIN" ] && chmod +x "$DAEMON_BIN"
+
+    rm -rf "$tmp_dir"
+
+    new_version=$(cat "$VERSION_FILE" 2>/dev/null || echo "?")
+    print_ok "Mis à jour : v$current_version → v$new_version"
+}
+
+cmd_uninstall() {
+    check_installed
+    printf "${YELLOW}Désinstaller Chill ?${NC} Cela supprimera :\n"
+    printf "  - L'application (%s)\n" "$CHILL_DIR"
+    printf "  - Le raccourci CLI (~/.local/bin/chill)\n"
+    printf "  - Le lanceur d'application\n"
+    printf "  - Les préférences (%s)\n" "$PREFS_DIR"
+    printf "\n"
+    read -rp "Confirmer ? (o/N) " confirm
+    if [[ "$confirm" != [oOyY] ]]; then
+        print_info "Annulé"
+        return
+    fi
+
+    # Stopper l'app
+    pkill -x chill_app 2>/dev/null || true
+
+    # Supprimer les fichiers
+    rm -rf "$CHILL_DIR"
+    rm -f "$HOME/.local/bin/chill"
+    rm -f "$DESKTOP_FILE"
+    rm -f "$AUTOSTART_FILE"
+    rm -rf "$PREFS_DIR"
+
+    print_ok "Chill désinstallé"
+}
+
+cmd_autostart() {
+    check_installed
+    local action="${1:-}"
+
+    if [ "$action" = "on" ]; then
+        mkdir -p "$(dirname "$AUTOSTART_FILE")"
+        cat > "$AUTOSTART_FILE" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Chill
+Exec=$APP_BIN
+X-GNOME-Autostart-enabled=true
+Comment=Chill configuration hub
+DESKTOP
+        print_ok "Lancement au démarrage activé"
+
+    elif [ "$action" = "off" ]; then
+        rm -f "$AUTOSTART_FILE"
+        print_ok "Lancement au démarrage désactivé"
+
+    else
+        print_err "Usage : chill autostart on|off"
+        exit 1
+    fi
+}
+
+cmd_doctor() {
+    check_installed
+    local os
+    os=$(detect_os)
+    local issues=0
+
+    printf "\n${BOLD}  Diagnostic Chill${NC}\n\n"
+
+    # Binaire app
+    if [ -x "$APP_BIN" ]; then
+        print_ok "Binaire app        $APP_BIN"
+    else
+        print_err "Binaire app        introuvable"
+        ((issues++))
+    fi
+
+    # Daemon Tailscale
+    if [ -x "$DAEMON_BIN" ]; then
+        print_ok "Daemon Tailscale   $DAEMON_BIN"
+    else
+        print_warn "Daemon Tailscale   introuvable"
+        ((issues++))
+    fi
+
+    # Version
+    if [ -f "$VERSION_FILE" ]; then
+        print_ok "Version            v$(cat "$VERSION_FILE")"
+    else
+        print_warn "Fichier VERSION    introuvable"
+        ((issues++))
+    fi
+
+    # CLI dans le PATH
+    if command -v chill &>/dev/null; then
+        print_ok "CLI dans le PATH   $(which chill)"
+    else
+        print_err "CLI pas dans le PATH"
+        ((issues++))
+    fi
+
+    # Tailscale installé
+    if command -v tailscale &>/dev/null; then
+        local ts_version
+        ts_version=$(tailscale version 2>/dev/null | head -1)
+        print_ok "Tailscale          $ts_version"
+    else
+        print_warn "Tailscale          non installé"
+    fi
+
+    # Lanceur .desktop
+    if [ "$os" = "linux" ]; then
+        if [ -f "$DESKTOP_FILE" ]; then
+            print_ok "Lanceur            $DESKTOP_FILE"
+        else
+            print_warn "Lanceur            non créé"
+        fi
+    fi
+
+    # Autostart
+    if [ -f "$AUTOSTART_FILE" ]; then
+        print_ok "Démarrage auto     activé"
+    else
+        print_info "Démarrage auto     désactivé"
+    fi
+
+    # Préférences
+    if [ -d "$PREFS_DIR" ]; then
+        print_ok "Préférences        $PREFS_DIR"
+    else
+        print_info "Préférences        aucune (premier lancement)"
+    fi
+
+    echo ""
+    if [ "$issues" -eq 0 ]; then
+        printf "  ${GREEN}${BOLD}Tout est en ordre !${NC}\n\n"
+    else
+        printf "  ${YELLOW}${BOLD}%d problème(s) détecté(s)${NC}\n\n" "$issues"
+    fi
+}
+
+cmd_security() {
+    local os
+    os=$(detect_os)
+
+    printf "\n${BOLD}  Checkup sécurité${NC}\n\n"
+
+    if [ "$os" = "linux" ]; then
+        # Firewall
+        if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "active"; then
+            print_ok "Firewall (UFW)        actif"
+        else
+            print_err "Firewall (UFW)        inactif ou non installé"
+        fi
+
+        # SSH root login
+        if grep -qE "^PermitRootLogin\s+no" /etc/ssh/sshd_config 2>/dev/null; then
+            print_ok "Root login SSH        désactivé"
+        else
+            print_warn "Root login SSH        autorisé ou non configuré"
+        fi
+
+        # Fail2ban
+        if systemctl is-active --quiet fail2ban 2>/dev/null; then
+            print_ok "Fail2ban              actif"
+        elif command -v fail2ban-client &>/dev/null; then
+            print_warn "Fail2ban              installé mais inactif"
+        else
+            print_warn "Fail2ban              non installé"
+        fi
+
+        # Mises à jour auto
+        if systemctl is-enabled --quiet unattended-upgrades 2>/dev/null; then
+            print_ok "Mises à jour auto     activées"
+        else
+            print_warn "Mises à jour auto     désactivées"
+        fi
+
+        # Sysctl (IP forwarding)
+        local fwd
+        fwd=$(sysctl -n net.ipv4.ip_forward 2>/dev/null || echo "?")
+        if [ "$fwd" = "0" ]; then
+            print_ok "IP forwarding         désactivé"
+        else
+            print_warn "IP forwarding         activé ($fwd)"
+        fi
+
+        # Permissions sensibles
+        if [ "$(stat -c '%a' /etc/shadow 2>/dev/null)" = "640" ] || [ "$(stat -c '%a' /etc/shadow 2>/dev/null)" = "600" ]; then
+            print_ok "Permissions /etc/shadow  OK"
+        else
+            print_warn "Permissions /etc/shadow  à vérifier"
+        fi
+
+    elif [ "$os" = "macos" ]; then
+        # Firewall
+        if /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>/dev/null | grep -q "enabled"; then
+            print_ok "Firewall              actif"
+        else
+            print_err "Firewall              inactif"
+        fi
+
+        # Gatekeeper
+        if spctl --status 2>/dev/null | grep -q "enabled"; then
+            print_ok "Gatekeeper            actif"
+        else
+            print_err "Gatekeeper            inactif"
+        fi
+
+        # Stealth mode
+        if /usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode 2>/dev/null | grep -q "enabled"; then
+            print_ok "Mode furtif           actif"
+        else
+            print_warn "Mode furtif           inactif"
+        fi
+
+        # Mises à jour auto
+        if defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled 2>/dev/null | grep -q "1"; then
+            print_ok "Mises à jour auto     activées"
+        else
+            print_warn "Mises à jour auto     désactivées"
+        fi
+    fi
+
+    echo ""
+}
+
+cmd_logs() {
+    local os
+    os=$(detect_os)
+
+    if [ "$os" = "linux" ]; then
+        if journalctl --user -u chill --no-pager -n 50 2>/dev/null; then
+            :
+        else
+            print_info "Aucun log trouvé via journalctl"
+            print_info "L'app Chill n'écrit pas de logs système pour le moment"
+        fi
+    elif [ "$os" = "macos" ]; then
+        print_info "L'app Chill n'écrit pas de logs système pour le moment"
+    fi
+}
+
+cmd_reset() {
+    printf "${YELLOW}Remettre tous les réglages à zéro ?${NC}\n"
+    printf "  Cela supprimera : thème, langue, PIN, onboarding\n"
+    printf "\n"
+    read -rp "Confirmer ? (o/N) " confirm
+    if [[ "$confirm" != [oOyY] ]]; then
+        print_info "Annulé"
+        return
+    fi
+
+    rm -rf "$PREFS_DIR"
+    print_ok "Réglages remis à zéro (prendront effet au prochain lancement)"
+}
+
+# ── Main ─────────────────────────────────────────────────
+
+main() {
+    local command="${1:-help}"
+    shift || true
+
+    case "$command" in
+        version)    cmd_version ;;
+        status)     cmd_status ;;
+        info)       cmd_info ;;
+        start)      cmd_start ;;
+        stop)       cmd_stop ;;
+        update)     cmd_update ;;
+        uninstall)  cmd_uninstall ;;
+        autostart)  cmd_autostart "$@" ;;
+        doctor)     cmd_doctor ;;
+        security)   cmd_security ;;
+        logs)       cmd_logs ;;
+        reset)      cmd_reset ;;
+        help|--help|-h) cmd_help ;;
+        *)
+            print_err "Commande inconnue : $command"
+            cmd_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
