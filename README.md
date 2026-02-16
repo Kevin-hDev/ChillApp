@@ -12,9 +12,14 @@
 *Une app desktop gratuite qui regroupe tout ce qu'il faut pour l'accès à distance.*
 *Configure SSH, active Wake-on-LAN et connecte-toi à Tailscale — sans rien installer d'autre.*
 
-[Télécharger pour Windows](#) · [Télécharger pour Linux](#) · [Documentation](#)
+[📥 Installation](#-démarrage-rapide) · [📖 Documentation](#-documentation) · [🔒 Sécurité](SECURITY.md)
 
 </div>
+
+---
+
+> **⚠️ IMPORTANT :** Chill nécessite des **privilèges administrateur** pour configurer les services système.
+> [**Lis ceci avant d'installer →**](⚠️_LISEZ_CECI_AVANT_INSTALLATION.md)
 
 ---
 
@@ -53,11 +58,19 @@ Affichage automatique de l'IP, l'adresse MAC et le nom d'utilisateur. Un bouton 
 - Polices : JetBrains Mono et Plus Jakarta Sans
 
 ### 🔒 **Sécurité intégrée**
-Page Sécurité OS avec :
-- Scan des vulnérabilités système
-- Checkup de sécurité complet
+**⚠️ [Lis ceci avant d'installer](⚠️_LISEZ_CECI_AVANT_INSTALLATION.md)**
+
+**Audits professionnels :**
+- 2 audits internes + audit qualité (méthodologie Trail of Bits)
+- 38 findings corrigés (4 Critical, 8 High, 14 Medium, 12 Low)
+- 61 tests unitaires passent après corrections
+- Voir [SECURITY.md](SECURITY.md) pour le rapport complet
+
+**Onglet Sécurité OS :**
+- Toggles sécurité (8 Windows, 7 Linux, 8 macOS)
+- Checkup système avec scan 12 points
 - Recommandations personnalisées
-- Audits de sécurité internes documentés
+- 100% local, aucune donnée envoyée sur le réseau
 
 ---
 
@@ -74,15 +87,19 @@ Ensemble, ils forment le **pont parfait pour le vibe coding** : code depuis ton 
 
 ### Prérequis
 
-- Flutter 3.38.7 ou supérieur
-- Dart 3.10.7 ou supérieur
+**⚠️ [Lis ceci d'abord](⚠️_LISEZ_CECI_AVANT_INSTALLATION.md) avant d'installer !**
 
-### Installation
+- **Flutter 3.27+** ou supérieur
+- **Dart 3.5+** ou supérieur
+- **Privilèges administrateur** (admin/sudo/root) pour configuration système
+- **Windows 10/11**, **Ubuntu 20.04+/Debian 11+/Fedora 35+/Arch**, ou **macOS 11+**
+
+### Installation depuis les sources
 
 ```bash
 # Clone le repo
-git clone https://github.com/Kevin-hDev/ChillApp.git
-cd ChillApp
+git clone https://github.com/YOUR_ORG/Chill.git
+cd Chill
 
 # Installe les dépendances
 flutter pub get
@@ -90,7 +107,10 @@ flutter pub get
 # Lance l'application
 flutter run -d linux    # Pour Linux
 flutter run -d windows  # Pour Windows
+flutter run -d macos    # Pour macOS
 ```
+
+**Note Linux :** Flutter doit être installé via git (pas snap). Le paquet `lld-18` est requis sur Ubuntu.
 
 ### Build de production
 
@@ -109,12 +129,13 @@ Les exécutables se trouvent dans :
 
 | Technologie | Version | Rôle |
 |-------------|---------|------|
-| **Flutter** | 3.38.7 | Framework d'interface multi-plateforme |
-| **Dart** | 3.10.7 | Langage de programmation |
+| **Flutter** | 3.27+ | Framework d'interface multi-plateforme |
+| **Dart** | 3.5+ | Langage de programmation |
 | **flutter_riverpod** | ^3.2.1 | Gestion d'état (providers) |
 | **go_router** | ^16.2.2 | Navigation entre écrans |
-| **shared_preferences** | ^2.5.4 | Sauvegarde des préférences (thème, langue) |
+| **shared_preferences** | ^2.5.4 | Sauvegarde des préférences (thème, langue, PIN) |
 | **google_fonts** | ^8.0.1 | Polices Google (Plus Jakarta Sans, JetBrains Mono) |
+| **Go daemon** | 1.21+ | Daemon Tailscale (tsnet) pour intégration native |
 
 ### Design tokens
 
@@ -151,21 +172,31 @@ ChillApp/
 
 ## 🗺️ Roadmap
 
-### ✅ V1 (Actuel)
-- [x] Application desktop multi-plateforme (Windows, Linux)
-- [x] Configuration SSH automatique
-- [x] Configuration Wake-on-LAN
-- [x] Intégration Tailscale native
-- [x] Infos de connexion
-- [x] Page Sécurité OS
+Voir [ROADMAP.md](ROADMAP.md) pour la feuille de route complète.
+
+### ✅ V1.0 — Released (Février 2026)
+- [x] Application desktop multi-plateforme (Windows, Linux, macOS)
+- [x] Configuration SSH automatique (7 étapes Windows, 5 Linux, 3 macOS)
+- [x] Configuration Wake-on-LAN (Windows/Linux)
+- [x] Intégration Tailscale native (daemon Go tsnet)
+- [x] Infos de connexion auto-détectées
+- [x] Verrouillage PIN (8 chiffres, SHA-256 hashé)
 - [x] Support bilingue (FR/EN)
 - [x] Thèmes sombre et clair
+- [x] 97 tests unitaires
 
-### 🚧 À venir
-- [ ] Support macOS
-- [ ] Intégration ChillShell (en cours)
-- [ ] Mode CLI pour automatisation
-- [ ] Plugins pour extensions
+### 🔧 V1.1 — En Développement
+- [ ] **Onglet Sécurité OS** (feature majeur)
+  - Toggles sécurité (8 Windows, 7 Linux, 8 macOS)
+  - Checkup système 12 points avec score
+  - Recommandations personnalisées
+
+### 🔮 Versions Futures
+- **V1.2** — Diagnostics d'erreur améliorés
+- **V1.3** — Support Linux étendu (openSUSE, Gentoo, Alpine)
+- **V1.4** — Features SSH avancées (port custom, 2FA, sshd hardening)
+- **V1.5** — Localization (ES, DE, ZH, PT, IT)
+- **V2.0** — Config avancée (profils, batch, CLI mode, network discovery)
 
 ---
 
@@ -191,25 +222,57 @@ Chill prépare ton PC pour accueillir tous les agents CLI via ChillShell :
 - **Grok CLI** (xAI) — Node.js 18+
 - Et bien d'autres...
 
-**Note** : Support Windows & Linux confirmé. Tests iOS/macOS en cours — pas de déploiement pour ces plateformes au début.
+**Plateformes supportées :** Windows 10/11, Linux (Ubuntu/Debian/Fedora/Arch), macOS 11+ (Big Sur et ultérieur).
 
 ---
 
 ## 📄 Licence
 
-Ce projet est actuellement privé et non licencié pour usage public.
+Ce projet est sous **GNU General Public License v3.0 (GPL v3)**.
+
+**Ce que cela signifie :**
+- ✅ Gratuit et open source pour toujours
+- ✅ Tu peux utiliser, modifier, redistribuer
+- ⚠️ Les modifications doivent rester GPL v3
+- ❌ Pas de versions propriétaires/fermées
+
+Voir [LICENSE](LICENSE) pour le texte complet.
+
+**Pourquoi GPL v3 ?** Pour garantir que Chill reste libre et accessible à tous, sans dérive commerciale fermée.
 
 ---
 
 ## 👨‍💻 Auteur
 
-**HUYNH Kevin** ([@Kevin-hDev](https://github.com/Kevin-hDev))
+**Kevin HUYNH** — [Chill_app@outlook.fr](mailto:Chill_app@outlook.fr)
+
+*Fait avec ❤️ et Flutter*
 
 ---
 
 ## 🤝 Contribution
 
-Ce projet est actuellement privé. Les contributions seront acceptées une fois le projet rendu public.
+Les contributions sont les bienvenues ! 🎉
+
+**Avant de contribuer :**
+1. Lis [⚠️_READ_THIS_FIRST.md](⚠️_READ_THIS_FIRST.md) pour comprendre le modèle de sécurité
+2. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) pour les standards de code et procédures
+3. Vérifie les [Issues](https://github.com/YOUR_ORG/Chill/issues) pour voir les tâches disponibles
+
+**Trouver une faille de sécurité ?**
+🚫 Ne pas ouvrir une issue publique → 📧 Email privé : [Chill_app@outlook.fr](mailto:Chill_app@outlook.fr)
+
+Voir [SECURITY.md](SECURITY.md) pour la procédure de divulgation responsable.
+
+---
+
+## 📚 Documentation
+
+- [⚠️ À LIRE EN PREMIER](⚠️_LISEZ_CECI_AVANT_INSTALLATION.md) — Avertissements et prérequis
+- [SECURITY.md](SECURITY.md) — Audits de sécurité et mesures implémentées
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Guide de contribution
+- [CHANGELOG.md](CHANGELOG.md) — Historique des versions
+- [ROADMAP.md](ROADMAP.md) — Feuille de route et features planifiées
 
 ---
 
