@@ -1,0 +1,37 @@
+# Dependabot configuration for Chill Desktop
+# Automatically checks for dependency updates
+
+version: 2
+updates:
+  # Flutter/Dart packages
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Paris"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "YOUR_GITHUB_USERNAME"  # Replace with actual maintainer username
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Paris"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+      - "automated"
+    open-pull-requests-limit: 3
