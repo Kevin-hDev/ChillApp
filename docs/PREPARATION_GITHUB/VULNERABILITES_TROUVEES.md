@@ -11,7 +11,7 @@
 | Scan | Statut | Findings | Critical | High | Medium | Low |
 |------|--------|----------|----------|------|--------|-----|
 | **Semgrep** | ✅ Complété | **0** | 0 | 0 | 0 | 0 |
-| **Snyk** | ⏳ À venir | - | - | - | - | - |
+| **Snyk** | ⏭️ Skippé | N/A | N/A | N/A | N/A | N/A |
 | **SonarCloud** | ⏳ À venir | - | - | - | - | - |
 | **Red Team Skills** | ⏳ À venir | - | - | - | - | - |
 
@@ -79,11 +79,17 @@ Tous les fichiers Go, Shell et YAML sont conformes aux règles de sécurité Sem
 
 ## 🔍 2. Snyk — Vulnerability Scanning
 
-**Statut :** ⏳ Pas encore exécuté
+**Statut :** ⏭️ **Skippé** (Non compatible avec Flutter/Dart)
+
+**Raison :** Snyk ne supporte pas les projets Flutter/Dart (pubspec.yaml). Le projet est composé de :
+- 89% Dart/Flutter (non supporté par Snyk)
+- 11% Go/Shell/YAML
+
+**Alternative utilisée :** SonarCloud (support complet Dart/Flutter/Go/Shell)
 
 ### Findings
 
-*Les résultats apparaîtront ici après le scan...*
+*Scan non effectué - outil non compatible avec le stack technique du projet.*
 
 ---
 
