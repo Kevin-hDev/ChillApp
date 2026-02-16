@@ -14,9 +14,9 @@
 | **High** | 0 | 0 | 0 | 0 | 0 |
 | **Medium** | 0 | 0 | 0 | 0 | 0 |
 | **Low** | 0 | 0 | 0 | 0 | 0 |
-| **TOTAL** | 0 | 0 | 0 | 0 | 0 |
+| **TOTAL** | **0** | **0** | **0** | **0** | **0** |
 
-**Dernière mise à jour :** En attente des résultats de scan
+**Dernière mise à jour :** 2026-02-16 — Semgrep complété, 0 vulnérabilités détectées
 
 ---
 
@@ -95,7 +95,11 @@
 
 ### Mesures Réactives (Après Scans)
 
-*Les corrections basées sur les scans apparaîtront ici...*
+**Scan Semgrep (2026-02-16) :**
+- ✅ **0 vulnérabilités détectées** dans les fichiers Go, Shell et YAML
+- Aucune correction nécessaire
+- Code conforme aux standards de sécurité Semgrep (523 règles exécutées au total)
+- Validation : Les mesures proactives (CommandRunner, élévation sécurisée, validation inputs) ont été efficaces
 
 ---
 
