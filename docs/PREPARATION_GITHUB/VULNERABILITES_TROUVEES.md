@@ -12,7 +12,8 @@
 |------|--------|----------|----------|------|--------|-----|
 | **Semgrep** | ✅ Complété | **0** | 0 | 0 | 0 | 0 |
 | **Snyk** | ⏭️ Skippé | N/A | N/A | N/A | N/A | N/A |
-| **SonarCloud** | ⏳ À venir | - | - | - | - | - |
+| **Flutter Analyze** | ✅ Complété | **0** | 0 | 0 | 0 | 0 |
+| **SonarCloud** | 🔄 En cours | - | - | - | - | - |
 | **Red Team Skills** | ⏳ À venir | - | - | - | - | - |
 
 **Dernière mise à jour :** 2026-02-16 — Semgrep complété
@@ -93,9 +94,50 @@ Tous les fichiers Go, Shell et YAML sont conformes aux règles de sécurité Sem
 
 ---
 
+## 🔍 2.5. Flutter Analyze — Dart/Flutter Static Analysis
+
+**Statut :** ✅ **Complété** (2026-02-16)
+
+**Configuration :**
+- **Outil :** Flutter SDK native analyzer
+- **Fichiers analysés :** 51 fichiers Dart/Flutter (89% du projet)
+- **Durée :** 1.1 secondes
+
+**Résultats :**
+- **Total findings :** **0 problèmes** 🎉
+- **Par sévérité :**
+  - Errors : 0
+  - Warnings : 0
+  - Info : 0
+  - Lints : 0
+
+**Conclusion :** Le code Dart/Flutter est **100% conforme** aux règles d'analyse statique Flutter/Dart. Aucune erreur, aucun warning, aucune suggestion de style.
+
+**Fichier de résultats :** `flutter-analyze-results.txt`
+
+### 🎯 Findings
+
+**✅ Aucun problème détecté !**
+
+Tous les fichiers Dart/Flutter respectent :
+- Les règles de syntaxe Dart
+- Les best practices Flutter
+- Les conventions de style
+- Les règles de sécurité de base
+
+---
+
 ## 🔍 3. SonarCloud — Code Quality + Security
 
-**Statut :** ⏳ Pas encore exécuté
+**Statut :** 🔄 Configuration en cours...
+
+### Configuration nécessaire
+
+1. [ ] Installer sonar-scanner CLI
+2. [ ] Créer compte SonarCloud (sonarcloud.io)
+3. [ ] Créer organisation + projet
+4. [ ] Obtenir SONAR_TOKEN
+5. [ ] Créer sonar-project.properties
 
 ### Findings
 
