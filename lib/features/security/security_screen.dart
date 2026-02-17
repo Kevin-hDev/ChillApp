@@ -138,16 +138,22 @@ class SecurityScreen extends ConsumerWidget {
           _ToggleItem(id: 'win.ransomware', icon: Icons.lock_outline, i18nKey: 'security.win.ransomware'),
           _ToggleItem(id: 'win.audit', icon: Icons.receipt_long, i18nKey: 'security.win.audit'),
           _ToggleItem(id: 'win.updates', icon: Icons.update, i18nKey: 'security.win.updates'),
+          _ToggleItem(id: 'win.lsa', icon: Icons.security, i18nKey: 'security.win.lsa', needsReboot: true),
+          _ToggleItem(id: 'win.hvci', icon: Icons.memory, i18nKey: 'security.win.hvci', needsReboot: true),
+          _ToggleItem(id: 'win.dns', icon: Icons.dns, i18nKey: 'security.dns'),
         ];
       case SupportedOS.linux:
         return const [
           _InstallableToggle(toolId: 'ufw', toggleId: 'linux.firewall', icon: Icons.shield, i18nKey: 'security.linux.firewall'),
           _ToggleItem(id: 'linux.sysctl', icon: Icons.settings_ethernet, i18nKey: 'security.linux.sysctl'),
           _ServicesSection(),
-          _ToggleItem(id: 'linux.permissions', icon: Icons.folder_special, i18nKey: 'security.linux.permissions'),
+          _StatusOnlyToggle(id: 'linux.permissions', icon: Icons.folder_special, i18nKey: 'security.linux.permissions'),
           _InstallableToggle(toolId: 'fail2ban', toggleId: 'linux.fail2ban', icon: Icons.block, i18nKey: 'security.linux.fail2ban'),
+          _InstallableToggle(toolId: 'crowdsec', toggleId: 'linux.crowdsec', icon: Icons.groups, i18nKey: 'security.linux.crowdsec'),
+          _ToggleItem(id: 'linux.apparmor', icon: Icons.verified_user, i18nKey: 'security.linux.apparmor'),
           _ToggleItem(id: 'linux.updates', icon: Icons.update, i18nKey: 'security.linux.updates'),
           _ToggleItem(id: 'linux.rootLogin', icon: Icons.person_off, i18nKey: 'security.linux.rootLogin'),
+          _ToggleItem(id: 'linux.dns', icon: Icons.dns, i18nKey: 'security.dns'),
           _InstallableToggle(toolId: 'rkhunter', icon: Icons.bug_report, i18nKey: 'security.linux.rkhunter'),
         ];
       case SupportedOS.macos:
@@ -159,6 +165,7 @@ class SecurityScreen extends ConsumerWidget {
           _ToggleItem(id: 'mac.secureKeyboard', icon: Icons.keyboard, i18nKey: 'security.mac.secureKeyboard'),
           _ToggleItem(id: 'mac.gatekeeper', icon: Icons.verified_user, i18nKey: 'security.mac.gatekeeper'),
           _ToggleItem(id: 'mac.screenLock', icon: Icons.lock_clock, i18nKey: 'security.mac.screenLock'),
+          _ToggleItem(id: 'mac.dns', icon: Icons.dns, i18nKey: 'security.dns'),
         ];
     }
   }
@@ -170,8 +177,14 @@ class _ToggleItem extends ConsumerWidget {
   final String id;
   final IconData icon;
   final String i18nKey;
+  final bool needsReboot;
 
-  const _ToggleItem({required this.id, required this.icon, required this.i18nKey});
+  const _ToggleItem({
+    required this.id,
+    required this.icon,
+    required this.i18nKey,
+    this.needsReboot = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -185,7 +198,36 @@ class _ToggleItem extends ConsumerWidget {
       icon: icon,
       isEnabled: isEnabled,
       isLoading: isLoading,
-      onToggle: (enable) => ref.read(securityProvider.notifier).toggle(id, enable),
+      onToggle: (enable) async {
+        await ref.read(securityProvider.notifier).toggle(id, enable);
+        if (needsReboot && enable && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              backgroundColor: context.chillBgElevated,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(ChillRadius.lg),
+                side: BorderSide(color: context.chillBorder),
+              ),
+              duration: const Duration(seconds: 5),
+              content: Row(
+                children: [
+                  Icon(Icons.restart_alt, color: context.chillAccent, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      t(locale, 'security.reboot.message'),
+                      style: TextStyle(color: context.chillTextPrimary, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 }
@@ -242,6 +284,35 @@ class _InstallableToggle extends ConsumerWidget {
       description: t(locale, '$i18nKey.desc'),
       icon: icon,
       isEnabled: true,
+    );
+  }
+}
+
+/// Widget pour un toggle à sens unique (peut activer, pas désactiver).
+/// Affiche un checkmark quand activé, un bouton quand désactivé.
+class _StatusOnlyToggle extends ConsumerWidget {
+  final String id;
+  final IconData icon;
+  final String i18nKey;
+
+  const _StatusOnlyToggle({required this.id, required this.icon, required this.i18nKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    final isEnabled = ref.watch(securityProvider.select((s) => s.toggleStates[id]));
+    final isLoading = ref.watch(securityProvider.select((s) => s.toggleLoading[id] ?? false));
+
+    return SecurityToggleCard(
+      title: t(locale, i18nKey),
+      description: t(locale, '$i18nKey.desc'),
+      icon: icon,
+      isEnabled: isEnabled,
+      isLoading: isLoading,
+      // Permet d'activer uniquement — si déjà actif, pas de onToggle (affiche checkmark)
+      onToggle: isEnabled == true
+          ? null
+          : (enable) => ref.read(securityProvider.notifier).toggle(id, true),
     );
   }
 }

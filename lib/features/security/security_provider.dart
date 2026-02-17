@@ -34,6 +34,15 @@ const checkSeverities = <String, CheckSeverity>{
   'secureKeyboard': CheckSeverity.medium,
   'screenLock': CheckSeverity.medium,
   'accounts': CheckSeverity.medium,
+  // Moyen (suite)
+  'lsaProtection': CheckSeverity.medium,
+  'macPolicy': CheckSeverity.medium,
+  'sip': CheckSeverity.high,
+  'dns': CheckSeverity.medium,
+  'crowdsec': CheckSeverity.medium,
+  'autoUpdates': CheckSeverity.high,
+  'hvci': CheckSeverity.medium,
+  'audit': CheckSeverity.medium,
   // Mineur
   'disk': CheckSeverity.minor,
   'rkhunter': CheckSeverity.minor,
@@ -170,6 +179,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
     states['win.ransomware'] = await SecurityCommands.checkWindowsRansomware();
     states['win.audit'] = await SecurityCommands.checkWindowsAudit();
     states['win.updates'] = await SecurityCommands.checkWindowsUpdates();
+    states['win.lsa'] = await SecurityCommands.checkWindowsLsa();
+    states['win.hvci'] = await SecurityCommands.checkWindowsHvci();
+    states['win.dns'] = await SecurityCommands.checkWindowsDns();
 
     state = state.copyWith(toggleStates: states);
   }
@@ -182,6 +194,7 @@ class SecurityNotifier extends Notifier<SecurityState> {
     installedMap['ufw'] = await SecurityCommands.checkLinuxUfwInstalled();
     installedMap['fail2ban'] = await SecurityCommands.checkLinuxFail2banInstalled();
     installedMap['rkhunter'] = await SecurityCommands.checkLinuxRkhunterInstalled();
+    installedMap['crowdsec'] = await SecurityCommands.checkLinuxCrowdsecInstalled();
 
     states['linux.firewall'] = installedMap['ufw']! ? await SecurityCommands.checkLinuxFirewall() : null;
     states['linux.sysctl'] = await SecurityCommands.checkLinuxSysctl();
@@ -189,6 +202,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
     states['linux.fail2ban'] = installedMap['fail2ban']! ? await SecurityCommands.checkLinuxFail2ban() : null;
     states['linux.updates'] = await SecurityCommands.checkLinuxUpdates();
     states['linux.rootLogin'] = await SecurityCommands.checkLinuxRootLogin();
+    states['linux.dns'] = await SecurityCommands.checkLinuxDns();
+    states['linux.crowdsec'] = installedMap['crowdsec']! ? await SecurityCommands.checkLinuxCrowdsec() : null;
+    states['linux.apparmor'] = await SecurityCommands.checkLinuxAppArmor();
 
     // Détecter les services
     final servicesList = await SecurityCommands.detectLinuxServices();
@@ -217,6 +233,7 @@ class SecurityNotifier extends Notifier<SecurityState> {
     states['mac.secureKeyboard'] = await SecurityCommands.checkMacSecureKeyboard();
     states['mac.gatekeeper'] = await SecurityCommands.checkMacGatekeeper();
     states['mac.screenLock'] = await SecurityCommands.checkMacScreenLock();
+    states['mac.dns'] = await SecurityCommands.checkMacDns();
 
     state = state.copyWith(toggleStates: states);
   }
@@ -256,6 +273,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
       case 'linux.fail2ban': return SecurityCommands.checkLinuxFail2ban();
       case 'linux.updates': return SecurityCommands.checkLinuxUpdates();
       case 'linux.rootLogin': return SecurityCommands.checkLinuxRootLogin();
+      case 'linux.dns': return SecurityCommands.checkLinuxDns();
+      case 'linux.crowdsec': return SecurityCommands.checkLinuxCrowdsec();
+      case 'linux.apparmor': return SecurityCommands.checkLinuxAppArmor();
       // Windows
       case 'win.firewall': return SecurityCommands.checkWindowsFirewall();
       case 'win.rdp': return SecurityCommands.checkWindowsRdp();
@@ -264,6 +284,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
       case 'win.ransomware': return SecurityCommands.checkWindowsRansomware();
       case 'win.audit': return SecurityCommands.checkWindowsAudit();
       case 'win.updates': return SecurityCommands.checkWindowsUpdates();
+      case 'win.lsa': return SecurityCommands.checkWindowsLsa();
+      case 'win.hvci': return SecurityCommands.checkWindowsHvci();
+      case 'win.dns': return SecurityCommands.checkWindowsDns();
       // macOS
       case 'mac.firewall': return SecurityCommands.checkMacFirewall();
       case 'mac.stealth': return SecurityCommands.checkMacStealth();
@@ -272,6 +295,7 @@ class SecurityNotifier extends Notifier<SecurityState> {
       case 'mac.secureKeyboard': return SecurityCommands.checkMacSecureKeyboard();
       case 'mac.gatekeeper': return SecurityCommands.checkMacGatekeeper();
       case 'mac.screenLock': return SecurityCommands.checkMacScreenLock();
+      case 'mac.dns': return SecurityCommands.checkMacDns();
       default: return null;
     }
   }
@@ -295,6 +319,12 @@ class SecurityNotifier extends Notifier<SecurityState> {
         return enable ? SecurityCommands.enableWindowsAudit() : SecurityCommands.disableWindowsAudit();
       case 'win.updates':
         return enable ? SecurityCommands.enableWindowsUpdates() : SecurityCommands.disableWindowsUpdates();
+      case 'win.lsa':
+        return enable ? SecurityCommands.enableWindowsLsa() : SecurityCommands.disableWindowsLsa();
+      case 'win.hvci':
+        return enable ? SecurityCommands.enableWindowsHvci() : SecurityCommands.disableWindowsHvci();
+      case 'win.dns':
+        return enable ? SecurityCommands.enableWindowsDns() : SecurityCommands.disableWindowsDns();
 
       // Linux
       case 'linux.firewall':
@@ -302,7 +332,8 @@ class SecurityNotifier extends Notifier<SecurityState> {
       case 'linux.sysctl':
         return enable ? SecurityCommands.enableLinuxSysctl() : SecurityCommands.disableLinuxSysctl();
       case 'linux.permissions':
-        return SecurityCommands.enableLinuxPermissions(); // Pas de "disable"
+        if (!enable) return false; // Pas de disable — on ne relâche pas les permissions
+        return SecurityCommands.enableLinuxPermissions();
       case 'linux.fail2ban':
         return enable ? SecurityCommands.enableLinuxFail2ban() : SecurityCommands.disableLinuxFail2ban();
       case 'linux.updates':
@@ -311,6 +342,12 @@ class SecurityNotifier extends Notifier<SecurityState> {
         return enable
             ? SecurityCommands.enableLinuxRootLoginProtection()
             : SecurityCommands.disableLinuxRootLoginProtection();
+      case 'linux.dns':
+        return enable ? SecurityCommands.enableLinuxDns() : SecurityCommands.disableLinuxDns();
+      case 'linux.crowdsec':
+        return enable ? SecurityCommands.enableLinuxCrowdsec() : SecurityCommands.disableLinuxCrowdsec();
+      case 'linux.apparmor':
+        return enable ? SecurityCommands.enableLinuxAppArmor() : SecurityCommands.disableLinuxAppArmor();
 
       // macOS
       case 'mac.firewall':
@@ -327,6 +364,8 @@ class SecurityNotifier extends Notifier<SecurityState> {
         return enable ? SecurityCommands.enableMacGatekeeper() : SecurityCommands.disableMacGatekeeper();
       case 'mac.screenLock':
         return enable ? SecurityCommands.enableMacScreenLock() : SecurityCommands.disableMacScreenLock();
+      case 'mac.dns':
+        return enable ? SecurityCommands.enableMacDns() : SecurityCommands.disableMacDns();
 
       default:
         return false;
@@ -350,6 +389,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
           break;
         case 'rkhunter':
           success = await SecurityCommands.installLinuxRkhunter();
+          break;
+        case 'crowdsec':
+          success = await SecurityCommands.installLinuxCrowdsec();
           break;
       }
 

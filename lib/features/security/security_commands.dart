@@ -160,6 +160,92 @@ class SecurityCommands {
     return result.success;
   }
 
+  // --- LSA Protection (RunAsPPL) ---
+  static Future<bool?> checkWindowsLsa() async {
+    final result = await CommandRunner.runPowerShell(
+      "Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
+      "-Name 'RunAsPPL' -ErrorAction SilentlyContinue | "
+      "Select-Object -ExpandProperty RunAsPPL",
+    );
+    if (!result.success) return false; // Pas de clé = non activé
+    return result.stdout.trim() == '1';
+  }
+
+  static Future<bool> enableWindowsLsa() async {
+    final result = await CommandRunner.runPowerShell(
+      "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
+      "-Name 'RunAsPPL' -Value 1 -Type DWord",
+    );
+    return result.success;
+  }
+
+  static Future<bool> disableWindowsLsa() async {
+    final result = await CommandRunner.runPowerShell(
+      "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
+      "-Name 'RunAsPPL' -Value 0 -Type DWord",
+    );
+    return result.success;
+  }
+
+  // --- Core Isolation / Memory Integrity (HVCI) ---
+  static Future<bool?> checkWindowsHvci() async {
+    final result = await CommandRunner.runPowerShell(
+      "Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
+      "-Name 'Enabled' -ErrorAction SilentlyContinue | "
+      "Select-Object -ExpandProperty Enabled",
+    );
+    if (!result.success) return false;
+    return result.stdout.trim() == '1';
+  }
+
+  static Future<bool> enableWindowsHvci() async {
+    final result = await CommandRunner.runPowerShell(
+      "New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
+      "-Force -ErrorAction SilentlyContinue | Out-Null; "
+      "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
+      "-Name 'Enabled' -Value 1 -Type DWord",
+    );
+    return result.success;
+  }
+
+  static Future<bool> disableWindowsHvci() async {
+    final result = await CommandRunner.runPowerShell(
+      "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
+      "-Name 'Enabled' -Value 0 -Type DWord",
+    );
+    return result.success;
+  }
+
+  // --- DNS sécurisé Quad9 (Windows) ---
+  static Future<bool?> checkWindowsDns() async {
+    final result = await CommandRunner.runPowerShell(
+      r"Get-DnsClientServerAddress -AddressFamily IPv4 | "
+      r"Where-Object { $_.ServerAddresses -contains '9.9.9.9' } | "
+      r"Measure-Object | Select-Object -ExpandProperty Count",
+    );
+    if (!result.success) return null;
+    final count = int.tryParse(result.stdout.trim()) ?? 0;
+    return count > 0;
+  }
+
+  static Future<bool> enableWindowsDns() async {
+    final result = await CommandRunner.runPowerShell(
+      r"Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | "
+      r"ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex "
+      r"-ServerAddresses ('9.9.9.9','149.112.112.112') }",
+    );
+    return result.success;
+  }
+
+  static Future<bool> disableWindowsDns() async {
+    final result = await CommandRunner.runPowerShell(
+      r"Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | "
+      r"ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex "
+      r"-ResetServerAddresses }",
+    );
+    return result.success;
+  }
+
   // --- Mises à jour auto ---
   // Vérifie les deux chemins possibles : Group Policy (prioritaire) puis standard
   static Future<bool?> checkWindowsUpdates() async {
@@ -301,6 +387,12 @@ class SecurityCommands {
   static Future<bool> disableLinuxSysctl() async {
     final script = '#!/bin/bash\n'
         'rm -f /etc/sysctl.d/99-hardening.conf\n'
+        '# Remettre les valeurs live du kernel aux défauts\n'
+        'sysctl -w net.ipv4.conf.all.accept_redirects=1 > /dev/null 2>&1\n'
+        'sysctl -w net.ipv4.conf.all.send_redirects=1 > /dev/null 2>&1\n'
+        'sysctl -w net.ipv4.conf.all.accept_source_route=1 > /dev/null 2>&1\n'
+        'sysctl -w net.ipv4.conf.all.log_martians=0 > /dev/null 2>&1\n'
+        'sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=0 > /dev/null 2>&1\n'
         'sysctl --system > /dev/null 2>&1\n'
         'exit 0\n';
     final result = await _runLinuxElevated(script);
@@ -497,12 +589,17 @@ class SecurityCommands {
   }
 
   static Future<bool> enableLinuxRootLoginProtection() async {
+    // Pattern élargi : gère "#PermitRootLogin", "# PermitRootLogin", "PermitRootLogin"
     final script = '#!/bin/bash\n'
-        'if grep -q "^#*PermitRootLogin" /etc/ssh/sshd_config; then\n'
-        '  sed -i \'s/^#*PermitRootLogin.*/PermitRootLogin no/\' /etc/ssh/sshd_config\n'
+        'if grep -qE "^\\s*#?\\s*PermitRootLogin" /etc/ssh/sshd_config; then\n'
+        '  sed -i -E \'s/^\\s*#?\\s*PermitRootLogin.*/PermitRootLogin no/\' /etc/ssh/sshd_config\n'
         'else\n'
         '  echo "PermitRootLogin no" >> /etc/ssh/sshd_config\n'
         'fi\n'
+        '# Vérifier aussi dans sshd_config.d/ (Ubuntu 22.04+)\n'
+        'for f in /etc/ssh/sshd_config.d/*.conf; do\n'
+        '  [ -f "\$f" ] && sed -i -E \'s/^\\s*#?\\s*PermitRootLogin.*/PermitRootLogin no/\' "\$f"\n'
+        'done\n'
         'systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null\n'
         'exit 0\n';
     final result = await _runLinuxElevated(script);
@@ -511,12 +608,170 @@ class SecurityCommands {
 
   static Future<bool> disableLinuxRootLoginProtection() async {
     final script = '#!/bin/bash\n'
-        'if grep -q "^#*PermitRootLogin" /etc/ssh/sshd_config; then\n'
-        '  sed -i \'s/^#*PermitRootLogin.*/PermitRootLogin yes/\' /etc/ssh/sshd_config\n'
+        'if grep -qE "^\\s*#?\\s*PermitRootLogin" /etc/ssh/sshd_config; then\n'
+        '  sed -i -E \'s/^\\s*#?\\s*PermitRootLogin.*/PermitRootLogin yes/\' /etc/ssh/sshd_config\n'
         'else\n'
         '  echo "PermitRootLogin yes" >> /etc/ssh/sshd_config\n'
         'fi\n'
+        'for f in /etc/ssh/sshd_config.d/*.conf; do\n'
+        '  [ -f "\$f" ] && sed -i -E \'s/^\\s*#?\\s*PermitRootLogin.*/PermitRootLogin yes/\' "\$f"\n'
+        'done\n'
         'systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null\n'
+        'exit 0\n';
+    final result = await _runLinuxElevated(script);
+    return result.success;
+  }
+
+  // --- DNS sécurisé Quad9 (Linux) ---
+  static Future<bool?> checkLinuxDns() async {
+    // Vérifier dans le fichier de config (pas resolv.conf qui est dynamique)
+    final hasResolved = await CommandRunner.run(
+      'systemctl', ['is-active', '--quiet', 'systemd-resolved'],
+    );
+    if (hasResolved.success) {
+      // Chercher une ligne DNS= non commentée contenant 9.9.9.9
+      final result = await CommandRunner.run(
+        'grep', ['-E', r'^DNS=.*9\.9\.9\.9', '/etc/systemd/resolved.conf'],
+      );
+      return result.success;
+    }
+    // Sans systemd-resolved, vérifier resolv.conf directement
+    final resolv = await CommandRunner.run(
+      'grep', ['-q', '9.9.9.9', '/etc/resolv.conf'],
+    );
+    return resolv.success;
+  }
+
+  static Future<bool> enableLinuxDns() async {
+    // Utiliser systemd-resolved si disponible, sinon resolv.conf
+    final hasResolved = await CommandRunner.run(
+      'systemctl', ['is-active', '--quiet', 'systemd-resolved'],
+    );
+    if (hasResolved.success) {
+      final script = '#!/bin/bash\n'
+          'sed -i \'s/^#*DNS=.*/DNS=9.9.9.9 149.112.112.112/\' /etc/systemd/resolved.conf\n'
+          'if ! grep -q "^DNS=" /etc/systemd/resolved.conf; then\n'
+          '  echo "DNS=9.9.9.9 149.112.112.112" >> /etc/systemd/resolved.conf\n'
+          'fi\n'
+          'systemctl restart systemd-resolved\n'
+          'exit 0\n';
+      final result = await _runLinuxElevated(script);
+      return result.success;
+    }
+    // Fallback : modifier resolv.conf
+    final script = '#!/bin/bash\n'
+        'cp /etc/resolv.conf /etc/resolv.conf.chill.bak\n'
+        'echo "nameserver 9.9.9.9" > /etc/resolv.conf\n'
+        'echo "nameserver 149.112.112.112" >> /etc/resolv.conf\n'
+        'exit 0\n';
+    final result = await _runLinuxElevated(script);
+    return result.success;
+  }
+
+  static Future<bool> disableLinuxDns() async {
+    final hasResolved = await CommandRunner.run(
+      'systemctl', ['is-active', '--quiet', 'systemd-resolved'],
+    );
+    if (hasResolved.success) {
+      final script = '#!/bin/bash\n'
+          'sed -i \'s/^DNS=.*/#DNS=/\' /etc/systemd/resolved.conf\n'
+          'systemctl restart systemd-resolved\n'
+          'exit 0\n';
+      final result = await _runLinuxElevated(script);
+      return result.success;
+    }
+    // Restaurer depuis backup si disponible
+    final script = '#!/bin/bash\n'
+        'if [ -f /etc/resolv.conf.chill.bak ]; then\n'
+        '  cp /etc/resolv.conf.chill.bak /etc/resolv.conf\n'
+        'fi\n'
+        'exit 0\n';
+    final result = await _runLinuxElevated(script);
+    return result.success;
+  }
+
+  // --- CrowdSec ---
+  static Future<bool> checkLinuxCrowdsecInstalled() async {
+    final result = await CommandRunner.run('which', ['cscli']);
+    return result.success;
+  }
+
+  static Future<bool?> checkLinuxCrowdsec() async {
+    final installed = await checkLinuxCrowdsecInstalled();
+    if (!installed) return null;
+    final result = await CommandRunner.run(
+      'systemctl',
+      ['is-active', '--quiet', 'crowdsec'],
+    );
+    return result.success;
+  }
+
+  static Future<bool> installLinuxCrowdsec() async {
+    final distro = await OsDetector.detectLinuxDistro();
+    String installCmd;
+    switch (distro) {
+      case LinuxDistro.debian:
+        installCmd = 'apt update -qq && apt install crowdsec -y -qq';
+        break;
+      case LinuxDistro.fedora:
+        installCmd = 'dnf install crowdsec -y -q';
+        break;
+      case LinuxDistro.arch:
+        installCmd = 'pacman -S --noconfirm crowdsec';
+        break;
+      case LinuxDistro.unknown:
+        return false;
+    }
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\n$installCmd\nsystemctl enable --now crowdsec\nexit \$?\n',
+    );
+    return result.success;
+  }
+
+  static Future<bool> enableLinuxCrowdsec() async {
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\nsystemctl enable --now crowdsec\nexit \$?\n',
+    );
+    return result.success;
+  }
+
+  static Future<bool> disableLinuxCrowdsec() async {
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\nsystemctl disable --now crowdsec\nexit \$?\n',
+    );
+    return result.success;
+  }
+
+  // --- AppArmor ---
+  static Future<bool?> checkLinuxAppArmor() async {
+    // Vérifier si AppArmor est disponible sur le système
+    final moduleExists = await CommandRunner.run(
+      'cat', ['/sys/module/apparmor/parameters/enabled'],
+    );
+    if (!moduleExists.success) return null; // AppArmor pas disponible
+    // Vérifier l'état du SERVICE (pas le module kernel qui reste
+    // chargé en mémoire même après un disable)
+    final result = await CommandRunner.run(
+      'systemctl', ['is-active', '--quiet', 'apparmor'],
+    );
+    return result.success;
+  }
+
+  static Future<bool> enableLinuxAppArmor() async {
+    final script = '#!/bin/bash\n'
+        'systemctl enable --now apparmor 2>/dev/null\n'
+        '# Mettre tous les profils en mode enforce\n'
+        'if command -v aa-enforce >/dev/null 2>&1; then\n'
+        '  aa-enforce /etc/apparmor.d/* 2>/dev/null\n'
+        'fi\n'
+        'exit 0\n';
+    final result = await _runLinuxElevated(script);
+    return result.success;
+  }
+
+  static Future<bool> disableLinuxAppArmor() async {
+    final script = '#!/bin/bash\n'
+        'systemctl disable --now apparmor 2>/dev/null\n'
         'exit 0\n';
     final result = await _runLinuxElevated(script);
     return result.success;
@@ -711,6 +966,38 @@ class SecurityCommands {
 
   static Future<bool> disableMacGatekeeper() async {
     final result = await CommandRunner.runElevated('spctl', ['--master-disable']);
+    return result.success;
+  }
+
+  // --- DNS sécurisé Quad9 (macOS) ---
+  static Future<bool?> checkMacDns() async {
+    final result = await CommandRunner.run('bash', [
+      '-c',
+      'networksetup -getdnsservers Wi-Fi 2>/dev/null; '
+      'networksetup -getdnsservers Ethernet 2>/dev/null',
+    ]);
+    if (!result.success) return null;
+    return result.stdout.contains('9.9.9.9');
+  }
+
+  static Future<bool> enableMacDns() async {
+    // Configurer Quad9 sur toutes les interfaces actives
+    final result = await CommandRunner.runElevated('bash', [
+      '-c',
+      'networksetup -setdnsservers Wi-Fi 9.9.9.9 149.112.112.112 2>/dev/null; '
+      'networksetup -setdnsservers Ethernet 9.9.9.9 149.112.112.112 2>/dev/null; '
+      'exit 0',
+    ]);
+    return result.success;
+  }
+
+  static Future<bool> disableMacDns() async {
+    final result = await CommandRunner.runElevated('bash', [
+      '-c',
+      'networksetup -setdnsservers Wi-Fi empty 2>/dev/null; '
+      'networksetup -setdnsservers Ethernet empty 2>/dev/null; '
+      'exit 0',
+    ]);
     return result.success;
   }
 
@@ -926,6 +1213,38 @@ class SecurityCommands {
       });
     }
 
+    // 7. LSA Protection
+    final lsa = await checkWindowsLsa();
+    results.add({
+      'id': 'lsaProtection',
+      'status': lsa == true ? 'ok' : 'warning',
+      'detail': lsa == true ? 'active' : 'inactive',
+    });
+
+    // 8. Core Isolation / HVCI
+    final hvci = await checkWindowsHvci();
+    results.add({
+      'id': 'hvci',
+      'status': hvci == true ? 'ok' : 'warning',
+      'detail': hvci == true ? 'active' : 'inactive',
+    });
+
+    // 9. DNS sécurisé (Quad9)
+    final dns = await checkWindowsDns();
+    results.add({
+      'id': 'dns',
+      'status': dns == true ? 'ok' : 'warning',
+      'detail': dns == true ? 'active' : 'inactive',
+    });
+
+    // 10. Audit des connexions
+    final audit = await checkWindowsAudit();
+    results.add({
+      'id': 'audit',
+      'status': audit == true ? 'ok' : 'warning',
+      'detail': audit == true ? 'active' : 'inactive',
+    });
+
     return results;
   }
 
@@ -1015,7 +1334,26 @@ class SecurityCommands {
         'fi\n'
         'ACCOUNTS_CODE="count:\$ACCOUNTS"\n'
         '\n'
-        '# 9. rkhunter\n'
+        '# 9. AppArmor/SELinux\n'
+        'if [ -f /sys/module/apparmor/parameters/enabled ]; then\n'
+        '  AA_VAL=\$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)\n'
+        '  if [ "\$AA_VAL" = "Y" ]; then\n'
+        '    MAC="ok"; MAC_CODE="apparmor"\n'
+        '  else\n'
+        '    MAC="warning"; MAC_CODE="apparmor_inactive"\n'
+        '  fi\n'
+        'elif command -v getenforce >/dev/null 2>&1; then\n'
+        '  SE_VAL=\$(getenforce 2>/dev/null)\n'
+        '  if [ "\$SE_VAL" = "Enforcing" ]; then\n'
+        '    MAC="ok"; MAC_CODE="selinux"\n'
+        '  else\n'
+        '    MAC="warning"; MAC_CODE="selinux_permissive"\n'
+        '  fi\n'
+        'else\n'
+        '  MAC="warning"; MAC_CODE="none"\n'
+        'fi\n'
+        '\n'
+        '# 10. rkhunter\n'
         'if command -v rkhunter >/dev/null 2>&1; then\n'
         '  if [ -f /var/lib/rkhunter/db/rkhunter.dat ]; then\n'
         '    RKH="ok"; RKH_CODE="configured"\n'
@@ -1024,6 +1362,45 @@ class SecurityCommands {
         '  fi\n'
         'else\n'
         '  RKH="warning"; RKH_CODE="missing"\n'
+        'fi\n'
+        '\n'
+        '# 11. DNS sécurisé (Quad9)\n'
+        'if systemctl is-active --quiet systemd-resolved 2>/dev/null; then\n'
+        '  if grep -qE "^DNS=.*9\\.9\\.9\\.9" /etc/systemd/resolved.conf 2>/dev/null; then\n'
+        '    DNS_CHECK="ok"; DNS_CODE="active"\n'
+        '  else\n'
+        '    DNS_CHECK="warning"; DNS_CODE="inactive"\n'
+        '  fi\n'
+        'else\n'
+        '  if grep -q "9.9.9.9" /etc/resolv.conf 2>/dev/null; then\n'
+        '    DNS_CHECK="ok"; DNS_CODE="active"\n'
+        '  else\n'
+        '    DNS_CHECK="warning"; DNS_CODE="inactive"\n'
+        '  fi\n'
+        'fi\n'
+        '\n'
+        '# 12. CrowdSec\n'
+        'if command -v cscli >/dev/null 2>&1; then\n'
+        '  if systemctl is-active --quiet crowdsec 2>/dev/null; then\n'
+        '    CROWD="ok"; CROWD_CODE="active"\n'
+        '  else\n'
+        '    CROWD="warning"; CROWD_CODE="inactive"\n'
+        '  fi\n'
+        'else\n'
+        '  CROWD="warning"; CROWD_CODE="missing"\n'
+        'fi\n'
+        '\n'
+        '# 13. Mises à jour automatiques\n'
+        'if command -v unattended-upgrades >/dev/null 2>&1; then\n'
+        '  if systemctl is-active --quiet unattended-upgrades 2>/dev/null; then\n'
+        '    AUTOUPD="ok"; AUTOUPD_CODE="active"\n'
+        '  else\n'
+        '    AUTOUPD="warning"; AUTOUPD_CODE="inactive"\n'
+        '  fi\n'
+        'elif systemctl is-active --quiet dnf-automatic-install.timer 2>/dev/null; then\n'
+        '  AUTOUPD="ok"; AUTOUPD_CODE="active"\n'
+        'else\n'
+        '  AUTOUPD="warning"; AUTOUPD_CODE="inactive"\n'
         'fi\n'
         '\n'
         'san() { printf \'%s\' "\$1" | tr -d \'\\012\\015\\042\'; }\n'
@@ -1038,7 +1415,11 @@ class SecurityCommands {
         '  {"id":"failedLogins","status":"\$(san "\$SSH_FAIL")","detail":"\$(san "\$SSH_FAIL_CODE")"},\n'
         '  {"id":"rkhunter","status":"\$(san "\$RKH")","detail":"\$(san "\$RKH_CODE")"},\n'
         '  {"id":"disk","status":"\$(san "\$DISK")","detail":"\$(san "\$DISK_CODE")"},\n'
-        '  {"id":"accounts","status":"\$(san "\$ACCOUNTS_STATUS")","detail":"\$(san "\$ACCOUNTS_CODE")"}\n'
+        '  {"id":"accounts","status":"\$(san "\$ACCOUNTS_STATUS")","detail":"\$(san "\$ACCOUNTS_CODE")"},\n'
+        '  {"id":"macPolicy","status":"\$(san "\$MAC")","detail":"\$(san "\$MAC_CODE")"},\n'
+        '  {"id":"dns","status":"\$(san "\$DNS_CHECK")","detail":"\$(san "\$DNS_CODE")"},\n'
+        '  {"id":"crowdsec","status":"\$(san "\$CROWD")","detail":"\$(san "\$CROWD_CODE")"},\n'
+        '  {"id":"autoUpdates","status":"\$(san "\$AUTOUPD")","detail":"\$(san "\$AUTOUPD_CODE")"}\n'
         ']\n'
         'JSONEOF\n'
         'exit 0\n';
@@ -1135,7 +1516,26 @@ class SecurityCommands {
       'detail': sl == true ? 'active' : 'inactive',
     });
 
-    // 7. Espace disque
+    // 7. SIP (System Integrity Protection)
+    final sip = await CommandRunner.run('csrutil', ['status']);
+    if (sip.success) {
+      final sipEnabled = sip.stdout.contains('enabled');
+      results.add({
+        'id': 'sip',
+        'status': sipEnabled ? 'ok' : 'error',
+        'detail': sipEnabled ? 'active' : 'inactive',
+      });
+    }
+
+    // 8. DNS sécurisé (Quad9)
+    final dns = await checkMacDns();
+    results.add({
+      'id': 'dns',
+      'status': dns == true ? 'ok' : 'warning',
+      'detail': dns == true ? 'active' : 'inactive',
+    });
+
+    // 9. Espace disque
     final disk = await CommandRunner.run('df', ['-h', '/']);
     if (disk.success) {
       final lines = disk.stdout.split('\n');
