@@ -65,6 +65,57 @@ class CommandRunner {
     return run('powershell', ['-NoProfile', '-Command', command], timeout: timeout);
   }
 
+  /// Exécute une commande PowerShell avec élévation UAC (Windows).
+  /// Écrit la commande dans un .ps1 temporaire, puis lance avec
+  /// Start-Process -Verb RunAs pour déclencher l'invite UAC.
+  /// Utilise un fichier marqueur pour vérifier que le script s'est bien exécuté.
+  static Future<CommandResult> runPowerShellElevated(
+    String command, {
+    Duration? timeout,
+  }) async {
+    final tempDir = await Directory.systemTemp.createTemp('chill-ps-');
+    final tempScript = File('${tempDir.path}\\elevated.ps1');
+    final doneMarker = File('${tempDir.path}\\done.txt');
+    try {
+      // Le script exécute la commande, puis écrit "DONE" dans un fichier marqueur
+      final markerPath = doneMarker.path.replaceAll('\\', '\\\\');
+      final scriptContent = '$command\n'
+          '"DONE" | Out-File -FilePath "$markerPath" -Encoding ascii\n';
+      await tempScript.writeAsString(scriptContent);
+
+      final scriptPath = tempScript.path;
+      debugPrint('[Elevated] Script: $scriptPath');
+      debugPrint('[Elevated] Content:\n$scriptContent');
+
+      final result = await run('powershell', [
+        '-NoProfile',
+        '-Command',
+        'Start-Process powershell -Verb RunAs -ArgumentList '
+            '@("-NoProfile","-ExecutionPolicy","Bypass","-File","$scriptPath") -Wait',
+      ], timeout: timeout);
+
+      debugPrint('[Elevated] Start-Process result: exit=${result.exitCode} '
+          'stdout=[${result.stdout}] stderr=[${result.stderr}]');
+
+      // Vérifier que le marqueur "done" a été créé par le script élevé
+      if (doneMarker.existsSync()) {
+        debugPrint('[Elevated] Done marker found — script executed OK');
+        return CommandResult(exitCode: 0, stdout: 'OK', stderr: '');
+      }
+
+      debugPrint('[Elevated] No done marker — script may have failed');
+      return result;
+    } finally {
+      // Laisser un petit délai au cas où -Wait ne bloque pas parfaitement
+      await Future.delayed(const Duration(milliseconds: 200));
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (e) {
+        debugPrint('[CommandRunner] Cleanup error: $e');
+      }
+    }
+  }
+
   /// Échappement shell POSIX complet — entoure de single quotes
   static String _shellQuote(String arg) {
     // En POSIX shell, tout ce qui est entre single quotes est littéral,

@@ -240,17 +240,27 @@ class SecurityNotifier extends Notifier<SecurityState> {
 
   /// Active ou désactive un toggle, puis vérifie l'état réel
   Future<void> toggle(String id, bool enable) async {
+    debugPrint('[Security] toggle START: $id -> $enable');
     // Marquer comme loading
     final loading = Map<String, bool>.from(state.toggleLoading);
     loading[id] = true;
     state = state.copyWith(toggleLoading: loading);
 
     try {
-      await _executeToggle(id, enable);
-      // Vérifier l'état réel après le toggle (ne pas faire confiance au code de sortie)
-      final actualState = await _checkSingleToggle(id);
+      final toggleResult = await _executeToggle(id, enable);
+      debugPrint('[Security] executeToggle result: $toggleResult');
       final states = Map<String, bool?>.from(state.toggleStates);
-      states[id] = actualState ?? enable;
+      if (toggleResult) {
+        // La commande élevée a réussi — on fait confiance au résultat.
+        // La re-vérification peut échouer si elle nécessite aussi les
+        // droits admin (ex: auditpol /get nécessite l'élévation pour lire).
+        states[id] = enable;
+      } else {
+        // La commande a échoué — vérifier l'état réel
+        final actualState = await _checkSingleToggle(id);
+        debugPrint('[Security] checkSingleToggle (failed): $actualState');
+        states[id] = actualState;
+      }
       state = state.copyWith(toggleStates: states);
     } catch (e) {
       debugPrint('[Security] toggle error: $e');
@@ -261,6 +271,7 @@ class SecurityNotifier extends Notifier<SecurityState> {
     final loadingAfter = Map<String, bool>.from(state.toggleLoading);
     loadingAfter.remove(id);
     state = state.copyWith(toggleLoading: loadingAfter);
+    debugPrint('[Security] toggle END: $id');
   }
 
   /// Re-vérifie l'état d'un seul toggle après une action

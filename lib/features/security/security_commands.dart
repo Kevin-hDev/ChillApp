@@ -21,14 +21,14 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsFirewall() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsFirewall() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False',
     );
     return result.success;
@@ -44,38 +44,42 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsRdpProtection() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1",
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsRdpProtection() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0",
     );
     return result.success;
   }
 
   // --- SMBv1 (inversé : true = désactivé = sécurisé) ---
+  // Get-SmbServerConfiguration fonctionne SANS admin (contrairement à
+  // Get-WindowsOptionalFeature -Online qui exige l'élévation DISM).
   static Future<bool?> checkWindowsSmb1() async {
     final result = await CommandRunner.runPowerShell(
-      'Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol | Select-Object -ExpandProperty State',
+      'Get-SmbServerConfiguration | Select-Object -ExpandProperty EnableSMB1Protocol',
     );
     if (!result.success) return null;
-    return result.stdout.trim() == 'Disabled'; // Disabled = sécurisé
+    return result.stdout.trim() == 'False'; // False = SMB1 désactivé = sécurisé
   }
 
   static Future<bool> enableWindowsSmb1Protection() async {
-    final result = await CommandRunner.runPowerShell(
-      'Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart',
+    // Set-SmbServerConfiguration prend effet immédiatement (pas besoin de reboot)
+    // contrairement à Disable-WindowsOptionalFeature qui nécessite un redémarrage.
+    final result = await CommandRunner.runPowerShellElevated(
+      'Set-SmbServerConfiguration -EnableSMB1Protocol \$false -Force',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsSmb1Protection() async {
-    final result = await CommandRunner.runPowerShell(
-      'Enable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart',
+    final result = await CommandRunner.runPowerShellElevated(
+      'Set-SmbServerConfiguration -EnableSMB1Protocol \$true -Force',
     );
     return result.success;
   }
@@ -90,14 +94,14 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsRemoteRegistryProtection() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'Stop-Service RemoteRegistry -Force -ErrorAction SilentlyContinue; Set-Service RemoteRegistry -StartupType Disabled',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsRemoteRegistryProtection() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'Set-Service RemoteRegistry -StartupType Manual; Start-Service RemoteRegistry',
     );
     return result.success;
@@ -113,14 +117,14 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsRansomware() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'Set-MpPreference -EnableControlledFolderAccess Enabled',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsRansomware() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'Set-MpPreference -EnableControlledFolderAccess Disabled',
     );
     return result.success;
@@ -134,33 +138,36 @@ class SecurityCommands {
     // La comparaison de texte se fait DANS PowerShell pour éviter les
     // problèmes d'encodage des accents (é, è) entre PowerShell et Dart.
     // On ne sort que du ASCII simple : TRUE, FALSE ou ERROR.
+    // NOTE : auditpol /get exige les droits admin. En cas d'échec (pas
+    // d'admin), on retourne false plutôt que null pour éviter le spinner infini.
     final result = await CommandRunner.runPowerShell(
       "\$out = auditpol /get /subcategory:\"$_auditLogonGuid\" 2>&1 | Out-String; "
       "if (\$LASTEXITCODE -ne 0) { Write-Output 'ERROR' } "
       "elseif (\$out -match 'Success.*Failure|Succ.*chec') { Write-Output 'TRUE' } "
       "else { Write-Output 'FALSE' }",
     );
-    if (!result.success) return null;
+    if (!result.success) return false;
     final val = result.stdout.trim();
-    if (val == 'ERROR') return null;
+    if (val == 'ERROR') return false;
     return val == 'TRUE';
   }
 
   static Future<bool> enableWindowsAudit() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'auditpol /set /subcategory:"$_auditLogonGuid" /success:enable /failure:enable',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsAudit() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       'auditpol /set /subcategory:"$_auditLogonGuid" /success:disable /failure:disable',
     );
     return result.success;
   }
 
   // --- LSA Protection (RunAsPPL) ---
+  // RunAsPPL : 0 = désactivé, 1 = activé (UEFI lock), 2 = activé (sans UEFI lock)
   static Future<bool?> checkWindowsLsa() async {
     final result = await CommandRunner.runPowerShell(
       "Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
@@ -168,11 +175,13 @@ class SecurityCommands {
       "Select-Object -ExpandProperty RunAsPPL",
     );
     if (!result.success) return false; // Pas de clé = non activé
-    return result.stdout.trim() == '1';
+    final val = int.tryParse(result.stdout.trim()) ?? 0;
+    return val >= 1; // 1 ou 2 = activé
   }
 
   static Future<bool> enableWindowsLsa() async {
-    final result = await CommandRunner.runPowerShell(
+    // Écriture dans HKLM nécessite les droits admin
+    final result = await CommandRunner.runPowerShellElevated(
       "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
       "-Name 'RunAsPPL' -Value 1 -Type DWord",
     );
@@ -180,7 +189,7 @@ class SecurityCommands {
   }
 
   static Future<bool> disableWindowsLsa() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
       "-Name 'RunAsPPL' -Value 0 -Type DWord",
     );
@@ -199,7 +208,7 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsHvci() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
       "-Force -ErrorAction SilentlyContinue | Out-Null; "
       "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
@@ -209,7 +218,7 @@ class SecurityCommands {
   }
 
   static Future<bool> disableWindowsHvci() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity' "
       "-Name 'Enabled' -Value 0 -Type DWord",
     );
@@ -229,19 +238,20 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsDns() async {
-    final result = await CommandRunner.runPowerShell(
-      r"Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | "
-      r"ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex "
-      r"-ServerAddresses ('9.9.9.9','149.112.112.112') }",
+    // Set-DnsClientServerAddress nécessite les droits admin (CIM)
+    final result = await CommandRunner.runPowerShellElevated(
+      'Get-NetAdapter | Where-Object { \$_.Status -eq \'Up\' } | '
+      'ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex \$_.ifIndex '
+      '-ServerAddresses (\'9.9.9.9\',\'149.112.112.112\') }',
     );
     return result.success;
   }
 
   static Future<bool> disableWindowsDns() async {
-    final result = await CommandRunner.runPowerShell(
-      r"Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | "
-      r"ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex "
-      r"-ResetServerAddresses }",
+    final result = await CommandRunner.runPowerShellElevated(
+      'Get-NetAdapter | Where-Object { \$_.Status -eq \'Up\' } | '
+      'ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex \$_.ifIndex '
+      '-ResetServerAddresses }',
     );
     return result.success;
   }
@@ -266,7 +276,7 @@ class SecurityCommands {
   }
 
   static Future<bool> enableWindowsUpdates() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Force -ErrorAction SilentlyContinue | Out-Null; "
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'AUOptions' -Value 4 -Type DWord; "
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Type DWord",
@@ -275,7 +285,7 @@ class SecurityCommands {
   }
 
   static Future<bool> disableWindowsUpdates() async {
-    final result = await CommandRunner.runPowerShell(
+    final result = await CommandRunner.runPowerShellElevated(
       "New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Force -ErrorAction SilentlyContinue | Out-Null; "
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'AUOptions' -Value 2 -Type DWord; "
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Type DWord",
