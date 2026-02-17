@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,17 @@ import 'dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
+
+  void _openGitHub() {
+    final url = 'https://github.com/Kevin-hDev';
+    if (Platform.isLinux) {
+      Process.run('xdg-open', [url]);
+    } else if (Platform.isWindows) {
+      Process.run('cmd', ['/c', 'start', url]);
+    } else if (Platform.isMacOS) {
+      Process.run('open', [url]);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,14 +59,37 @@ class DashboardScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: topSpacing),
-                  Text(
-                    t(locale, 'dashboard.welcome'),
-                    style: theme.textTheme.headlineLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    t(locale, 'dashboard.description'),
-                    style: theme.textTheme.bodyLarge,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t(locale, 'dashboard.welcome'),
+                              style: theme.textTheme.headlineLarge,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              t(locale, 'dashboard.description'),
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _openGitHub,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Image.asset(
+                            'assets/images/icons_github.png',
+                            width: 86,
+                            height: 86,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   // Ligne séparatrice fine (comme le site)
