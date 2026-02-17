@@ -39,10 +39,12 @@ class DashboardScreen extends ConsumerWidget {
           final topSpacing = width < 600 ? 24.0 : 48.0;
 
           // Calculer la hauteur disponible pour la grille
-          // +1 pour la ligne séparatrice
           final height = constraints.maxHeight;
           final dividerHeight = 1.0 + 8.0; // divider + spacing après
-          final headerHeight = topSpacing + 40 + 8 + 20 + 16 + dividerHeight + 8;
+          // La Row du header a la hauteur du plus grand enfant :
+          // texte (~68px) vs icône GitHub (110px) → 110px
+          final headerRowHeight = 110.0;
+          final headerHeight = topSpacing + headerRowHeight + 16 + dividerHeight + 8;
           final gridHeight = height - headerHeight - padding * 2;
           final rows = (6 / columns).ceil();
           final totalSpacing = (rows - 1) * 16.0;
@@ -84,8 +86,8 @@ class DashboardScreen extends ConsumerWidget {
                           cursor: SystemMouseCursors.click,
                           child: Image.asset(
                             'assets/images/icons_github.png',
-                            width: 86,
-                            height: 86,
+                            width: 110,
+                            height: 110,
                           ),
                         ),
                       ),
