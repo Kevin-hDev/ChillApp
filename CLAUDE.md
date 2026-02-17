@@ -5,9 +5,19 @@
 - **Toujours répondre en français.** L'utilisateur ne parle pas anglais.
 - **Expliquer simplement, sans jargon technique.** L'utilisateur n'est pas développeur. Privilégier des phrases courtes et concrètes.
 
-## Présentation du projet
+## User Preferences
 
-**ChillApp** est l'application bureau (Windows/Linux/macOS) du projet **Chill**. C'est le hub central qui permet de configurer les apps de l'écosystème Chill sans toucher au terminal. En V1, elle supporte **ChillShell** (terminal SSH mobile).
+- **Langue** : L'utilisateur parle uniquement français. Toujours répondre en français, éviter l'anglais.
+- **Recherche web** : Utiliser le MCP Brave Search (`mcp__brave-search__brave_web_search`) pour toutes les recherches web.
+- **Skills** : Utiliser les skills disponibles selon la situation. Skills clés :
+  - `superpowers:brainstorming` - Avant tout travail créatif (nouvelles features, composants)
+  - `superpowers:writing-plans` - Pour planifier l'implémentation d'une tâche multi-étapes
+  - `superpowers:test-driven-development` - Pour implémenter features/bugfixes
+  - `superpowers:systematic-debugging` - Face à un bug ou comportement inattendu, quand tu n'arrives pas à résoudre un problème/BUG au bout de deux essaies tu utilises systématiquement systematic-debugging pour investiguer en profondeur 
+  - `superpowers:verification-before-completion` - Avant de dire qu'un travail est terminé
+  - `interface-design` - Pour le design d'interfaces (dashboards, apps)
+  - `Front-end design` - pour éviter les designs classiques qui font trop IA
+  - `Claudeception` - Pour que tu prennes des notes des que tu apprends quelques chose de pertinents 
 
 ## Commandes
 
@@ -146,3 +156,10 @@ final result = await Process.run('executable', ['args']);
 - Les traductions sont dans `i18n/translations.dart` sous forme de Map
 - Un provider Riverpod (`localeProvider`) gère la langue active
 - Fonction helper `t(key)` pour accéder aux traductions
+
+## RAPPEL
+1. Répond moi ou commence toujours par me parlé en Français, je ne parle pas anglais.
+2. Pense à utiliser le PLUGIN superpowers et ces différents skills en fonction de la taches.
+3.  Je n'ai pas de connaissance en programmation, je ne sais pas lire le code je peux vite être perdu dans le langage de développer.
+4. Tu codes toujours en pensent à la cybersécurité et aux différentes failles possibles.
+5. On corrige les problèmes, on ne se contentent jamais de les camouflé comme si nous cachions de la poussière sous un tapis

@@ -160,9 +160,9 @@
 ## 16. Build & distribution
 
 - [x] Résoudre le problème de linker Linux (Flutter réinstallé via git + lld-18)
-- [ ] Build Windows
-- [ ] Build macOS
-- [ ] Packaging / installeur
+- [x] Build Windows
+- [x] Build macOS
+- [x] Packaging / installeur
 
 ## Notes techniques
 
