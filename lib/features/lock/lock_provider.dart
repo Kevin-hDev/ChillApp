@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../settings/settings_provider.dart';
 import '../../core/security/secure_storage.dart';
+import '../../core/security/crypto_isolate.dart';
 
 // =============================================================
 // SECURITY NOTES
@@ -204,7 +205,10 @@ class LockNotifier extends Notifier<LockState> {
     return base64Encode(bytes);
   }
 
-  /// PBKDF2 with HMAC-SHA256, 100 000 iterations
+  /// PBKDF2 with HMAC-SHA256, 100 000 iterations.
+  /// Conservé pour les tests unitaires et la migration de hashes legacy
+  /// qui pourraient en avoir besoin via un accès externe futur.
+  // ignore: unused_element
   Uint8List _pbkdf2(String password, String salt,
       {int iterations = 100000, int keyLength = 32}) {
     final hmac = Hmac(sha256, utf8.encode(password));
@@ -233,9 +237,8 @@ class LockNotifier extends Notifier<LockState> {
     return Uint8List.fromList(result.sublist(0, keyLength));
   }
 
-  String _hashPin(String pin, String salt) {
-    final derived = _pbkdf2(pin, salt);
-    return base64Encode(derived);
+  Future<String> _hashPin(String pin, String salt) async {
+    return await CryptoIsolate.hashPinIsolated(pin, salt);
   }
 
   /// Constant-time string comparison to prevent timing attacks (CWE-208)
@@ -271,7 +274,7 @@ class LockNotifier extends Notifier<LockState> {
       throw ArgumentError('PIN must be exactly 8 digits');
     }
     final salt = _generateSalt();
-    final hash = _hashPin(pin, salt);
+    final hash = await _hashPin(pin, salt);
 
     // Store in SecureStorage (with SharedPreferences fallback)
     await _secureWrite(_pinSaltKey, salt);
@@ -300,14 +303,14 @@ class LockNotifier extends Notifier<LockState> {
     // Legacy formats are automatically migrated to v2 on successful verification.
     if (salt != null && stored.length == 44) {
       // Current PBKDF2 format (base64 = 44 chars)
-      match = _constantTimeEquals(_hashPin(pin, salt), stored);
+      match = _constantTimeEquals(await _hashPin(pin, salt), stored);
     } else if (salt != null && stored.length == 64) {
       // Legacy SHA-256 with salt (hex = 64 chars): migrate on success
       final legacyHash = _hashPinLegacy(pin, salt);
       if (_constantTimeEquals(legacyHash, stored)) {
         match = true;
         // Migrate to PBKDF2 in SecureStorage
-        await _secureWrite(_pinHashKey, _hashPin(pin, salt));
+        await _secureWrite(_pinHashKey, await _hashPin(pin, salt));
       }
     } else if (salt == null) {
       // Very old format without salt: migrate on success
@@ -316,7 +319,7 @@ class LockNotifier extends Notifier<LockState> {
         match = true;
         final newSalt = _generateSalt();
         await _secureWrite(_pinSaltKey, newSalt);
-        await _secureWrite(_pinHashKey, _hashPin(pin, newSalt));
+        await _secureWrite(_pinHashKey, await _hashPin(pin, newSalt));
       }
     }
 
