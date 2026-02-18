@@ -5,26 +5,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chill_app/features/lock/lock_provider.dart';
+import 'package:chill_app/core/security/secure_storage.dart';
 
 void main() {
   late ProviderContainer container;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Reset SecureStorage singleton so each test starts fresh.
+    // In tests, SecureStorage will use FallbackSecureStorage (no secret-tool).
+    SecureStorage.resetForTesting();
     container = ProviderContainer();
-    // Trigger initial build (async _load).
+    // Trigger initial build (async _initAsync).
     container.read(lockProvider);
   });
 
   tearDown(() {
     container.dispose();
+    SecureStorage.resetForTesting();
   });
 
-  /// Wait for the async _load() to finish by pumping microtasks.
+  /// Wait for the async _initAsync() to finish.
+  /// Uses a longer delay to allow Process.run('which', ['secret-tool']) to complete.
   Future<void> waitForLoad() async {
-    // Allow the async _load() future to complete.
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    // Allow the async _initAsync future (including Process.run) to complete.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
   }
 
   // ============================================
@@ -202,6 +207,7 @@ void main() {
       await prefs.setInt('pin_locked_until', pastMs);
       // Reload state from prefs
       container.dispose();
+      SecureStorage.resetForTesting();
       container = ProviderContainer();
       container.read(lockProvider);
       await waitForLoad();
@@ -232,6 +238,7 @@ void main() {
       await prefs.setInt('pin_locked_until', pastMs);
       // Reload state from prefs
       container.dispose();
+      SecureStorage.resetForTesting();
       container = ProviderContainer();
       container.read(lockProvider);
       await waitForLoad();
@@ -287,35 +294,79 @@ void main() {
       expect(state.lockedUntil, isNull);
     });
 
-    test('removePin efface le hash de SharedPreferences', () async {
+    test('removePin efface les cles sensibles et le rate limiting', () async {
       await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
       await notifier.removePin();
 
+      // pin_hash and pin_salt are in SecureStorage, not SharedPreferences.
+      // After removePin(), SecureStorage should not contain them either.
+      final storage = await SecureStorage.getInstance();
+      expect(await storage.containsKey('pin_hash'), isFalse);
+      expect(await storage.containsKey('pin_salt'), isFalse);
+
+      // Rate limiting data is in SharedPreferences — must be removed.
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('pin_hash'), isNull);
-      expect(prefs.getString('pin_salt'), isNull);
       expect(prefs.getInt('pin_failed_attempts'), isNull);
       expect(prefs.getInt('pin_locked_until'), isNull);
+
+      // Legacy SharedPreferences keys must also be absent.
+      expect(prefs.getString('pin_hash'), isNull);
+      expect(prefs.getString('pin_salt'), isNull);
     });
   });
 
   // ============================================
-  // 8. Migration ancien format → nouveau format PBKDF2
+  // 8. Migration ancien format → SecureStorage
   // ============================================
-  group('Migration legacy hash', () {
-    test('migration SHA-256 sans sel (pre-v1) → PBKDF2', () async {
-      // Simuler l'ancien format : sha256(pin) sans sel
+  group('Migration legacy SharedPreferences → SecureStorage', () {
+    test('migration : pin_hash en SharedPreferences est transfere vers SecureStorage',
+        () async {
+      // Simulate data left by a pre-FIX-027 version
+      const pin = '12345678';
+      // Use a PBKDF2 hash directly stored in SharedPreferences (old behaviour)
+      // We use a fake 44-char base64 string to simulate a migrated hash.
+      // In reality, the old code stored it in SharedPreferences.
+      const fakeHash = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='; // 44 chars
+      const fakeSalt = 'AAAAAAAAAAAAAAAAAAAAAA=='; // 24 chars base64
+
+      SharedPreferences.setMockInitialValues({
+        'pin_hash': fakeHash,
+        'pin_salt': fakeSalt,
+      });
+      container.dispose();
+      SecureStorage.resetForTesting();
+      container = ProviderContainer();
+      container.read(lockProvider);
+      await waitForLoad();
+
+      // After migration, pin_hash must be removed from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('pin_hash'), isNull);
+      expect(prefs.getString('pin_salt'), isNull);
+
+      // And must be present in SecureStorage
+      final storage = await SecureStorage.getInstance();
+      expect(await storage.containsKey('pin_hash'), isTrue);
+      expect(await storage.containsKey('pin_salt'), isTrue);
+      expect(await storage.read('pin_hash'), equals(fakeHash));
+      expect(await storage.read('pin_salt'), equals(fakeSalt));
+    });
+
+    test('migration SHA-256 sans sel (pre-v1) : verifyPin reussit et migre vers PBKDF2',
+        () async {
+      // Simulate very old format: sha256(pin) stored in SharedPreferences
       const pin = '12345678';
       final oldHash = sha256.convert(utf8.encode(pin)).toString();
 
       SharedPreferences.setMockInitialValues({
         'pin_hash': oldHash,
-        // Pas de pin_salt = format pre-v1
+        // No pin_salt = pre-v1 format
       });
       container.dispose();
+      SecureStorage.resetForTesting();
       container = ProviderContainer();
       container.read(lockProvider);
       await waitForLoad();
@@ -323,22 +374,22 @@ void main() {
       final notifier = container.read(lockProvider.notifier);
       expect(container.read(lockProvider).isEnabled, true);
 
-      // Verifier avec l'ancien PIN → migration
+      // Verify with the old PIN — triggers migration to PBKDF2
       final result = await notifier.verifyPin(pin);
       expect(result, true);
 
-      // Apres migration, le hash doit avoir change (PBKDF2 = 44 chars base64)
-      final prefs = await SharedPreferences.getInstance();
-      final newHash = prefs.getString('pin_hash');
-      final newSalt = prefs.getString('pin_salt');
+      // After migration, the hash in SecureStorage must be PBKDF2 (44 chars)
+      final storage = await SecureStorage.getInstance();
+      final newHash = await storage.read('pin_hash');
+      final newSalt = await storage.read('pin_salt');
       expect(newSalt, isNotNull);
       expect(newHash, isNotNull);
       expect(newHash!.length, 44); // base64 encoded PBKDF2
       expect(newHash, isNot(oldHash));
     });
 
-    test('migration SHA-256 avec sel (v1) → PBKDF2', () async {
-      // Simuler l'ancien format : sha256('$salt:$pin') avec sel
+    test('migration SHA-256 avec sel (v1) → PBKDF2 via SecureStorage', () async {
+      // Simulate old format: sha256('$salt:$pin') stored in SharedPreferences
       const pin = '12345678';
       final salt = base64Encode(List.generate(16, (i) => i));
       final legacyHash =
@@ -349,6 +400,7 @@ void main() {
         'pin_salt': salt,
       });
       container.dispose();
+      SecureStorage.resetForTesting();
       container = ProviderContainer();
       container.read(lockProvider);
       await waitForLoad();
@@ -356,13 +408,13 @@ void main() {
       final notifier = container.read(lockProvider.notifier);
       expect(container.read(lockProvider).isEnabled, true);
 
-      // Verifier avec l'ancien PIN → migration
+      // Verify with the old PIN — triggers migration to PBKDF2
       final result = await notifier.verifyPin(pin);
       expect(result, true);
 
-      // Apres migration, le hash doit etre PBKDF2 (44 chars base64)
-      final prefs = await SharedPreferences.getInstance();
-      final newHash = prefs.getString('pin_hash');
+      // After migration, hash must be PBKDF2 in SecureStorage
+      final storage = await SecureStorage.getInstance();
+      final newHash = await storage.read('pin_hash');
       expect(newHash, isNotNull);
       expect(newHash!.length, 44);
       expect(newHash, isNot(legacyHash));
@@ -376,6 +428,7 @@ void main() {
         'pin_hash': oldHash,
       });
       container.dispose();
+      SecureStorage.resetForTesting();
       container = ProviderContainer();
       container.read(lockProvider);
       await waitForLoad();
@@ -384,10 +437,14 @@ void main() {
       final result = await notifier.verifyPin('00000000');
       expect(result, false);
 
-      // Le hash ne doit pas avoir change
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('pin_hash'), oldHash);
-      expect(prefs.getString('pin_salt'), isNull);
+      // The hash in SecureStorage must remain the migrated original
+      // (migration of the hash itself happened in _initAsync, but
+      // the PBKDF2 upgrade only happens on correct PIN).
+      final storage = await SecureStorage.getInstance();
+      final storedHash = await storage.read('pin_hash');
+      // The hash was migrated to SecureStorage by _initAsync,
+      // but NOT upgraded to PBKDF2 since the PIN was wrong.
+      expect(storedHash, equals(oldHash));
     });
   });
 }
