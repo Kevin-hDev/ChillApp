@@ -7,6 +7,7 @@ import '../features/connection_info/connection_info_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/security/security_screen.dart';
 import '../features/tailscale/tailscale_screen.dart';
+import '../core/security/security_route_observer.dart';
 
 /// SECURITE : La protection PIN est geree dans app.dart via un swap
 /// MaterialApp / MaterialApp.router. Quand le PIN est actif et non deverrouille,
@@ -16,6 +17,7 @@ import '../features/tailscale/tailscale_screen.dart';
 /// protegee par le lock dans app.dart.
 final router = GoRouter(
   initialLocation: '/',
+  observers: [securityRouteObserver],
   errorBuilder: (context, state) => Scaffold(
     body: Center(
       child: Column(
@@ -67,4 +69,20 @@ final router = GoRouter(
       builder: (context, state) => const SecurityScreen(),
     ),
   ],
+);
+
+/// Instance de l'observer de sécurité des routes.
+///
+/// À enregistrer dans les `navigatorObservers` de MaterialApp :
+/// ```dart
+/// MaterialApp(
+///   navigatorObservers: [securityRouteObserver],
+///   ...
+/// )
+/// ```
+final securityRouteObserver = SecurityRouteObserver(
+  onSensitivityChange: (sensitivity, route) {
+    // Journalisation — sera connecté à la protection screenshot ultérieurement
+    debugPrint('[Security] Route $route → sensibilité : ${sensitivity.name}');
+  },
 );
