@@ -186,7 +186,7 @@ Voir [ROADMAP.md](ROADMAP.md) pour la feuille de route complète.
 - [x] 97 tests unitaires
 
 ### 🔧 V1.1 — En Développement
-- [ ] **Onglet Sécurité OS** (feature majeur)
+- [x] **Onglet Sécurité OS** (feature majeur)
   - Toggles sécurité (8 Windows, 7 Linux, 8 macOS)
   - Checkup système 12 points avec score
   - Recommandations personnalisées

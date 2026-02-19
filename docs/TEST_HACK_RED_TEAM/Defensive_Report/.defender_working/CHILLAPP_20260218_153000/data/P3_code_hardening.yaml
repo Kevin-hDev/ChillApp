@@ -1,0 +1,305 @@
+schema_version: "1.0.0"
+phase: 3
+generated_at: "2026-02-18T16:30:00Z"
+input_ref: "data/P2_reinforcement_points.yaml"
+knowledge_ref: "dart-runtime-hardening.md"
+
+gap_coverage:
+  total_gaps_assigned: 7
+  addressed: 7
+  deferred: 0
+  not_applicable: 0
+
+fixes:
+
+  - id: FIX-001
+    gap_ref: GAP-001
+    category: RT
+    title: "Nettoyage securise de la memoire pour les secrets"
+    priority: P0
+    target_file: "lib/features/lock/lock_provider.dart"
+    insertion_point:
+      file: "lib/core/security/secure_memory.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_001_secure_memory.dart"
+    test_file: "code/blindage_code/test_fix_001.dart"
+    integration_steps:
+      - "Creer lib/core/security/secure_memory.dart avec le contenu de fix_001"
+      - "Dans lock_provider.dart, importer secure_memory.dart"
+      - "Remplacer String pin par SecureBytes pinBytes = SecureBytes.fromString(pin)"
+      - "Envelopper les operations crypto dans try/finally avec pinBytes.dispose()"
+      - "Utiliser constantTimeEquals au lieu de _constantTimeEquals pour les bytes"
+    before_code: |
+      String _hashPin(String pin, String salt) {
+        final derived = _pbkdf2(pin, salt);
+        return base64Encode(derived);
+      }
+    after_code: |
+      Future<String> _hashPin(String pin, String salt) async {
+        final pinBytes = SecureBytes.fromString(pin);
+        try {
+          return await CryptoIsolate.hashPinIsolated(pin, salt);
+        } finally {
+          pinBytes.secureDispose();
+        }
+      }
+    impact: "Les secrets sont zeroises apres usage. Reduit la fenetre d'exposition en memoire"
+    effort: "2 heures"
+
+  - id: FIX-002
+    gap_ref: GAP-002
+    category: RT
+    title: "Error handling securise avec runZonedGuarded"
+    priority: P1
+    target_file: "lib/main.dart"
+    insertion_point:
+      file: "lib/core/security/secure_error_handler.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_002_secure_error_handling.dart"
+    test_file: "code/blindage_code/test_fix_002.dart"
+    integration_steps:
+      - "Creer lib/core/security/secure_error_handler.dart avec le contenu de fix_002"
+      - "Modifier lib/main.dart :"
+      - "  Ajouter SecureErrorHandler.initialize() apres WidgetsFlutterBinding"
+      - "  Remplacer runApp() par SecureErrorHandler.runSecureApp()"
+      - "Les stack traces sont filtrees en production, affichees en debug"
+    before_code: |
+      void main() async {
+        WidgetsFlutterBinding.ensureInitialized();
+        final prefs = await SharedPreferences.getInstance();
+        runApp(ProviderScope(...));
+      }
+    after_code: |
+      void main() async {
+        WidgetsFlutterBinding.ensureInitialized();
+        SecureErrorHandler.initialize();
+        final prefs = await SharedPreferences.getInstance();
+        SecureErrorHandler.runSecureApp(ProviderScope(...));
+      }
+    impact: "Aucune stack trace ni info sensible ne fuite en production"
+    effort: "30 minutes"
+
+  - id: FIX-003
+    gap_ref: GAP-003
+    category: RT
+    title: "Isolation crypto dans un Dart Isolate"
+    priority: P2
+    target_file: "lib/features/lock/lock_provider.dart"
+    insertion_point:
+      file: "lib/core/security/crypto_isolate.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_003_crypto_isolate.dart"
+    test_file: "code/blindage_code/test_fix_003.dart"
+    integration_steps:
+      - "Creer lib/core/security/crypto_isolate.dart avec le contenu de fix_003"
+      - "Dans lock_provider.dart, importer crypto_isolate.dart"
+      - "Remplacer _pbkdf2() synchrone par CryptoIsolate.hashPinIsolated() async"
+      - "_hashPin() et verifyPin() sont deja async, impact minimal"
+      - "Supprimer la methode _pbkdf2() obsolete de LockNotifier"
+    before_code: |
+      String _hashPin(String pin, String salt) {
+        final derived = _pbkdf2(pin, salt);
+        return base64Encode(derived);
+      }
+    after_code: |
+      Future<String> _hashPin(String pin, String salt) async {
+        return await CryptoIsolate.hashPinIsolated(pin, salt);
+      }
+    impact: "Les secrets crypto sont isoles dans un espace memoire separe et libere a la fin"
+    effort: "1 heure"
+
+  - id: FIX-004
+    gap_ref: GAP-004
+    category: RT
+    title: "Extension types pour donnees sensibles"
+    priority: P2
+    target_file: "lib/features/lock/lock_provider.dart"
+    insertion_point:
+      file: "lib/core/security/sensitive_types.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_004_sensitive_types.dart"
+    test_file: "code/blindage_code/test_fix_004.dart"
+    integration_steps:
+      - "Creer lib/core/security/sensitive_types.dart avec le contenu de fix_004"
+      - "Dans lock_provider.dart, utiliser PinBytes au lieu de String pour le PIN"
+      - "Utiliser SaltData pour le sel et DerivedHash pour le hash"
+      - "Remplacer _constantTimeEquals par DerivedHash.equalsConstantTime()"
+      - "Ajouter secureDispose() dans des blocs finally"
+    before_code: |
+      match = _constantTimeEquals(_hashPin(pin, salt), stored);
+    after_code: |
+      final computedHash = DerivedHash(await _hashPin(pin, salt));
+      match = computedHash.equalsConstantTime(DerivedHash(stored));
+    impact: "Le compilateur empeche la confusion entre donnees normales et secrets"
+    effort: "1 heure"
+
+  - id: FIX-005
+    gap_ref: GAP-005
+    category: RT
+    title: "Sealed classes pour machines a etats securite"
+    priority: P3
+    target_file: "lib/features/lock/lock_provider.dart"
+    insertion_point:
+      file: "lib/core/security/security_states.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_005_sealed_security_states.dart"
+    test_file: "code/blindage_code/test_fix_005.dart"
+    integration_steps:
+      - "Creer lib/core/security/security_states.dart avec le contenu de fix_005"
+      - "Migration progressive : utiliser LockSecurityState en parallele de LockState"
+      - "Adapter les widgets pour switch exhaustif sur LockSecurityState"
+      - "DaemonConnectionState sera utilise en P4 (IPC securise)"
+    before_code: |
+      class LockState {
+        final bool isEnabled;
+        final bool isUnlocked;
+        ...
+      }
+    after_code: |
+      sealed class LockSecurityState {}
+      class LockDisabled extends LockSecurityState {}
+      class LockActive extends LockSecurityState { ... }
+      class LockUnlocked extends LockSecurityState {}
+      class LockCompromised extends LockSecurityState { ... }
+    impact: "Le compilateur garantit que chaque etat de securite est traite. Pas d'etat ambigu"
+    effort: "1 heure"
+
+  - id: FIX-006
+    gap_ref: GAP-006
+    category: RT
+    title: "Gestion securisee des Streams Dart"
+    priority: P3
+    target_file: "lib/features/tailscale/tailscale_provider.dart"
+    insertion_point:
+      file: "lib/core/security/secure_streams.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_006_secure_streams.dart"
+    test_file: "code/blindage_code/test_fix_006.dart"
+    integration_steps:
+      - "Creer lib/core/security/secure_streams.dart avec le contenu de fix_006"
+      - "Dans tailscale_provider.dart, remplacer stdout.listen() par SecureStreamReader"
+      - "Configurer maxBufferSize selon le debit attendu du daemon"
+      - "Appeler _streamReader.dispose() dans le dispose du provider"
+    before_code: |
+      _process!.stdout.listen((data) {
+        final json = String.fromCharCodes(data);
+        _handleDaemonMessage(json);
+      });
+    after_code: |
+      _streamReader.listen(
+        _process!.stdout,
+        onData: (data) {
+          final json = String.fromCharCodes(data);
+          _handleDaemonMessage(json);
+        },
+      );
+    impact: "Les buffers sont zeroises apres traitement. Protection contre les fuites via streams"
+    effort: "1 heure"
+
+  - id: FIX-007
+    gap_ref: GAP-007
+    category: RT
+    title: "Gestionnaire de nonces AES-GCM"
+    priority: P2
+    target_file: "N/A - nouveau composant"
+    insertion_point:
+      file: "lib/core/security/nonce_manager.dart"
+      method: "new_file"
+    code_file: "code/blindage_code/fix_007_nonce_manager.dart"
+    test_file: "code/blindage_code/test_fix_007.dart"
+    integration_steps:
+      - "Creer lib/core/security/nonce_manager.dart avec le contenu de fix_007"
+      - "Ce composant sera utilise en P5 pour le chiffrement IPC (GAP-035)"
+      - "SecureRandom centralise la generation de nombres aleatoires"
+      - "NonceManager garantit l'unicite des nonces avec limite NIST"
+    before_code: "N/A - nouveau composant"
+    after_code: |
+      final nonceMgr = NonceManager();
+      final nonce = nonceMgr.nextNonce();
+      if (nonceMgr.needsRekey) { ... }
+    impact: "Prevention de la reutilisation de nonce AES-GCM. Prerequis pour le chiffrement IPC"
+    effort: "1 heure"
+
+# Sections knowledge evaluees (18/18)
+knowledge_sections_evaluated:
+  - section: 1
+    title: "Comparaison en temps constant"
+    status: "deja_couvert"
+    ref: "PROT-003 (existant) + FIX-001 (renforce)"
+  - section: 2
+    title: "Generation nombres aleatoires"
+    status: "deja_couvert"
+    ref: "PROT-001 (existant) + FIX-007 (SecureRandom wrapper)"
+  - section: 3
+    title: "Nonce AES-GCM"
+    status: "traite"
+    ref: "FIX-007"
+  - section: 4
+    title: "Dart Isolates"
+    status: "traite"
+    ref: "FIX-003"
+  - section: 5
+    title: "Extension Types"
+    status: "traite"
+    ref: "FIX-004"
+  - section: 6
+    title: "Sealed Classes"
+    status: "traite"
+    ref: "FIX-005"
+  - section: 7
+    title: "GC Dart et secrets"
+    status: "traite"
+    ref: "FIX-001"
+  - section: 8
+    title: "Zone error handling"
+    status: "traite"
+    ref: "FIX-002"
+  - section: 9
+    title: "Streams Dart securises"
+    status: "traite"
+    ref: "FIX-006"
+  - section: 10
+    title: "Dart FFI security"
+    status: "non_applicable"
+    ref: "Pas de code FFI existant. Sera traite en P5 (GAP-028)"
+  - section: 11
+    title: "Dart 3.10 IPv4 parsing"
+    status: "deja_couvert"
+    ref: "Dart 3.10.7 utilise par le projet"
+  - section: 12
+    title: "Dart 3.10 Build Hooks"
+    status: "non_applicable"
+    ref: "Pas de compilation native dans le projet actuellement"
+  - section: 13
+    title: "pub.dev publication"
+    status: "non_applicable"
+    ref: "ChillApp n'est pas un package pub.dev"
+  - section: 14
+    title: "Sockets Unix Windows"
+    status: "differe_P5"
+    ref: "Migration IPC vers Unix sockets traitee en P5 (GAP-035)"
+  - section: 15
+    title: "dart pub cache gc"
+    status: "non_applicable"
+    ref: "Concerne le CI/CD, pas le code applicatif"
+  - section: 16
+    title: "GC proprietes structurelles"
+    status: "informationnelle"
+    ref: "Pas d'action requise (atout structural de Dart)"
+  - section: 17
+    title: "GC probleme secrets memoire"
+    status: "traite"
+    ref: "FIX-001 (SecureBytes + zeroisation)"
+  - section: 18
+    title: "dart:ffi tension securitaire"
+    status: "differe_P5"
+    ref: "Sera traite en P5 avec l'allocation native (GAP-028)"
+
+validation:
+  all_gaps_addressed: true
+  all_fixes_have_code: true
+  all_fixes_have_tests: true
+  all_fixes_have_integration: true
+  all_18_sections_evaluated: true
+  gc_secret_management: "FIX-001 (SecureBytes + zeroisation Uint8List)"
+  ffi_security: "Differe P5 (GAP-028 allocation native)"

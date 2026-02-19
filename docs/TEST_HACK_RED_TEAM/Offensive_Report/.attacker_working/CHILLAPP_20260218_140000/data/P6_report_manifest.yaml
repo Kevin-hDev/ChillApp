@@ -1,0 +1,56 @@
+schema_version: "1.0.0"
+phase: 6
+generated_at: "2026-02-18T15:05:00Z"
+input_ref: "P5_attack_chains.yaml"
+
+executive_summary:
+  project: "CHILLAPP"
+  risk_level: "CRITIQUE"
+  total_vulnerabilities: 19
+  total_scenarios: 18
+  total_chains: 8
+  top_3_risks:
+    - "Binaire daemon Tailscale sans verification d'integrite — supply chain = execution de code au demarrage (VULN-001, CVSS 9.3)"
+    - "PIN stocke dans SharedPreferences (fichier texte clair) — suppression = contournement total du lock (VULN-002, CVSS 8.1)"
+    - "Module securite peut desactiver toutes les protections OS — pare-feu, AppArmor, fail2ban (VULN-003, CVSS 8.5)"
+
+generated_reports:
+  - file: "CHILLAPP-RAPPORT-OFFENSIF.md"
+    type: "rapport_principal"
+  - file: "CHILLAPP-INVENTAIRE-FAILLES.md"
+    type: "catalogue_failles"
+  - file: "CHILLAPP-SCENARIOS-ATTAQUE.md"
+    type: "scenarios_attaque"
+  - file: "CHILLAPP-CHAINES-ATTAQUE.md"
+    type: "chaines_attaque"
+  - file: "P1-RECONNAISSANCE.md"
+    type: "rapport_phase"
+  - file: "P2-CARTOGRAPHIE-FLUX.md"
+    type: "rapport_phase"
+  - file: "P3-CHASSE-FAILLES.md"
+    type: "rapport_phase"
+  - file: "P4-CONSTRUCTION-ATTAQUES.md"
+    type: "rapport_phase"
+  - file: "P5-CHAINES-ATTAQUE.md"
+    type: "rapport_phase"
+
+statistics:
+  phases_completed: 6
+  total_entities:
+    targets: 8
+    entry_points: 16
+    data_flows: 12
+    secrets: 6
+    vulnerabilities: 19
+    scenarios: 18
+    chains: 8
+  severity_distribution:
+    CRITIQUE: 3
+    HAUTE: 7
+    MOYENNE: 5
+    BASSE: 3
+    INFO: 1
+  coverage:
+    vulns_with_evidence: "100%"
+    vulns_with_scenario: "94.7%"
+    scenarios_in_chains: "88.9%"

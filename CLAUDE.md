@@ -157,9 +157,15 @@ final result = await Process.run('executable', ['args']);
 - Un provider Riverpod (`localeProvider`) gère la langue active
 - Fonction helper `t(key)` pour accéder aux traductions
 
+## Securite — Modules installes
+
+Le dossier `lib/core/security/` contient 44 modules de securite (869 tests).
+Voir `docs/TEST_HACK_RED_TEAM/Suivie_correction/BILAN_INTEGRATION.md` pour le detail.
+Tout nouveau code doit respecter les regles de securite definies dans `~/.claude/CLAUDE.md`.
+
 ## RAPPEL
-1. Répond moi ou commence toujours par me parlé en Français, je ne parle pas anglais.
-2. Pense à utiliser le PLUGIN superpowers et ces différents skills en fonction de la taches.
-3.  Je n'ai pas de connaissance en programmation, je ne sais pas lire le code je peux vite être perdu dans le langage de développer.
-4. Tu codes toujours en pensent à la cybersécurité et aux différentes failles possibles.
-5. On corrige les problèmes, on ne se contentent jamais de les camouflé comme si nous cachions de la poussière sous un tapis
+1. Repond moi ou commence toujours par me parle en Francais, je ne parle pas anglais.
+2. Pense a utiliser le PLUGIN superpowers et ces differents skills en fonction de la tache.
+3. Je n'ai pas de connaissance en programmation, je ne sais pas lire le code je peux vite etre perdu dans le langage de developper.
+4. Tu codes TOUJOURS en appliquant les 10 regles de securite de `~/.claude/CLAUDE.md`. C'est non negociable.
+5. On corrige les problemes, on ne se contente jamais de les camoufler comme si nous cachions de la poussiere sous un tapis.

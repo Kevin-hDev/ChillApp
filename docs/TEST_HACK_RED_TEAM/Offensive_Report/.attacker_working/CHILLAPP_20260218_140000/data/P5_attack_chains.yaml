@@ -1,0 +1,479 @@
+schema_version: "1.0.0"
+phase: 5
+generated_at: "2026-02-18T14:55:00Z"
+input_ref: "P4_attack_scenarios.yaml"
+
+chains:
+
+  # ============================================
+  # CHAINES CRITIQUES
+  # ============================================
+
+  - id: CHAIN-001
+    title: "Du fichier texte a la compromission totale du systeme"
+    type: "cross_boundary"
+    complexity: MOYENNE
+    total_severity: CRITIQUE
+    attacker_profile: "Attaquant local avec acces au compte utilisateur (malware, insider, acces physique temporaire)"
+    boundaries_crossed: ["TB-004", "TB-002", "TB-003"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-002
+        description: "Supprimer les cles PIN dans SharedPreferences pour desactiver le lock"
+        boundary_crossed: "TB-004 (memoire -> SharedPreferences)"
+        output: "Acces a l'interface sans PIN"
+        estimated_time: "5 minutes"
+
+      - order: 2
+        attack_ref: ATK-003
+        description: "Desactiver toutes les protections OS via les toggles de securite"
+        boundary_crossed: "TB-001 (app -> pkexec -> root)"
+        output: "Pare-feu desactive, AppArmor arrete, fail2ban arrete"
+        estimated_time: "2 minutes"
+
+      - order: 3
+        attack_ref: ATK-001
+        description: "Remplacer le binaire daemon Tailscale par un daemon malveillant"
+        boundary_crossed: "TB-002 (app -> daemon Go)"
+        output: "Daemon malveillant pret a etre execute"
+        estimated_time: "15 minutes"
+
+      - order: 4
+        attack_ref: ATK-009
+        description: "Utiliser le SSH forwarding du daemon pour acceder aux machines du tailnet"
+        boundary_crossed: "TB-003 (Tailscale -> localhost SSH)"
+        output: "Acces SSH a toutes les machines du tailnet"
+        estimated_time: "5 minutes"
+
+    total_impact: "Compromission totale : lock contourne, protections OS desactivees, daemon malveillant installe avec acces SSH au tailnet entier. La machine est un pivot pour attaquer tout le reseau."
+    estimated_total_time: "30 minutes"
+    detection_difficulty: "moderee"
+
+    kill_chain:
+      reconnaissance: "Localiser les fichiers SharedPreferences et le binaire daemon"
+      weaponization: "Compiler le daemon malveillant (reverse shell + SSH forwarding intact)"
+      delivery: "Remplacer le fichier SharedPreferences et le binaire"
+      exploitation: "L'app charge le daemon modifie sans verification"
+      installation: "Daemon malveillant actif avec acces Tailscale"
+      command_and_control: "Reverse shell via le daemon + tunnel SSH"
+      actions_on_objectives: "Acces a toutes les machines du tailnet, exfiltration de donnees, persistance"
+
+  - id: CHAIN-002
+    title: "Supply chain daemon : du binaire compromis a l'infiltration du tailnet"
+    type: "supply_chain"
+    complexity: MOYENNE
+    total_severity: CRITIQUE
+    attacker_profile: "Attaquant supply chain (compromission du build, du depot, ou acces au filesystem)"
+    boundaries_crossed: ["TB-002", "TB-003"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-001
+        description: "Remplacer le binaire chill-tailscale par une version backdooree"
+        boundary_crossed: "TB-002 (app -> daemon)"
+        output: "Daemon malveillant execute au prochain lancement"
+        estimated_time: "15 minutes"
+
+      - order: 2
+        attack_ref: ATK-006
+        description: "Le daemon malveillant exfiltre les cles WireGuard/Tailscale"
+        boundary_crossed: null
+        output: "Cles Tailscale volees — identite du noeud usurpable"
+        estimated_time: "1 minute (automatique)"
+
+      - order: 3
+        attack_ref: ATK-007
+        description: "Envoyer des commandes IPC au daemon pour forcer un re-login sur un serveur controle"
+        boundary_crossed: null
+        output: "Le noeud Tailscale est sous controle de l'attaquant"
+        estimated_time: "2 minutes"
+
+      - order: 4
+        attack_ref: ATK-009
+        description: "Utiliser le forwarding SSH pour pivoter vers les machines du tailnet"
+        boundary_crossed: "TB-003 (Tailscale -> localhost SSH)"
+        output: "Acces SSH aux machines du tailnet via le noeud compromis"
+        estimated_time: "5 minutes"
+
+    total_impact: "Supply chain complete : du binaire compromis au controle du noeud Tailscale et acces SSH au tailnet. Le daemon malveillant fonctionne normalement pour l'utilisateur (forwarding SSH intact), masquant l'attaque."
+    estimated_total_time: "25 minutes"
+    detection_difficulty: "difficile"
+
+    kill_chain:
+      reconnaissance: "Identifier la structure du daemon et le protocole IPC"
+      weaponization: "Compiler un daemon backdoore avec exfiltration de cles"
+      delivery: "Remplacer le binaire (build pipeline, filesystem, ou depot)"
+      exploitation: "L'app execute le daemon sans verification d'integrite"
+      installation: "Daemon backdoore actif, cles Tailscale volees"
+      command_and_control: "Controle via IPC JSON + reverse shell"
+      actions_on_objectives: "Pivotement SSH vers le tailnet, exfiltration via tunnel WireGuard chiffre"
+
+  - id: CHAIN-003
+    title: "Agent IA autonome : de la reconnaissance a l'exfiltration en moins d'une heure"
+    type: "ia_offensive"
+    complexity: HAUTE
+    total_severity: CRITIQUE
+    attacker_profile: "Agent IA offensif autonome (type GTG-1002, HexStrike-AI, ou XBOW) avec acces local initial"
+    boundaries_crossed: ["TB-004", "TB-001", "TB-002", "TB-003"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-013
+        description: "RE assistee par LLM : Blutter + GhidrAssist analysent le binaire Flutter en minutes. Le LLM identifie les fonctions de securite, les chemins d'elevation pkexec, et le stockage SharedPreferences."
+        boundary_crossed: null
+        output: "Carte complete de la logique applicative. Vulnerabilites identifiees automatiquement."
+        estimated_time: "10 minutes"
+
+      - order: 2
+        attack_ref: ATK-002
+        description: "L'agent genere automatiquement le script Python pour supprimer les cles PIN de SharedPreferences."
+        boundary_crossed: "TB-004 (memoire -> SharedPreferences)"
+        output: "Lock desactive. Acces a l'interface."
+        estimated_time: "1 minute"
+
+      - order: 3
+        attack_ref: ATK-001
+        description: "L'agent compile un daemon malveillant Go sur mesure (reverse shell + forwarding intact + exfiltration Tailscale keys). Tout est genere par le LLM."
+        boundary_crossed: "TB-002 (app -> daemon)"
+        output: "Daemon backdoore installe"
+        estimated_time: "10 minutes"
+
+      - order: 4
+        attack_ref: ATK-003
+        description: "Via l'interface debloquee, desactiver les protections OS (si pkexec/UAC peut etre contourne ou si l'attaquant a le mot de passe admin)."
+        boundary_crossed: "TB-001 (app -> pkexec)"
+        output: "Protections OS desactivees"
+        estimated_time: "2 minutes"
+
+      - order: 5
+        attack_ref: ATK-009
+        description: "Pivoter vers les machines du tailnet via le SSH forwarding du daemon controle."
+        boundary_crossed: "TB-003 (Tailscale -> SSH)"
+        output: "Acces SSH aux machines du tailnet. Exfiltration via tunnel WireGuard chiffre."
+        estimated_time: "5 minutes"
+
+    total_impact: "Compromission totale automatisee en < 1 heure. L'agent IA fait tout : RE, bypass PIN, remplacement daemon, desactivation securite, pivotement SSH. Cout < 100$ (API LLM). Intervention humaine : 0 (reference GTG-1002)."
+    estimated_total_time: "30 minutes"
+    detection_difficulty: "difficile"
+
+    kill_chain:
+      reconnaissance: "LLM analyse le binaire Flutter (Blutter + GhidrAssist) — 10 min"
+      weaponization: "LLM genere le daemon malveillant Go et les scripts de bypass — 10 min"
+      delivery: "Remplacement automatise du binaire et modification SharedPreferences"
+      exploitation: "L'app charge le daemon backdoore sans verification"
+      installation: "Daemon actif + protections OS desactivees"
+      command_and_control: "Reverse shell + tunnel Tailscale chiffre (invisible IDS)"
+      actions_on_objectives: "Exfiltration de toutes les donnees via le tunnel WireGuard"
+
+  # ============================================
+  # CHAINES HAUTES
+  # ============================================
+
+  - id: CHAIN-004
+    title: "Brute force furtif du PIN avec persistance .desktop"
+    type: "furtive"
+    complexity: BASSE
+    total_severity: HAUTE
+    attacker_profile: "Malware ou script automatise avec acces au compte utilisateur"
+    boundaries_crossed: ["TB-004"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-010
+        description: "Script qui reset pin_failed_attempts dans SharedPreferences et tente des PINs systematiquement"
+        boundary_crossed: "TB-004 (SharedPreferences)"
+        output: "PIN cracke (10^8 combinaisons max pour 8 chiffres)"
+        estimated_time: "Variable (heures a jours pour brute force online)"
+
+      - order: 2
+        attack_ref: ATK-005
+        description: "Modifier le fichier .desktop dans ~/.config/autostart/ pour executer un payload au login"
+        boundary_crossed: null
+        output: "Persistance etablie : payload execute a chaque login"
+        estimated_time: "1 minute"
+
+      - order: 3
+        attack_ref: ATK-003
+        description: "Au prochain login, le payload desactive les protections OS via l'interface ChillApp"
+        boundary_crossed: "TB-001 (app -> pkexec)"
+        output: "Machine completement exposee"
+        estimated_time: "2 minutes"
+
+    total_impact: "Brute force silencieux du PIN, persistance via .desktop, et degradation progressive de la securite. L'attaque est entierement automatisable et furtive."
+    estimated_total_time: "Heures (brute force) + 5 minutes (persistence + degradation)"
+    detection_difficulty: "difficile"
+
+    kill_chain:
+      reconnaissance: "Identification du fichier SharedPreferences"
+      weaponization: "Script de brute force + payload .desktop"
+      delivery: "Modification des fichiers locaux"
+      exploitation: "Reset rate limiting + brute force PIN"
+      installation: "Fichier .desktop modifie"
+      command_and_control: "Execution automatique au login"
+      actions_on_objectives: "Degradation des protections OS"
+
+  - id: CHAIN-005
+    title: "WoL + degradation securite + acces SSH depuis le LAN"
+    type: "reseau"
+    complexity: MOYENNE
+    total_severity: HAUTE
+    attacker_profile: "Attaquant sur le meme LAN avec acces local a la machine ou malware installe"
+    boundaries_crossed: ["TB-004", "TB-001"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-018
+        description: "Envoyer un magic packet WoL pour reveiller la machine cible"
+        boundary_crossed: null
+        output: "Machine allumee, services reseau actifs"
+        estimated_time: "1 minute"
+
+      - order: 2
+        attack_ref: ATK-002
+        description: "Supprimer les cles PIN dans SharedPreferences (via malware deja installe ou acces distant)"
+        boundary_crossed: "TB-004"
+        output: "Lock desactive"
+        estimated_time: "5 minutes"
+
+      - order: 3
+        attack_ref: ATK-003
+        description: "Desactiver le pare-feu et fail2ban via les toggles de securite"
+        boundary_crossed: "TB-001 (pkexec)"
+        output: "Pare-feu et fail2ban desactives"
+        estimated_time: "2 minutes"
+
+      - order: 4
+        attack_ref: ATK-009
+        description: "Brute force SSH sur le port expose (plus de fail2ban, plus de pare-feu)"
+        boundary_crossed: null
+        output: "Acces SSH a la machine"
+        estimated_time: "Variable"
+
+    total_impact: "Reveiller une machine eteinte, desactiver ses protections, puis obtenir un acces SSH. Pattern similaire a Ryuk ransomware (wake -> connect -> execute)."
+    estimated_total_time: "30 minutes"
+    detection_difficulty: "moderee"
+
+    kill_chain:
+      reconnaissance: "Scanner le LAN pour les MAC, identifier les machines eteintes"
+      weaponization: "Script WoL + scripts de modification SharedPreferences"
+      delivery: "Magic packet WoL + modification fichiers locaux"
+      exploitation: "Lock contourne, protections desactivees"
+      installation: "Acces SSH etabli"
+      command_and_control: "Shell SSH"
+      actions_on_objectives: "Acces complet a la machine"
+
+  - id: CHAIN-006
+    title: "Escalade de privileges via TOCTOU : du script kiddie au root"
+    type: "escalade_privileges"
+    complexity: HAUTE
+    total_severity: HAUTE
+    attacker_profile: "Hacker expert avec acces local et connaissance du pattern TOCTOU"
+    boundaries_crossed: ["TB-005", "TB-001"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-013
+        description: "Reverse engineering pour identifier le pattern d'ecriture de scripts /tmp + pkexec"
+        boundary_crossed: null
+        output: "Comprehension du pattern TOCTOU : writeAsString() -> chmod 700 -> runElevated()"
+        estimated_time: "1 heure"
+
+      - order: 2
+        attack_ref: ATK-004
+        description: "Deployer inotifywait pour surveiller /tmp et injecter un reverse shell dans le script"
+        boundary_crossed: "TB-005 (/tmp -> root exec)"
+        output: "Reverse shell root obtenu quand l'utilisateur lance une action elevee"
+        estimated_time: "Variable (attente de l'action utilisateur)"
+
+      - order: 3
+        attack_ref: ATK-001
+        description: "Avec les privileges root, remplacer le binaire daemon Tailscale"
+        boundary_crossed: "TB-002 (app -> daemon)"
+        output: "Daemon malveillant installe avec privileges maximaux"
+        estimated_time: "5 minutes"
+
+    total_impact: "Escalade de user normal a root via TOCTOU, puis installation d'un daemon backdoore. L'attaquant obtient un acces root persistant + controle du tunnel Tailscale."
+    estimated_total_time: "2 heures (dont attente)"
+    detection_difficulty: "moderee"
+
+    kill_chain:
+      reconnaissance: "RE du pattern de scripts temporaires"
+      weaponization: "Script inotifywait + reverse shell"
+      delivery: "Surveillance de /tmp, injection quand le script est cree"
+      exploitation: "pkexec execute le script modifie en root"
+      installation: "Daemon malveillant installe avec root"
+      command_and_control: "Reverse shell root + daemon controle"
+      actions_on_objectives: "Controle total du systeme"
+
+  - id: CHAIN-007
+    title: "Persistance multi-couche : .desktop + plist + daemon"
+    type: "persistence"
+    complexity: MOYENNE
+    total_severity: HAUTE
+    attacker_profile: "Attaquant cherchant a maintenir un acces persistant cross-plateforme"
+    boundaries_crossed: ["TB-004", "TB-002"]
+
+    steps:
+      - order: 1
+        attack_ref: ATK-002
+        description: "Contourner le lock PIN"
+        boundary_crossed: "TB-004"
+        output: "Acces a l'interface"
+        estimated_time: "5 minutes"
+
+      - order: 2
+        attack_ref: ATK-005
+        description: "Sur Linux : modifier le fichier .desktop pour executer un payload au login"
+        boundary_crossed: null
+        output: "Persistance Linux via XDG autostart"
+        estimated_time: "2 minutes"
+
+      - order: 3
+        attack_ref: ATK-015
+        description: "Sur macOS : modifier le plist LaunchAgent pour executer un payload au login"
+        boundary_crossed: null
+        output: "Persistance macOS via LaunchAgent"
+        estimated_time: "2 minutes"
+
+      - order: 4
+        attack_ref: ATK-001
+        description: "Remplacer le daemon Tailscale pour une backdoor permanente"
+        boundary_crossed: "TB-002"
+        output: "Persistance via le daemon : execution a chaque lancement de l'app"
+        estimated_time: "15 minutes"
+
+    total_impact: "Triple persistance : autostart OS (.desktop/plist) + daemon backdoore. L'attaquant survit aux reinstallations de l'app (autostart OS) et aux mises a jour OS (daemon)."
+    estimated_total_time: "25 minutes"
+    detection_difficulty: "moderee"
+
+    kill_chain:
+      reconnaissance: "Identification des mecanismes d'autostart par OS"
+      weaponization: "Payloads adaptes a chaque OS + daemon backdoore"
+      delivery: "Modification des fichiers d'autostart + remplacement daemon"
+      exploitation: "Lock contourne, fichiers accessibles"
+      installation: "Triple persistance active"
+      command_and_control: "Execution automatique a chaque login/lancement"
+      actions_on_objectives: "Acces permanent au systeme"
+
+  # ============================================
+  # CHAINE MOYENNE
+  # ============================================
+
+  - id: CHAIN-008
+    title: "Exfiltration de renseignement via clipboard + WoL + reconnaissance"
+    type: "data_exfiltration"
+    complexity: BASSE
+    total_severity: MOYENNE
+    attacker_profile: "Malware de type spyware avec acces local"
+    boundaries_crossed: []
+
+    steps:
+      - order: 1
+        attack_ref: ATK-011
+        description: "Surveiller le presse-papiers pour capturer les infos reseau (IP, MAC, hostname)"
+        boundary_crossed: null
+        output: "Informations reseau de la cible : IP, MAC, hostname"
+        estimated_time: "Variable (attente copie)"
+
+      - order: 2
+        attack_ref: ATK-017
+        description: "Si le hash PIN est en format legacy (SHA-256 sans sel), le craquer instantanement"
+        boundary_crossed: null
+        output: "PIN en clair (si format legacy)"
+        estimated_time: "1 minute"
+
+      - order: 3
+        attack_ref: ATK-018
+        description: "Utiliser l'adresse MAC capturee pour reveiller la machine a distance via WoL"
+        boundary_crossed: null
+        output: "Machine cible allumee et accessible"
+        estimated_time: "1 minute"
+
+    total_impact: "Collecte passive d'informations puis utilisation pour reveiller et cibler la machine. Chaine de reconnaissance a faible risque de detection."
+    estimated_total_time: "Variable (heures de surveillance)"
+    detection_difficulty: "difficile"
+
+    kill_chain:
+      reconnaissance: "Surveillance clipboard + extraction hash PIN"
+      weaponization: "Craquage hash legacy + script WoL"
+      delivery: "Magic packet WoL"
+      exploitation: "Machine reveillee et exposee"
+      installation: "N/A (chaine de reconnaissance)"
+      command_and_control: "N/A"
+      actions_on_objectives: "Intelligence gathering + machine disponible pour attaque ulterieure"
+
+# ============================================
+# MATRICE DE CONNEXION DES ATTAQUES
+# ============================================
+
+connection_matrix:
+  ATK-002:
+    output: "Acces interface sans PIN"
+    enables: ["ATK-003", "ATK-001 (acces au filesystem)"]
+  ATK-003:
+    output: "Protections OS desactivees"
+    enables: ["ATK-009 (SSH sans fail2ban)", "ATK-018 (machines sans firewall)"]
+  ATK-001:
+    output: "Daemon malveillant actif + acces Tailscale"
+    enables: ["ATK-006 (cles Tailscale)", "ATK-007 (controle IPC)", "ATK-009 (SSH forwarding)"]
+  ATK-006:
+    output: "Cles WireGuard/Tailscale volees"
+    enables: ["ATK-009 (acces tailnet avec identite usurpee)"]
+  ATK-010:
+    output: "PIN cracke par brute force"
+    enables: ["ATK-003 (acces interface)"]
+  ATK-013:
+    output: "Logique applicative comprise"
+    enables: ["ATK-002 (sait ou chercher)", "ATK-004 (connait le pattern TOCTOU)", "ATK-016 (sait quoi hooker)"]
+  ATK-004:
+    output: "Reverse shell root"
+    enables: ["ATK-001 (remplacement daemon avec root)"]
+  ATK-017:
+    output: "PIN en clair (format legacy)"
+    enables: ["ATK-003 (acces interface)"]
+  ATK-018:
+    output: "Machine reveillee"
+    enables: ["ATK-009 (SSH disponible)", "ATK-003 (interface accessible)"]
+
+# ============================================
+# MATRICE D'IMPACT
+# ============================================
+
+impact_matrix:
+  chains_by_severity:
+    CRITIQUE: 3
+    HAUTE: 4
+    MOYENNE: 1
+  chains_by_type:
+    cross_boundary: 1
+    supply_chain: 1
+    ia_offensive: 1
+    furtive: 1
+    reseau: 1
+    escalade_privileges: 1
+    persistence: 1
+    data_exfiltration: 1
+  chains_by_complexity:
+    basse: 2
+    moyenne: 4
+    haute: 2
+  scenarios_in_chains: 16
+  scenarios_standalone: 2
+  standalone_scenarios: ["ATK-008 (dump memoire PIN)", "ATK-012 (processus orphelins)"]
+  standalone_reason: "ATK-008 necessite root preexistant et n'a pas de sortie chainable. ATK-012 est un deni de service local sans escalade."
+
+# ============================================
+# VALIDATION
+# ============================================
+
+summary:
+  total_chains: 8
+  by_severity:
+    CRITIQUE: 3
+    HAUTE: 4
+    MOYENNE: 1
+  most_dangerous: "CHAIN-003 (Agent IA autonome) — compromission totale en <1h, <100$, 0 humain"
+  most_realistic: "CHAIN-001 (fichier texte -> compromission) — malware courant peut l'executer"
+  most_stealthy: "CHAIN-004 (brute force furtif) — entierement automatisable, difficile a detecter"
+  voie_royale: "CHAIN-001 : ATK-002 -> ATK-003 -> ATK-001 -> ATK-009 — le chemin optimal effort/impact"

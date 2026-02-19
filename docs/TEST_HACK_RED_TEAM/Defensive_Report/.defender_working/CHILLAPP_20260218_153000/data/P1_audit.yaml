@@ -1,0 +1,192 @@
+schema_version: "1.0.0"
+phase: 1
+generated_at: "2026-02-18T15:35:00Z"
+
+project_context:
+  name: "ChillApp"
+  type: "desktop_configuration_hub"
+  platforms: ["linux", "windows", "macos"]
+  tech_stack:
+    languages: ["dart", "go"]
+    frameworks: ["flutter"]
+    key_dependencies:
+      - name: "flutter_riverpod"
+        version: "^3.2.1"
+        security_audit: false
+      - name: "go_router"
+        version: "^16.2.2"
+        security_audit: false
+      - name: "shared_preferences"
+        version: "^2.5.4"
+        security_audit: false
+        security_note: "Stockage en texte clair sur disque. AUCUN chiffrement."
+      - name: "google_fonts"
+        version: "^8.0.1"
+        security_audit: false
+        security_note: "Telecharge des polices au runtime sans certificate pinning."
+      - name: "crypto"
+        version: "^3.0.7"
+        security_audit: false
+        security_note: "Utilisee pour PBKDF2/SHA-256 du PIN. Package officiel Dart."
+    go_daemon:
+      name: "chill-tailscale"
+      description: "Daemon Go utilisant tsnet pour tunnel Tailscale + SSH forwarding"
+      binaries: 3
+      binary_size: "~33Mo chaque"
+      integrity_verification: false
+
+existing_protections:
+
+  # ============================================
+  # RT - Runtime Dart
+  # ============================================
+
+  - id: PROT-001
+    category: RT
+    title: "Random.secure() pour generation de sel cryptographique"
+    location: "lib/features/lock/lock_provider.dart:80"
+    effectiveness: "forte"
+    notes: "Utilise correctement Random.secure() (wrapper /dev/urandom). Conforme CWE-330."
+
+  - id: PROT-002
+    category: RT
+    title: "PBKDF2-HMAC-SHA256 avec 100 000 iterations pour le hash PIN"
+    location: "lib/features/lock/lock_provider.dart:86-112"
+    effectiveness: "forte"
+    notes: "Implementation PBKDF2 correcte. 100k iterations rend le brute force GPU impraticable (~heures)."
+
+  - id: PROT-003
+    category: RT
+    title: "Comparaison en temps constant pour verification du hash PIN"
+    location: "lib/features/lock/lock_provider.dart:120-127"
+    effectiveness: "forte"
+    notes: "Implementation XOR sans court-circuit conforme. Protege contre les timing attacks sur la comparaison du PIN hashe."
+
+  - id: PROT-004
+    category: RT
+    title: "Validation stricte du format PIN (8 chiffres, regex)"
+    location: "lib/features/lock/lock_provider.dart:144"
+    effectiveness: "forte"
+    notes: "Regex ^\\d{8}$ verifie exactement 8 chiffres. Empeche les injections."
+
+  - id: PROT-005
+    category: RT
+    title: "Migration automatique des hash legacy vers PBKDF2"
+    location: "lib/features/lock/lock_provider.dart:169-195"
+    effectiveness: "partielle"
+    notes: "Les anciens formats SHA-256 (avec ou sans sel) sont migres vers PBKDF2 lors de la verification. Mais le hash legacy reste vulnerable tant que l'utilisateur n'entre pas le bon PIN."
+
+  - id: PROT-006
+    category: RT
+    title: "Limitation de securite documentee (SE-PIN-011)"
+    location: "lib/features/lock/lock_provider.dart:14-18"
+    effectiveness: "faible"
+    notes: "La limitation des String Dart immutables est documentee mais pas mitigee. Le PIN reste en memoire apres usage."
+
+  # ============================================
+  # FW - Framework Flutter
+  # ============================================
+
+  - id: PROT-007
+    category: FW
+    title: "Auto-effacement du presse-papiers apres 3 secondes"
+    location: "lib/shared/widgets/copyable_info.dart:33-35"
+    effectiveness: "partielle"
+    notes: "Le presse-papiers est efface apres 3 secondes avec Clipboard.setData(text: ''). Protection limitee car un malware surveille en continu."
+
+  - id: PROT-008
+    category: FW
+    title: "Rate limiting PIN avec backoff exponentiel"
+    location: "lib/features/lock/lock_provider.dart:134-141"
+    effectiveness: "faible"
+    notes: "Backoff progressif (30s -> 300s) apres 5 echecs. Mais stocke dans SharedPreferences en texte clair — un attaquant peut reset le compteur."
+
+  # ============================================
+  # OS - Systeme d'exploitation
+  # ============================================
+
+  - id: PROT-009
+    category: OS
+    title: "Echappement shell POSIX et PowerShell pour les commandes"
+    location: "lib/core/command_runner.dart:69-78"
+    effectiveness: "forte"
+    notes: "Fonctions _shellQuote() et _psQuote() pour echapper les arguments. Previent l'injection de commandes dans pkexec/osascript/PowerShell."
+
+  - id: PROT-010
+    category: OS
+    title: "Nettoyage des repertoires temporaires dans des blocs finally"
+    location: "lib/core/command_runner.dart:101,127"
+    effectiveness: "partielle"
+    notes: "Les scripts temporaires (Windows PS1, macOS sh) sont supprimes apres execution. Mais le script existe entre ecriture et suppression (fenetre TOCTOU)."
+
+  - id: PROT-011
+    category: OS
+    title: "chmod 700 sur les scripts temporaires avant execution pkexec"
+    location: "lib/features/ssh_setup/ssh_setup_provider.dart:293-294"
+    effectiveness: "partielle"
+    notes: "chmod 700 restreint l'acces au proprietaire. Meme pattern dans security_commands.dart et wol_setup_provider.dart. Mais ne protege pas contre un attaquant root ou le meme utilisateur."
+
+  - id: PROT-012
+    category: OS
+    title: "Permissions 0700 sur le repertoire d'etat Tailscale"
+    location: "tailscale-daemon/main.go:69"
+    effectiveness: "partielle"
+    notes: "Repertoire ~/.local/share/chill-app/tailscale/ avec permissions 0700. Protege contre les autres utilisateurs mais pas contre les processus du meme utilisateur."
+
+  - id: PROT-013
+    category: OS
+    title: "Module de securite OS avec detection et toggles"
+    location: "lib/features/security/security_commands.dart"
+    effectiveness: "partielle"
+    notes: "Detecte et affiche l'etat du pare-feu, AppArmor, fail2ban, RDP, SMBv1, etc. Permet d'activer/desactiver via pkexec. Mais les toggles disable* sont aussi dangereux."
+
+security_posture:
+  overall_rating: "FAIBLE"
+  strengths:
+    - "Cryptographie PIN correcte (PBKDF2-HMAC-SHA256, 100k iter, Random.secure(), temps constant)"
+    - "Echappement shell/PowerShell dans CommandRunner (previent injection)"
+    - "Auto-effacement du presse-papiers (3s)"
+    - "Permissions filesystem 0700 sur les fichiers sensibles"
+    - "Documentation des limitations de securite connues (SE-PIN-011)"
+  weaknesses:
+    - "SharedPreferences en texte clair = PIN, rate limiting, etat de l'app accessibles par tout processus"
+    - "Daemon Go execute sans aucune verification d'integrite (pas de checksum/signature)"
+    - "IPC daemon/app en JSON clair sur stdin/stdout, sans authentification"
+    - "SSH forwarding Tailscale accepte toute connexion sans filtrage"
+    - "Pas d'obfuscation du binaire Flutter (noms en clair, RE trivial)"
+    - "Pas de detection anti-debug, anti-Frida, anti-tampering"
+    - "Pas de stockage securise (flutter_secure_storage, keychain, credential manager)"
+    - "Pas de protection d'ecran (FLAG_SECURE, SensitiveContent)"
+    - "Pas de journal d'audit de securite"
+    - "Le module securite peut DESACTIVER toutes les protections OS"
+    - "Scripts temporaires avec fenetre TOCTOU (write → chmod → pkexec)"
+    - "PIN en memoire Dart non effacable (String immutable)"
+    - "google_fonts telecharge au runtime sans certificate pinning"
+  missing_categories: ["AR", "DC", "BH", "NW"]
+  score_by_category:
+    RT: 5  # Crypto PIN correcte, mais pas d'isolates/memoire securisee
+    FW: 2  # Clipboard auto-clear seulement, pas de biometrie/RASP
+    SC: 1  # Pas de stockage securise, SharedPreferences en clair
+    NW: 0  # Aucun pinning, heartbeat, fail closed, mTLS
+    OS: 4  # Echappement shell correct, permissions, module securite
+    AR: 0  # Aucune obfuscation, RASP, anti-debug
+    DC: 0  # Aucun honeypot, canary, tarpit, kill switch
+    BH: 0  # Aucune analyse comportementale, detection IA
+
+summary:
+  total_protections: 13
+  by_effectiveness:
+    forte: 4
+    partielle: 7
+    faible: 2
+  knowledge_coverage:
+    dart_runtime_hardening: "3/18 sections couvertes (17%)"
+    flutter_framework_hardening: "2/19 sections couvertes (11%)"
+    storage_crypto_hardening: "0/6 sections couvertes (0%)"
+    network_hardening: "0/15 sections couvertes (0%)"
+    os_hardening: "4/11 sections couvertes (36%)"
+    anti_reverse_engineering: "0/12 sections couvertes (0%)"
+    deception_monitoring: "0/14 sections couvertes (0%)"
+    cross_validation_patterns: "N/A (P7 uniquement)"
+    ai_defense_strategies: "0/10 sections couvertes (0%)"
+  total_coverage: "9/105 sections auditables couvertes (8.6%)"

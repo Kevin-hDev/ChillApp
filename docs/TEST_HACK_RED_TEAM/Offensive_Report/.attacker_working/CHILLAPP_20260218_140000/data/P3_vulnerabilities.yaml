@@ -1,0 +1,456 @@
+schema_version: "1.0.0"
+phase: 3
+generated_at: "2026-02-18T14:35:00Z"
+input_ref: "P2_data_flows.yaml"
+
+vulnerabilities:
+  # ============================================
+  # CRITIQUES
+  # ============================================
+
+  - id: VULN-001
+    title: "Binaire daemon Tailscale sans verification d'integrite"
+    category: SUP
+    severity: CRITIQUE
+    cvss: 9.3
+    cwe: "CWE-494"
+    description: "Le daemon Go chill-tailscale (~33Mo par plateforme) est charge et execute sans aucune verification de checksum, signature ou hash. Un attaquant qui remplace le binaire obtient une execution de code au demarrage de l'app, avec forwarding SSH et acces au reseau Tailscale."
+    evidence:
+      file: "lib/features/tailscale/tailscale_provider.dart"
+      line: 141
+      code: "_daemon = await Process.start(daemonPath, []);"
+      issue: "Process.start() execute le binaire sans verifier son integrite. _getDaemonPath() cherche dans plusieurs repertoires (lignes 92-129) mais ne verifie jamais un hash ou une signature."
+    flow_refs: ["DF-003", "DF-009"]
+    secret_refs: ["SEC-006"]
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "chain-attack-patterns.md#supply-chain"
+
+  - id: VULN-002
+    title: "Contournement du lock PIN par suppression des SharedPreferences"
+    category: STO
+    severity: CRITIQUE
+    cvss: 8.1
+    cwe: "CWE-312"
+    description: "Le hash PIN, le sel, le compteur d'echecs et le timestamp de verrouillage sont stockes dans SharedPreferences (fichier texte clair sur disque). Un attaquant avec acces au filesystem peut supprimer les cles pin_hash et pin_salt pour desactiver completement le verrou, ou modifier pin_failed_attempts et pin_locked_until pour reset le rate limiting."
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 65
+      code: "final hasPin = prefs.getString(_pinHashKey) != null;"
+      issue: "L'etat isEnabled depend uniquement de la presence de la cle dans SharedPreferences. Supprimer la cle = lock desactive. Le fichier SharedPreferences est un fichier texte lisible par tout processus du meme utilisateur."
+    flow_refs: ["DF-001", "DF-002"]
+    secret_refs: ["SEC-002"]
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "storage-key-attacks.md#shared-preferences"
+
+  - id: VULN-003
+    title: "Module securite peut desactiver toutes les protections OS"
+    category: FLT
+    severity: CRITIQUE
+    cvss: 8.5
+    cwe: "CWE-269"
+    description: "Les toggles de securite permettent de desactiver le pare-feu, activer SMBv1, activer RDP, desactiver AppArmor, desactiver fail2ban et desactiver les mises a jour automatiques. Un attaquant avec acces a l'interface (ou qui contourne le PIN via VULN-002) peut degrader systematiquement toute la securite du systeme en quelques clics."
+    evidence:
+      file: "lib/features/security/security_commands.dart"
+      line: 30
+      code: "static Future<bool> disableWindowsFirewall() async { ... }"
+      issue: "Les methodes disable* existent pour chaque protection: disableWindowsFirewall(), disableWindowsSmb1Protection() (=reactive SMBv1), disableWindowsRdpProtection() (=active RDP), disableLinuxFirewall(), disableLinuxAppArmor(), disableLinuxFail2ban(). Pas de confirmation de securite supplementaire ni de journal d'audit."
+    flow_refs: ["DF-006"]
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "requise (approbation pkexec/UAC)"
+      privileges_required: "acces a l'interface + mot de passe admin"
+    knowledge_ref: "desktop-specific-attacks.md#privilege-abuse"
+
+  # ============================================
+  # HAUTES
+  # ============================================
+
+  - id: VULN-004
+    title: "TOCTOU sur scripts temporaires executes en root"
+    category: FLT
+    severity: HAUTE
+    cvss: 7.0
+    cwe: "CWE-367"
+    description: "Le pattern 'ecrire un script dans /tmp puis l'executer via pkexec' cree une fenetre TOCTOU. Bien que mitige par chmod 700 et createTemp(), un attaquant avec des privileges eleves ou un acces au meme repertoire temporaire peut modifier le script entre l'ecriture et l'execution pkexec."
+    evidence:
+      file: "lib/features/ssh_setup/ssh_setup_provider.dart"
+      line: 287
+      code: "await tempScript.writeAsString(script);\n// ...\nresult = await CommandRunner.runElevated('bash', [tempScript.path]);"
+      issue: "Fenetre temporelle entre writeAsString() et runElevated(). Meme pattern dans security_commands.dart:293-299 et wol_setup_provider.dart:316-354. Documente dans le code comme risque residuel."
+    flow_refs: ["DF-005", "DF-006", "DF-007"]
+    secret_refs: ["SEC-004"]
+    exploitability:
+      access_required: "local"
+      complexity: "haute"
+      user_interaction: "aucune"
+      privileges_required: "root (pour modifier des fichiers chmod 700)"
+    knowledge_ref: "desktop-specific-attacks.md#toctou"
+
+  - id: VULN-005
+    title: "Fichier .desktop Linux - chemin executable non echappe"
+    category: FLT
+    severity: HAUTE
+    cvss: 7.3
+    cwe: "CWE-78"
+    description: "Le chemin de l'executable est interpole directement dans le champ Exec= du fichier .desktop sans echappement. Si le chemin contient des caracteres speciaux (espaces, quotes, etc.), cela peut causer un comportement inattendu ou une injection de commande lors du lancement au demarrage."
+    evidence:
+      file: "lib/features/settings/settings_provider.dart"
+      line: 98
+      code: "'Exec=$exePath\\n'"
+      issue: "Platform.resolvedExecutable est insere directement dans le fichier .desktop. La spec Desktop Entry requiert un echappement specifique pour les arguments Exec (RFC, %f etc.). Un chemin avec des espaces ou des caracteres speciaux peut etre mal interprete par le shell."
+    flow_refs: ["DF-010"]
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "moyenne"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur (ecriture dans ~/.config/autostart/)"
+    knowledge_ref: "desktop-specific-attacks.md#autostart-persistence"
+
+  - id: VULN-006
+    title: "Cles Tailscale stockees sans chiffrement au repos"
+    category: STO
+    severity: HAUTE
+    cvss: 7.5
+    cwe: "CWE-312"
+    description: "Les cles WireGuard du noeud Tailscale sont stockees dans un repertoire utilisateur (~/.local/share/chill-app/tailscale/) avec uniquement des permissions fichier (0700). Tout processus du meme utilisateur peut lire ces cles et usurper l'identite du noeud Tailscale."
+    evidence:
+      file: "tailscale-daemon/main.go"
+      line: 69
+      code: "os.MkdirAll(dir, 0700)"
+      issue: "Permissions 0700 ne protegent que contre les AUTRES utilisateurs. Tout processus du meme utilisateur (malware, extension navigateur, autre app) peut lire les cles. Pas de chiffrement au repos."
+    flow_refs: ["DF-012"]
+    secret_refs: ["SEC-003"]
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "storage-key-attacks.md"
+
+  - id: VULN-007
+    title: "IPC daemon Go sans authentification"
+    category: FLT
+    severity: HAUTE
+    cvss: 7.1
+    cwe: "CWE-419"
+    description: "La communication entre l'app Flutter et le daemon Go se fait par JSON en clair sur stdin/stdout. Il n'y a pas d'authentification de l'IPC - si un processus peut ecrire sur le stdin du daemon, il peut envoyer des commandes (login, logout, shutdown, status)."
+    evidence:
+      file: "lib/features/tailscale/tailscale_provider.dart"
+      line: 294
+      code: "_daemon!.stdin.writeln(jsonEncode(cmd));"
+      issue: "Les commandes sont envoyees en JSON clair. Le daemon Go accepte toute commande valide sur stdin sans verifier l'identite de l'emetteur. Cote daemon: main.go:240-262 parse et execute sans authentification."
+    flow_refs: ["DF-003"]
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "moyenne"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur (acces au processus)"
+    knowledge_ref: "flutter-dart-attacks.md#ipc"
+
+  - id: VULN-008
+    title: "PIN en memoire Dart non effacable (strings immutables)"
+    category: CRY
+    severity: HAUTE
+    cvss: 6.8
+    cwe: "CWE-316"
+    description: "Les strings Dart sont immutables et gerees par le garbage collector. Le PIN en clair reste en memoire apres le calcul PBKDF2 et ne peut pas etre efface de maniere fiable. Un dump memoire peut extraire le PIN."
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 143
+      code: "Future<void> setPin(String pin) async {"
+      issue: "Le parametre 'pin' est un String Dart immutable. Apres setPin() ou verifyPin(), le GC peut ou non liberer la memoire. Documente comme SE-PIN-011 dans le code (ligne 14-18)."
+    flow_refs: ["DF-001", "DF-002"]
+    secret_refs: ["SEC-001"]
+    exploitability:
+      access_required: "local"
+      complexity: "moyenne"
+      user_interaction: "aucune"
+      privileges_required: "root (pour dump memoire)"
+    knowledge_ref: "crypto-weaknesses.md#dart-memory-model"
+
+  - id: VULN-009
+    title: "SSH forwarding Tailscale sans filtrage additionnel"
+    category: NET
+    severity: HAUTE
+    cvss: 7.5
+    cwe: "CWE-284"
+    description: "Le daemon Go forwarde TOUTES les connexions sur le port 22 Tailscale vers localhost:22 sans filtrage additionnel. Tout appareil autorise sur le tailnet peut se connecter au SSH de la machine. Si un autre noeud Tailscale est compromis, il obtient un acces SSH direct."
+    evidence:
+      file: "tailscale-daemon/main.go"
+      line: 181
+      code: "localConn, err := net.DialTimeout(\"tcp\", \"127.0.0.1:22\", 5*time.Second)"
+      issue: "startForwarding() (ligne 147-177) accepte toute connexion entrante sur le port 22 sans whitelist d'IP, sans limitation de debit, sans journal des connexions. Le seul controle est l'appartenance au tailnet."
+    flow_refs: ["DF-009"]
+    secret_refs: []
+    exploitability:
+      access_required: "reseau (tailscale mesh)"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "noeud tailscale autorise"
+    knowledge_ref: "tailscale-attack-vectors.md#acl"
+
+  - id: VULN-010
+    title: "Rate limiting PIN cote client uniquement"
+    category: STO
+    severity: HAUTE
+    cvss: 6.5
+    cwe: "CWE-307"
+    description: "Le rate limiting du PIN (backoff exponentiel apres 5 echecs) est stocke dans SharedPreferences. Un attaquant peut modifier pin_failed_attempts (remettre a 0) et supprimer pin_locked_until pour reset le rate limiting et continuer le brute force."
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 215
+      code: "await prefs.setInt(_lockedUntilKey, newLockedUntil.millisecondsSinceEpoch);"
+      issue: "Le compteur d'echecs et le timestamp de verrouillage sont dans SharedPreferences - un fichier texte modifiable par tout processus du meme utilisateur. Reset du compteur = brute force illimite sur 10^8 combinaisons (8 chiffres)."
+    flow_refs: ["DF-002"]
+    secret_refs: ["SEC-002"]
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "storage-key-attacks.md#shared-preferences"
+
+  # ============================================
+  # MOYENNES
+  # ============================================
+
+  - id: VULN-011
+    title: "Info reseau sensible dans presse-papiers"
+    category: NET
+    severity: MOYENNE
+    cvss: 4.3
+    cwe: "CWE-200"
+    description: "Les informations reseau (IP Ethernet, IP WiFi, adresse MAC, username, hostname) sont affichees dans l'interface et copiables dans le presse-papiers. Le presse-papiers est lisible par toutes les applications."
+    evidence:
+      file: "lib/shared/widgets/copyable_info.dart"
+      line: 1
+      code: "class CopyableInfo extends StatelessWidget"
+      issue: "Widget copyable_info.dart permet la copie dans le presse-papiers. Les donnees reseau (IP, MAC, hostname) sont des informations utiles pour un attaquant pour cibler la machine."
+    flow_refs: ["DF-008"]
+    secret_refs: ["SEC-005"]
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "requise (copie)"
+      privileges_required: "aucun"
+    knowledge_ref: "flutter-dart-attacks.md#clipboard"
+
+  - id: VULN-012
+    title: "Processus orphelins apres timeout"
+    category: FLT
+    severity: MOYENNE
+    cvss: 5.3
+    cwe: "CWE-404"
+    description: "Process.run().timeout() ne tue pas le processus sous-jacent en cas de timeout. Les processus (pkexec, apt, systemctl) continuent en arriere-plan. Accumulation possible de processus orphelins avec privileges eleves."
+    evidence:
+      file: "lib/core/command_runner.dart"
+      line: 27
+      code: "// NOTE: Process.run().timeout() does not kill the underlying process on timeout."
+      issue: "Limitation Dart documentee dans le code. Les processus pkexec lances pour SSH setup, securite ou WoL peuvent rester actifs indefiniment apres un timeout de 120 secondes."
+    flow_refs: ["DF-005", "DF-006", "DF-007"]
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "moyenne"
+      user_interaction: "aucune"
+      privileges_required: "aucun"
+    knowledge_ref: "flutter-dart-attacks.md#process-management"
+
+  - id: VULN-013
+    title: "Pas d'obfuscation du binaire Flutter desktop"
+    category: FLT
+    severity: MOYENNE
+    cvss: 4.0
+    cwe: "CWE-693"
+    description: "L'application Flutter desktop n'est pas compilee avec --obfuscate --split-debug-info. Le binaire contient les noms de classes, methodes et variables en clair, facilitant le reverse engineering."
+    evidence:
+      file: "pubspec.yaml"
+      line: 1
+      code: "name: chill_app"
+      issue: "Pas de configuration d'obfuscation dans le build. Un attaquant peut decompiler l'app et comprendre toute la logique de securite, les patterns d'elevation de privileges, les chemins de scripts."
+    flow_refs: []
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "aucun (acces au binaire)"
+    knowledge_ref: "flutter-dart-attacks.md#reverse-engineering"
+
+  - id: VULN-014
+    title: "google_fonts telecharge au runtime sans pinning"
+    category: NET
+    severity: MOYENNE
+    cvss: 4.8
+    cwe: "CWE-295"
+    description: "Le package google_fonts telecharge les polices depuis fonts.googleapis.com au runtime. Sans certificate pinning, un attaquant en position MITM pourrait servir des polices malformees."
+    evidence:
+      file: "pubspec.yaml"
+      line: 16
+      code: "google_fonts: ^8.0.1"
+      issue: "google_fonts fait des requetes HTTP vers fonts.googleapis.com. Sur un reseau compromis, un attaquant MITM pourrait servir des polices malformees pour exploiter le parseur de polices."
+    flow_refs: []
+    secret_refs: []
+    exploitability:
+      access_required: "reseau (MITM)"
+      complexity: "haute"
+      user_interaction: "aucune"
+      privileges_required: "acces reseau"
+    knowledge_ref: "network-attacks.md#mitm"
+
+  - id: VULN-015
+    title: "plist macOS - chemin executable non echappe dans XML"
+    category: FLT
+    severity: MOYENNE
+    cvss: 5.5
+    cwe: "CWE-78"
+    description: "Le chemin de l'executable est insere directement dans le plist XML sans echappement des caracteres speciaux XML (<, >, &, \"). Si le chemin contient ces caracteres, le plist sera invalide ou pourrait causer un comportement inattendu."
+    evidence:
+      file: "lib/features/settings/settings_provider.dart"
+      line: 116
+      code: "'    <string>$exePath</string>\\n'"
+      issue: "$exePath est interpole directement dans le XML plist. Les caracteres speciaux XML ne sont pas echappes. Un chemin malicieux pourrait injecter du XML."
+    flow_refs: ["DF-010"]
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "moyenne"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "desktop-specific-attacks.md#autostart"
+
+  # ============================================
+  # BASSES
+  # ============================================
+
+  - id: VULN-016
+    title: "Pas de protection anti-debug/Frida sur desktop"
+    category: FLT
+    severity: BASSE
+    cvss: 3.1
+    cwe: "CWE-489"
+    description: "L'application desktop ne detecte pas les debuggers (gdb, lldb) ni les outils d'instrumentation (Frida). Un attaquant peut instrumenter l'app pour contourner le PIN, extraire la memoire ou modifier le comportement."
+    evidence:
+      file: "lib/main.dart"
+      line: 1
+      code: "void main() async {"
+      issue: "Aucune detection de debugger, Frida, ou environnement d'analyse. Normal pour une app desktop, mais facilite les attaques sur le PIN et la logique de securite."
+    flow_refs: []
+    secret_refs: []
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "flutter-dart-attacks.md#frida"
+
+  - id: VULN-017
+    title: "Migration legacy SHA-256 simple vers PBKDF2"
+    category: CRY
+    severity: BASSE
+    cvss: 3.7
+    cwe: "CWE-916"
+    description: "Le code supporte encore la migration depuis l'ancien format SHA-256 simple (sans sel). Un PIN stocke dans l'ancien format est vulnerable au brute force instantane (SHA-256 sans sel = rainbow tables)."
+    evidence:
+      file: "lib/features/lock/lock_provider.dart"
+      line: 186
+      code: "} else if (salt == null) {\n  // Tres ancien format sans sel : migration\n  final oldHash = sha256.convert(utf8.encode(pin)).toString();"
+      issue: "Le format legacy SHA-256 sans sel est craquable en secondes avec des rainbow tables. La migration vers PBKDF2 ne s'effectue que lorsque l'utilisateur entre le bon PIN. Jusqu'a la migration, le hash reste vulnerable."
+    flow_refs: ["DF-002"]
+    secret_refs: ["SEC-002"]
+    exploitability:
+      access_required: "local"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "meme utilisateur"
+    knowledge_ref: "crypto-weaknesses.md#hash-migration"
+
+  - id: VULN-018
+    title: "WoL magic packet sans authentification"
+    category: NET
+    severity: BASSE
+    cvss: 3.1
+    cwe: "CWE-306"
+    description: "Les paquets Wake-on-LAN sont des broadcasts non authentifies. N'importe qui sur le meme LAN peut envoyer un magic packet pour reveiller la machine. C'est par design (limitation du protocole WoL), mais l'exposition de l'adresse MAC dans l'interface facilite l'attaque."
+    evidence:
+      file: "lib/features/wol_setup/wol_setup_provider.dart"
+      line: 228
+      code: "macAddress: macResult.stdout.isNotEmpty ? macResult.stdout : null,"
+      issue: "L'adresse MAC est affichee dans l'interface et copiable. Combinee avec WoL active, n'importe qui sur le LAN peut reveiller la machine."
+    flow_refs: ["DF-007"]
+    secret_refs: []
+    exploitability:
+      access_required: "reseau (LAN)"
+      complexity: "basse"
+      user_interaction: "aucune"
+      privileges_required: "aucun"
+    knowledge_ref: "network-attacks.md#wol"
+
+  # ============================================
+  # INFO
+  # ============================================
+
+  - id: VULN-019
+    title: "Pas de plan de migration post-quantique"
+    category: CRY
+    severity: INFO
+    cvss: 0.0
+    cwe: "CWE-327"
+    description: "L'application utilise SSH et WireGuard/Tailscale sans plan de migration post-quantique. Les donnees chiffrees aujourd'hui pourraient etre decryptees par un ordinateur quantique futur (harvest-now-decrypt-later)."
+    evidence:
+      file: "tailscale-daemon/main.go"
+      line: 158
+      code: "ln, err := srv.Listen(\"tcp\", \":22\")"
+      issue: "SSH et WireGuard utilisent des algorithmes classiques (Curve25519, ChaCha20). Pas de support ML-KEM/ML-DSA. Impact theorique a long terme."
+    flow_refs: ["DF-009"]
+    secret_refs: []
+    exploitability:
+      access_required: "reseau"
+      complexity: "haute"
+      user_interaction: "aucune"
+      privileges_required: "aucun"
+    knowledge_ref: "crypto-weaknesses.md#post-quantum"
+
+summary:
+  total: 19
+  by_severity:
+    CRITIQUE: 3
+    HAUTE: 7
+    MOYENNE: 5
+    BASSE: 3
+    INFO: 1
+  by_category:
+    SSH: 0
+    NET: 3
+    TS: 0
+    FLT: 6
+    CRY: 3
+    STO: 3
+    PHY: 0
+    SOC: 0
+    AI: 0
+    SUP: 1
+  knowledge_coverage:
+    - "ssh-attack-vectors.md: scanne - pas de dartssh2 dans le projet (app configure OpenSSH natif)"
+    - "tailscale-attack-vectors.md: scanne - VULN-001,006,007,009"
+    - "flutter-dart-attacks.md: scanne - VULN-003,004,005,007,008,012,013,015,016"
+    - "crypto-weaknesses.md: scanne - VULN-008,017,019"
+    - "storage-key-attacks.md: scanne - VULN-002,006,010"
+    - "network-attacks.md: scanne - VULN-009,011,014,018"
+    - "desktop-specific-attacks.md: scanne - VULN-004,005,012,015,016"
+    - "mobile-specific-attacks.md: scanne - non applicable (app desktop uniquement)"
+    - "chain-attack-patterns.md: scanne - patterns de chaines utilises en P5"
+    - "cve-reference.md: scanne - pas de CVE directement applicable aux versions utilisees"
+    - "ai-offensive-threats.md: scanne - VULN-013 (RE par IA), pas de biometrie ni d'input LLM dans l'app"
