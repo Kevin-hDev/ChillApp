@@ -12,12 +12,12 @@ class LocaleNotifier extends Notifier<String> {
   @override
   String build() {
     _load();
-    return 'fr'; // français par défaut
+    return 'en'; // anglais par défaut
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('locale') ?? 'fr';
+    final saved = prefs.getString('locale') ?? 'en';
     if (_supportedLocales.contains(saved)) {
       state = saved;
     } else {
