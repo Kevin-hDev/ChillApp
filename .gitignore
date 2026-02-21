@@ -56,3 +56,7 @@ SIGN CODE/
 SONARCLOUD_SETUP.md
 docs/
 SECURITE/
+semgrep-results*/
+tailscale-daemon/
+flutter-analyze-results.txt
+sonar-project.properties
