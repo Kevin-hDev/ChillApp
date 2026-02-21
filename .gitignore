@@ -58,5 +58,6 @@ docs/
 SECURITE/
 semgrep-results*/
 tailscale-daemon/
+assets/bin/
 flutter-analyze-results.txt
 sonar-project.properties
