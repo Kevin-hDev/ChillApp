@@ -1,21 +1,35 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../settings/settings_provider.dart';
+import '../../core/security/secure_storage.dart';
+import '../../core/security/crypto_isolate.dart';
 
-/// NOTE SECURITE : Le PIN est stocke dans SharedPreferences (texte clair sur disque).
-/// PBKDF2 avec 100k iterations rend le brute force offline impraticable (~heures sur GPU).
-/// Cependant, un attaquant avec acces au systeme de fichiers peut supprimer le hash
-/// pour desactiver le lock. Le PIN protege contre l'utilisation occasionnelle,
-/// pas contre un attaquant determine avec acces physique complet.
-///
-/// KNOWN LIMITATION (SE-PIN-011): Dart strings are immutable and managed by the GC,
-/// so the PIN plaintext cannot be reliably zeroed from memory after use.
-/// Mitigating this would require FFI (dart:ffi) with a native secure-memory
-/// allocator, which is out of scope for the current threat model.
-/// The PIN is only held in a local variable for the duration of hash computation.
+// =============================================================
+// SECURITY NOTES
+// =============================================================
+//
+// FIX-027: PIN hash and salt are now stored in the OS native
+// keystore (Linux: libsecret, Windows: DPAPI, macOS: Keychain)
+// via SecureStorage. SharedPreferences is retained ONLY for
+// non-sensitive data: failed attempts counter and lock timestamp.
+//
+// FALLBACK: If SecureStorage fails (keystore unavailable),
+// the code falls back to SharedPreferences with a warning in
+// the debug console. This degrades gracefully rather than
+// crashing the app.
+//
+// MIGRATION: On first use, if pin_hash / pin_salt exist in
+// SharedPreferences (legacy), they are automatically copied
+// to SecureStorage and removed from SharedPreferences.
+//
+// KNOWN LIMITATION (SE-PIN-011): Dart strings are immutable
+// and managed by the GC, so the PIN plaintext cannot be
+// reliably zeroed from memory after use. The PIN is only
+// held in a local variable for the duration of hash computation.
+// =============================================================
 
 class LockState {
   final bool isEnabled;
@@ -54,27 +68,136 @@ final lockProvider =
     NotifierProvider<LockNotifier, LockState>(LockNotifier.new);
 
 class LockNotifier extends Notifier<LockState> {
+  // Keys stored in SecureStorage (sensitive)
   static const _pinHashKey = 'pin_hash';
   static const _pinSaltKey = 'pin_salt';
+
+  // Keys kept in SharedPreferences (non-sensitive rate limiting data)
   static const _failedAttemptsKey = 'pin_failed_attempts';
   static const _lockedUntilKey = 'pin_locked_until';
 
   @override
   LockState build() {
     final prefs = ref.read(sharedPrefsProvider);
-    final hasPin = prefs.getString(_pinHashKey) != null;
     final failedAttempts = prefs.getInt(_failedAttemptsKey) ?? 0;
     final lockedUntilMs = prefs.getInt(_lockedUntilKey);
     final lockedUntil = lockedUntilMs != null
         ? DateTime.fromMillisecondsSinceEpoch(lockedUntilMs)
         : null;
+
+    // We cannot do async work in build(), so we schedule a migration check
+    // and a PIN presence check after the first frame.
+    // isEnabled defaults to false until _initAsync() completes.
+    Future.microtask(_initAsync);
+
     return LockState(
-      isEnabled: hasPin,
+      isEnabled: false,
       failedAttempts: failedAttempts,
       lockedUntil: lockedUntil,
-      isLoading: false,
+      isLoading: true,
     );
   }
+
+  // -------------------------------------------------------------------------
+  // Initialisation async : migration + check PIN existence
+  // -------------------------------------------------------------------------
+
+  Future<void> _initAsync() async {
+    // 1. Migrate legacy SharedPreferences data to SecureStorage
+    await _migrateLegacyPrefsToSecureStorage();
+
+    // 2. Check if a PIN is configured in SecureStorage
+    final hasPin = await _secureContainsKey(_pinHashKey);
+
+    state = state.copyWith(isEnabled: hasPin, isLoading: false);
+  }
+
+  /// Migrates pin_hash and pin_salt from SharedPreferences to SecureStorage
+  /// if they are present there (one-time migration from pre-FIX-027 versions).
+  Future<void> _migrateLegacyPrefsToSecureStorage() async {
+    final prefs = ref.read(sharedPrefsProvider);
+    final legacyHash = prefs.getString(_pinHashKey);
+    final legacySalt = prefs.getString(_pinSaltKey);
+
+    if (legacyHash == null) return; // Nothing to migrate
+
+    debugPrint(
+      '[LockNotifier] Migrating PIN from SharedPreferences to SecureStorage...',
+    );
+
+    try {
+      final storage = await SecureStorage.getInstance();
+      await storage.write(_pinHashKey, legacyHash);
+      if (legacySalt != null) {
+        await storage.write(_pinSaltKey, legacySalt);
+      }
+      // Remove from SharedPreferences once migration succeeds
+      await prefs.remove(_pinHashKey);
+      await prefs.remove(_pinSaltKey);
+      debugPrint('[LockNotifier] Migration completed successfully.');
+    } catch (e) {
+      // Migration failed: leave SharedPreferences data intact as fallback
+      debugPrint('[LockNotifier] Migration failed: $e');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // SecureStorage helpers with SharedPreferences fallback
+  // -------------------------------------------------------------------------
+
+  Future<void> _secureWrite(String key, String value) async {
+    try {
+      final storage = await SecureStorage.getInstance();
+      await storage.write(key, value);
+    } catch (e) {
+      debugPrint('[LockNotifier] SecureStorage.write failed ($key): $e');
+      debugPrint('[LockNotifier] WARN: Falling back to SharedPreferences.');
+      final prefs = ref.read(sharedPrefsProvider);
+      await prefs.setString(key, value);
+    }
+  }
+
+  Future<String?> _secureRead(String key) async {
+    try {
+      final storage = await SecureStorage.getInstance();
+      final value = await storage.read(key);
+      if (value != null) return value;
+    } catch (e) {
+      debugPrint('[LockNotifier] SecureStorage.read failed ($key): $e');
+      debugPrint('[LockNotifier] WARN: Falling back to SharedPreferences.');
+    }
+    // Fallback to SharedPreferences (includes legacy unmigrted data)
+    final prefs = ref.read(sharedPrefsProvider);
+    return prefs.getString(key);
+  }
+
+  Future<void> _secureDelete(String key) async {
+    try {
+      final storage = await SecureStorage.getInstance();
+      await storage.delete(key);
+    } catch (e) {
+      debugPrint('[LockNotifier] SecureStorage.delete failed ($key): $e');
+    }
+    // Always clean SharedPreferences too (covers fallback and migration leftovers)
+    final prefs = ref.read(sharedPrefsProvider);
+    await prefs.remove(key);
+  }
+
+  Future<bool> _secureContainsKey(String key) async {
+    try {
+      final storage = await SecureStorage.getInstance();
+      if (await storage.containsKey(key)) return true;
+    } catch (e) {
+      debugPrint('[LockNotifier] SecureStorage.containsKey failed ($key): $e');
+    }
+    // Check SharedPreferences as well (fallback / migration in progress)
+    final prefs = ref.read(sharedPrefsProvider);
+    return prefs.getString(key) != null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Crypto helpers
+  // -------------------------------------------------------------------------
 
   String _generateSalt() {
     final random = Random.secure();
@@ -82,7 +205,10 @@ class LockNotifier extends Notifier<LockState> {
     return base64Encode(bytes);
   }
 
-  /// PBKDF2 avec HMAC-SHA256, 100 000 iterations
+  /// PBKDF2 with HMAC-SHA256, 100 000 iterations.
+  /// Conservé pour les tests unitaires et la migration de hashes legacy
+  /// qui pourraient en avoir besoin via un accès externe futur.
+  // ignore: unused_element
   Uint8List _pbkdf2(String password, String salt,
       {int iterations = 100000, int keyLength = 32}) {
     final hmac = Hmac(sha256, utf8.encode(password));
@@ -111,12 +237,11 @@ class LockNotifier extends Notifier<LockState> {
     return Uint8List.fromList(result.sublist(0, keyLength));
   }
 
-  String _hashPin(String pin, String salt) {
-    final derived = _pbkdf2(pin, salt);
-    return base64Encode(derived);
+  Future<String> _hashPin(String pin, String salt) async {
+    return await CryptoIsolate.hashPinIsolated(pin, salt);
   }
 
-  /// Constant-time string comparison to prevent timing attacks
+  /// Constant-time string comparison to prevent timing attacks (CWE-208)
   static bool _constantTimeEquals(String a, String b) {
     if (a.length != b.length) return false;
     int result = 0;
@@ -126,44 +251,49 @@ class LockNotifier extends Notifier<LockState> {
     return result == 0;
   }
 
-  /// Ancien format SHA-256 pour migration
+  /// Legacy SHA-256 format for migration of old PINs
   String _hashPinLegacy(String pin, String salt) {
     return sha256.convert(utf8.encode('$salt:$pin')).toString();
   }
 
-  /// Calcul du delai de verrouillage avec backoff exponentiel.
-  /// Pas de lock sous 5 tentatives, puis 30s, 60s, 120s, 240s, max 300s.
+  /// Lock duration with exponential backoff.
+  /// No lock under 5 attempts, then 30s, 60s, 120s, 240s, max 300s.
   int _lockDurationSeconds(int totalFailed) {
     if (totalFailed < 5) return 0;
     final level = (totalFailed ~/ 5); // 1, 2, 3, 4...
     final duration = 30 * (1 << (level - 1)); // 30, 60, 120, 240...
-    return duration.clamp(30, 300); // plafonne a 5 minutes
+    return duration.clamp(30, 300); // capped at 5 minutes
   }
+
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
 
   Future<void> setPin(String pin) async {
     if (pin.length != 8 || !RegExp(r'^\d{8}$').hasMatch(pin)) {
       throw ArgumentError('PIN must be exactly 8 digits');
     }
-    final prefs = ref.read(sharedPrefsProvider);
     final salt = _generateSalt();
-    await prefs.setString(_pinSaltKey, salt);
-    await prefs.setString(_pinHashKey, _hashPin(pin, salt));
-    state = state.copyWith(isEnabled: true, isUnlocked: true);
+    final hash = await _hashPin(pin, salt);
+
+    // Store in SecureStorage (with SharedPreferences fallback)
+    await _secureWrite(_pinSaltKey, salt);
+    await _secureWrite(_pinHashKey, hash);
+
+    state = state.copyWith(isEnabled: true, isUnlocked: true, isLoading: false);
   }
 
   Future<bool> verifyPin(String pin) async {
-    final prefs = ref.read(sharedPrefsProvider);
-
-    // Rate limiting : bloquer si en periode de verrouillage
+    // Rate limiting: block if currently in a lockout period
     if (state.lockedUntil != null &&
         DateTime.now().isBefore(state.lockedUntil!)) {
       return false;
     }
 
-    final stored = prefs.getString(_pinHashKey);
+    final stored = await _secureRead(_pinHashKey);
     if (stored == null) return false;
 
-    final salt = prefs.getString(_pinSaltKey);
+    final salt = await _secureRead(_pinSaltKey);
     bool match = false;
 
     // MIGRATION: Legacy hash formats are supported for backward compatibility:
@@ -171,31 +301,32 @@ class LockNotifier extends Notifier<LockState> {
     // - Salt + SHA-256 (v1): sha256('$salt:$pin') → 64 char hex
     // - Salt + PBKDF2 (v2, current): pbkdf2(pin, salt, 100k iter) → 44 char base64
     // Legacy formats are automatically migrated to v2 on successful verification.
-    // TODO: Remove legacy migration in a future major version.
     if (salt != null && stored.length == 44) {
-      // Nouveau format PBKDF2 (base64 = 44 chars)
-      match = _constantTimeEquals(_hashPin(pin, salt), stored);
+      // Current PBKDF2 format (base64 = 44 chars)
+      match = _constantTimeEquals(await _hashPin(pin, salt), stored);
     } else if (salt != null && stored.length == 64) {
-      // Ancien format SHA-256 avec sel (hex = 64 chars) : migration
+      // Legacy SHA-256 with salt (hex = 64 chars): migrate on success
       final legacyHash = _hashPinLegacy(pin, salt);
       if (_constantTimeEquals(legacyHash, stored)) {
         match = true;
-        // Migrer vers PBKDF2
-        await prefs.setString(_pinHashKey, _hashPin(pin, salt));
+        // Migrate to PBKDF2 in SecureStorage
+        await _secureWrite(_pinHashKey, await _hashPin(pin, salt));
       }
     } else if (salt == null) {
-      // Tres ancien format sans sel : migration
+      // Very old format without salt: migrate on success
       final oldHash = sha256.convert(utf8.encode(pin)).toString();
       if (_constantTimeEquals(oldHash, stored)) {
         match = true;
         final newSalt = _generateSalt();
-        await prefs.setString(_pinSaltKey, newSalt);
-        await prefs.setString(_pinHashKey, _hashPin(pin, newSalt));
+        await _secureWrite(_pinSaltKey, newSalt);
+        await _secureWrite(_pinHashKey, await _hashPin(pin, newSalt));
       }
     }
 
+    final prefs = ref.read(sharedPrefsProvider);
+
     if (match) {
-      // Succes : remettre le compteur a zero
+      // Success: reset the counter (in SharedPreferences — non-sensitive)
       state = state.copyWith(
         isUnlocked: true,
         failedAttempts: 0,
@@ -205,13 +336,12 @@ class LockNotifier extends Notifier<LockState> {
       await prefs.remove(_lockedUntilKey);
       return true;
     } else {
-      // Echec : incrementer et calculer le verrouillage
+      // Failure: increment and compute lockout (in SharedPreferences — non-sensitive)
       final newAttempts = state.failedAttempts + 1;
       final lockSeconds = _lockDurationSeconds(newAttempts);
       DateTime? newLockedUntil;
       if (lockSeconds > 0) {
-        newLockedUntil =
-            DateTime.now().add(Duration(seconds: lockSeconds));
+        newLockedUntil = DateTime.now().add(Duration(seconds: lockSeconds));
         await prefs.setInt(
             _lockedUntilKey, newLockedUntil.millisecondsSinceEpoch);
       }
@@ -225,16 +355,21 @@ class LockNotifier extends Notifier<LockState> {
   }
 
   Future<void> removePin() async {
+    // Remove sensitive data from SecureStorage
+    await _secureDelete(_pinHashKey);
+    await _secureDelete(_pinSaltKey);
+
+    // Remove non-sensitive rate limiting data from SharedPreferences
     final prefs = ref.read(sharedPrefsProvider);
-    await prefs.remove(_pinHashKey);
-    await prefs.remove(_pinSaltKey);
     await prefs.remove(_failedAttemptsKey);
     await prefs.remove(_lockedUntilKey);
+
     state = state.copyWith(
       isEnabled: false,
       isUnlocked: true,
       failedAttempts: 0,
       clearLockedUntil: true,
+      isLoading: false,
     );
   }
 
