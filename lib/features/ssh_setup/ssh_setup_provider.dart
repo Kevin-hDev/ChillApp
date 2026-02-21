@@ -5,6 +5,7 @@ import '../../core/command_runner.dart';
 import '../../core/network_info.dart';
 import '../../core/os_detector.dart';
 import '../../shared/models/setup_step.dart';
+import '../dashboard/dashboard_provider.dart';
 
 class SshSetupState {
   final List<SetupStep> steps;
@@ -120,6 +121,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
           break;
       }
       state = state.copyWith(isRunning: false, isComplete: true);
+      // Forcer le rafraîchissement du dashboard pour mettre à jour le badge SSH
+      ref.read(dashboardProvider.notifier).checkAll(force: true);
     } catch (e) {
       debugPrint('[SSH] Setup error: $e');
       state = state.copyWith(isRunning: false, errorMessage: e.toString());
