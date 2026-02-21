@@ -43,6 +43,7 @@ jobs:
         with:
           sarif_file: semgrep-results.sarif
         if: always()
+        continue-on-error: true
 
       - name: Upload results as artifact
         uses: actions/upload-artifact@v4
