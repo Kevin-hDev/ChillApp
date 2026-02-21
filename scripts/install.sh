@@ -76,7 +76,7 @@ get_download_url() {
     local arch="$2"
     local asset_name="chill-${os}-${arch}.tar.gz"
 
-    print_info "Recherche de la dernière version..."
+    print_info "Recherche de la dernière version..." >&2
 
     local api_url="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
     local response
@@ -94,7 +94,7 @@ get_download_url() {
 
     if [ -z "$download_url" ]; then
         print_err "Aucune release trouvée pour $asset_name"
-        print_info "Vérifie les releases disponibles : https://github.com/${GITHUB_REPO}/releases"
+        print_info "Vérifie les releases disponibles : https://github.com/${GITHUB_REPO}/releases" >&2
         exit 1
     fi
 
@@ -114,28 +114,27 @@ install_chill() {
     local arch="$2"
     local download_url="$3"
 
-    # Créer un dossier temporaire
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-    trap 'rm -rf "$tmp_dir"' EXIT
+    # Créer un dossier temporaire (variable globale pour le trap EXIT)
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
 
     print_info "Téléchargement de Chill..."
-    curl -fsSL --progress-bar "$download_url" -o "$tmp_dir/chill.tar.gz"
+    curl -fsSL --progress-bar "$download_url" -o "$TMP_DIR/chill.tar.gz"
 
     print_info "Vérification de l'archive..."
-    if ! tar -tzf "$tmp_dir/chill.tar.gz" &>/dev/null; then
+    if ! tar -tzf "$TMP_DIR/chill.tar.gz" &>/dev/null; then
         print_err "L'archive téléchargée est corrompue."
         exit 1
     fi
 
     print_info "Extraction..."
-    tar -xzf "$tmp_dir/chill.tar.gz" -C "$tmp_dir"
+    tar -xzf "$TMP_DIR/chill.tar.gz" -C "$TMP_DIR"
 
     # Trouver le dossier extrait
     local extracted_dir
-    extracted_dir=$(find "$tmp_dir" -mindepth 1 -maxdepth 1 -type d | head -1)
+    extracted_dir=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
     if [ -z "$extracted_dir" ]; then
-        extracted_dir="$tmp_dir"
+        extracted_dir="$TMP_DIR"
     fi
 
     # Arrêter Chill s'il tourne
