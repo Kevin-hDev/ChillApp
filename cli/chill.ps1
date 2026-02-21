@@ -22,7 +22,7 @@ function Write-Info  { param([string]$msg) Write-Host "  → " -ForegroundColor 
 function Test-ChillInstalled {
     if (-not (Test-Path $APP_BIN)) {
         Write-Err "Chill n'est pas installé dans $CHILL_DIR"
-        Write-Info "Installe-le avec : irm https://chill.app/install.ps1 | iex"
+        Write-Info "Installe-le avec : irm https://raw.githubusercontent.com/Kevin-hDev/ChillApp/main/scripts/install.ps1 | iex"
         exit 1
     }
 }

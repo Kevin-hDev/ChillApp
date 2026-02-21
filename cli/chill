@@ -33,7 +33,7 @@ print_info()  { printf "${CYAN}→${NC} %s\n" "$1"; }
 check_installed() {
     if [ ! -f "$APP_BIN" ]; then
         print_err "Chill n'est pas installé dans $CHILL_DIR"
-        print_info "Installe-le avec : curl -fsSL https://chill.app/install.sh | bash"
+        print_info "Installe-le avec : curl -fsSL https://raw.githubusercontent.com/Kevin-hDev/ChillApp/main/scripts/install.sh | bash"
         exit 1
     fi
 }
