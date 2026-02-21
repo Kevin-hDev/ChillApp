@@ -323,7 +323,7 @@ class _BiosTutorialCard extends StatelessWidget {
 
   /// URL du tutoriel BIOS sur le site web
   /// TODO: Remplacer par l'URL definitive une fois le site deploye
-  static const _biosTutorialUrl = 'https://chillshell.dev/tuto/bios';
+  static const _biosTutorialUrl = 'https://chill-black.vercel.app/tutos/bios';
 
   const _BiosTutorialCard({required this.locale});
 
