@@ -6,11 +6,7 @@ class StepIndicator extends StatelessWidget {
   final String label;
   final StepStatus status;
 
-  const StepIndicator({
-    super.key,
-    required this.label,
-    required this.status,
-  });
+  const StepIndicator({super.key, required this.label, required this.status});
 
   @override
   Widget build(BuildContext context) {
@@ -22,9 +18,7 @@ class StepIndicator extends StatelessWidget {
         children: [
           _buildIcon(context),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(label, style: theme.textTheme.bodyLarge),
-          ),
+          Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
         ],
       ),
     );
@@ -45,17 +39,9 @@ class StepIndicator extends StatelessWidget {
           child: CircularProgressIndicator(strokeWidth: 2),
         );
       case StepStatus.success:
-        return Icon(
-          Icons.check_circle,
-          color: context.chillAccent,
-          size: 24,
-        );
+        return Icon(Icons.check_circle, color: context.chillAccent, size: 24);
       case StepStatus.error:
-        return Icon(
-          Icons.error,
-          color: context.chillRed,
-          size: 24,
-        );
+        return Icon(Icons.error, color: context.chillRed, size: 24);
     }
   }
 }

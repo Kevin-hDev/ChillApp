@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'translations.dart';
 
 /// Provider pour la langue active
-final localeProvider = NotifierProvider<LocaleNotifier, String>(LocaleNotifier.new);
+final localeProvider = NotifierProvider<LocaleNotifier, String>(
+  LocaleNotifier.new,
+);
 
 class LocaleNotifier extends Notifier<String> {
   static const _supportedLocales = ['fr', 'en'];

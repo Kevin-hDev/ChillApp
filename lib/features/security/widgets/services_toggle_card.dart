@@ -105,11 +105,16 @@ class _ServicesToggleCardState extends State<ServicesToggleCard> {
                   ),
                   if (widget.services.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    ...widget.services.map((service) => _ServiceRow(
-                          service: service,
-                          isLoading: widget.loadingServices.contains(service.name),
-                          onToggle: () => widget.onToggleService?.call(service.name),
-                        )),
+                    ...widget.services.map(
+                      (service) => _ServiceRow(
+                        service: service,
+                        isLoading: widget.loadingServices.contains(
+                          service.name,
+                        ),
+                        onToggle: () =>
+                            widget.onToggleService?.call(service.name),
+                      ),
+                    ),
                   ],
                   if (widget.services.isEmpty && !widget.isLoading)
                     Padding(
@@ -156,10 +161,7 @@ class _ServiceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  service.displayName,
-                  style: theme.textTheme.bodyMedium,
-                ),
+                Text(service.displayName, style: theme.textTheme.bodyMedium),
                 Text(
                   service.name,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -179,10 +181,7 @@ class _ServiceRow extends StatelessWidget {
               ),
             )
           else
-            Switch(
-              value: service.isActive,
-              onChanged: (_) => onToggle?.call(),
-            ),
+            Switch(value: service.isActive, onChanged: (_) => onToggle?.call()),
         ],
       ),
     );

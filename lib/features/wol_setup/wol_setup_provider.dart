@@ -50,7 +50,9 @@ class WolSetupState {
   }
 }
 
-final wolSetupProvider = NotifierProvider<WolSetupNotifier, WolSetupState>(WolSetupNotifier.new);
+final wolSetupProvider = NotifierProvider<WolSetupNotifier, WolSetupState>(
+  WolSetupNotifier.new,
+);
 
 class WolSetupNotifier extends Notifier<WolSetupState> {
   @override
@@ -86,7 +88,8 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
   /// Met à jour le statut d'une étape
   void _updateStep(String id, StepStatus status, {String? errorDetail}) {
     final newSteps = state.steps.map((step) {
-      if (step.id == id) return step.copyWith(status: status, errorDetail: errorDetail);
+      if (step.id == id)
+        return step.copyWith(status: status, errorDetail: errorDetail);
       return step;
     }).toList();
     state = state.copyWith(steps: newSteps);
@@ -94,7 +97,11 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
 
   /// Lance toute la configuration
   Future<void> runAll() async {
-    state = state.copyWith(isRunning: true, isComplete: false, errorMessage: null);
+    state = state.copyWith(
+      isRunning: true,
+      isComplete: false,
+      errorMessage: null,
+    );
 
     try {
       final os = OsDetector.currentOS;
@@ -138,8 +145,12 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       "Write-Output (\$adapter.Name + '|||' + \$adapter.InterfaceDescription) }",
     );
     if (!result.success || result.stdout.isEmpty) {
-      _updateStep('findAdapter', StepStatus.error,
-          errorDetail: 'Aucune carte Ethernet trouvée. Vérifie que ton câble est branché.');
+      _updateStep(
+        'findAdapter',
+        StepStatus.error,
+        errorDetail:
+            'Aucune carte Ethernet trouvée. Vérifie que ton câble est branché.',
+      );
       throw Exception('Aucune carte Ethernet trouvée');
     }
     final parts = result.stdout.split('|||');
@@ -174,9 +185,13 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       "if (\$prop) { Write-Output 'OK' } else { exit 1 }",
     );
     if (!magicCheck.success || !magicCheck.stdout.contains('OK')) {
-      _updateStep('enableMagicPacket', StepStatus.error,
-          errorDetail: 'L\'option Magic Packet n\'est pas disponible sur cette carte réseau. '
-              'Vérifie dans le Gestionnaire de périphériques > Propriétés avancées de ta carte.');
+      _updateStep(
+        'enableMagicPacket',
+        StepStatus.error,
+        errorDetail:
+            'L\'option Magic Packet n\'est pas disponible sur cette carte réseau. '
+            'Vérifie dans le Gestionnaire de périphériques > Propriétés avancées de ta carte.',
+      );
       throw Exception('Magic Packet non disponible');
     }
     _updateStep('enableMagicPacket', StepStatus.success);
@@ -192,9 +207,13 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       "if (\$devices -match [regex]::Escape('$safeDesc')) { Write-Output 'OK' } else { exit 1 }",
     );
     if (!wakeCheck.success || !wakeCheck.stdout.contains('OK')) {
-      _updateStep('enableWake', StepStatus.error,
-          errorDetail: 'Impossible d\'autoriser le réveil réseau pour cette carte. '
-              'Vérifie dans le Gestionnaire de périphériques > Gestion de l\'alimentation.');
+      _updateStep(
+        'enableWake',
+        StepStatus.error,
+        errorDetail:
+            'Impossible d\'autoriser le réveil réseau pour cette carte. '
+            'Vérifie dans le Gestionnaire de périphériques > Gestion de l\'alimentation.',
+      );
       throw Exception('Réveil réseau non autorisé');
     }
     _updateStep('enableWake', StepStatus.success);
@@ -213,9 +232,13 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
       "if (\$val -eq 0) { Write-Output 'OK' } else { exit 1 }",
     );
     if (!fastCheck.success || !fastCheck.stdout.contains('OK')) {
-      _updateStep('disableFastStartup', StepStatus.error,
-          errorDetail: 'Le démarrage rapide n\'a pas pu être désactivé. '
-              'L\'option n\'est peut-être pas disponible sur cette machine.');
+      _updateStep(
+        'disableFastStartup',
+        StepStatus.error,
+        errorDetail:
+            'Le démarrage rapide n\'a pas pu être désactivé. '
+            'L\'option n\'est peut-être pas disponible sur cette machine.',
+      );
       throw Exception('Échec désactivation du démarrage rapide');
     }
     _updateStep('disableFastStartup', StepStatus.success);
@@ -241,7 +264,10 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
 
     // 1. Vérifier si ethtool est installé (pas d'élévation)
     _updateStep('installEthtool', StepStatus.running);
-    final checkResult = await CommandRunner.run('bash', ['-c', 'command -v ethtool']);
+    final checkResult = await CommandRunner.run('bash', [
+      '-c',
+      'command -v ethtool',
+    ]);
     final needsEthtoolInstall = !checkResult.success;
     if (!needsEthtoolInstall) {
       _updateStep('installEthtool', StepStatus.success);
@@ -252,48 +278,64 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     if (needsEthtoolInstall) {
       switch (distro) {
         case LinuxDistro.debian:
-          installCmd = 'apt update -qq && apt install ethtool -y -qq\n'
+          installCmd =
+              'apt update -qq && apt install ethtool -y -qq\n'
               'if [ \$? -ne 0 ]; then exit 10; fi\n';
           break;
         case LinuxDistro.fedora:
-          installCmd = 'dnf install ethtool -y -q\n'
+          installCmd =
+              'dnf install ethtool -y -q\n'
               'if [ \$? -ne 0 ]; then exit 10; fi\n';
           break;
         case LinuxDistro.arch:
-          installCmd = 'pacman -S --noconfirm ethtool\n'
+          installCmd =
+              'pacman -S --noconfirm ethtool\n'
               'if [ \$? -ne 0 ]; then exit 10; fi\n';
           break;
         case LinuxDistro.unknown:
-          _updateStep('installEthtool', StepStatus.error, errorDetail: 'Distribution non reconnue');
+          _updateStep(
+            'installEthtool',
+            StepStatus.error,
+            errorDetail: 'Distribution non reconnue',
+          );
           throw Exception('Distribution Linux non reconnue');
       }
     }
 
     // 2. Trouver l'interface Ethernet (pas d'élévation)
     _updateStep('findAdapter', StepStatus.running);
-    final findResult = await CommandRunner.run('bash', ['-c',
+    final findResult = await CommandRunner.run('bash', [
+      '-c',
       'FALLBACK=""; '
-      'for iface in \$(ls /sys/class/net/); do '
-      'if [ "\$iface" = "lo" ]; then continue; fi; '
-      'if [ -d "/sys/class/net/\$iface/wireless" ]; then continue; fi; '
-      'if [ -e "/sys/class/net/\$iface/device" ]; then '
-      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
-      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
-      'FALLBACK="\$iface"; '
-      'fi; '
-      'done; '
-      'if [ -n "\$FALLBACK" ]; then echo "\$FALLBACK"; exit 0; fi; '
-      'exit 1',
+          'for iface in \$(ls /sys/class/net/); do '
+          'if [ "\$iface" = "lo" ]; then continue; fi; '
+          'if [ -d "/sys/class/net/\$iface/wireless" ]; then continue; fi; '
+          'if [ -e "/sys/class/net/\$iface/device" ]; then '
+          'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+          'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+          'FALLBACK="\$iface"; '
+          'fi; '
+          'done; '
+          'if [ -n "\$FALLBACK" ]; then echo "\$FALLBACK"; exit 0; fi; '
+          'exit 1',
     ]);
     if (!findResult.success || findResult.stdout.isEmpty) {
-      _updateStep('findAdapter', StepStatus.error,
-          errorDetail: 'Aucune carte Ethernet trouvée. Vérifie que ton câble est branché.');
+      _updateStep(
+        'findAdapter',
+        StepStatus.error,
+        errorDetail:
+            'Aucune carte Ethernet trouvée. Vérifie que ton câble est branché.',
+      );
       throw Exception('Aucune carte Ethernet trouvée');
     }
     final ethIface = findResult.stdout.trim();
     if (!NetworkInfo.isValidInterfaceName(ethIface)) {
-      _updateStep('findAdapter', StepStatus.error,
-          errorDetail: 'Nom d\'interface réseau invalide : contient des caractères non autorisés.');
+      _updateStep(
+        'findAdapter',
+        StepStatus.error,
+        errorDetail:
+            'Nom d\'interface réseau invalide : contient des caractères non autorisés.',
+      );
       throw Exception('Invalid network interface name');
     }
     state = state.copyWith(adapterName: ethIface);
@@ -301,7 +343,8 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
 
     // 3. Écrire les fichiers temporaires dans un dossier unique
     final tempDir = await Directory.systemTemp.createTemp('chill-');
-    final serviceContent = '[Unit]\n'
+    final serviceContent =
+        '[Unit]\n'
         'Description=Enable Wake-on-LAN on $ethIface\n'
         'After=network-online.target\n'
         'Wants=network-online.target\n'
@@ -353,20 +396,36 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
     try {
       result = await CommandRunner.runElevated('bash', [tempScript.path]);
     } finally {
-      try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[WoL] Cleanup error: $e'); }
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (e) {
+        debugPrint('[WoL] Cleanup error: $e');
+      }
     }
 
     // Analyser le résultat par code de sortie
     if (result.exitCode == 126 || result.exitCode == 127) {
       if (needsEthtoolInstall) {
-        _updateStep('installEthtool', StepStatus.error, errorDetail: 'Autorisation refusée');
+        _updateStep(
+          'installEthtool',
+          StepStatus.error,
+          errorDetail: 'Autorisation refusée',
+        );
       }
-      _updateStep('enableWol', StepStatus.error, errorDetail: 'Autorisation refusée');
+      _updateStep(
+        'enableWol',
+        StepStatus.error,
+        errorDetail: 'Autorisation refusée',
+      );
       throw Exception('Autorisation refusée');
     }
     if (result.exitCode == 10) {
       debugPrint('[WoL] installEthtool stderr: ${result.stderr}');
-      _updateStep('installEthtool', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
+      _updateStep(
+        'installEthtool',
+        StepStatus.error,
+        errorDetail: 'Installation failed. Check system logs.',
+      );
       throw Exception('Échec installation ethtool');
     }
     if (needsEthtoolInstall) {
@@ -375,19 +434,31 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
 
     if (result.exitCode == 20) {
       debugPrint('[WoL] enableWol stderr: ${result.stderr}');
-      _updateStep('enableWol', StepStatus.error, errorDetail: 'WoL activation failed. Check system logs.');
+      _updateStep(
+        'enableWol',
+        StepStatus.error,
+        errorDetail: 'WoL activation failed. Check system logs.',
+      );
       throw Exception('Échec activation Wake-on-LAN');
     }
     if (result.exitCode == 30) {
-      _updateStep('enableWol', StepStatus.error,
-          errorDetail: 'Le WoL ne semble pas actif. Ta carte ne le supporte peut-être pas.');
+      _updateStep(
+        'enableWol',
+        StepStatus.error,
+        errorDetail:
+            'Le WoL ne semble pas actif. Ta carte ne le supporte peut-être pas.',
+      );
       throw Exception('Wake-on-LAN non actif');
     }
     _updateStep('enableWol', StepStatus.success);
 
     if (result.exitCode == 40) {
       debugPrint('[WoL] persist stderr: ${result.stderr}');
-      _updateStep('persist', StepStatus.error, errorDetail: 'Service creation failed. Check system logs.');
+      _updateStep(
+        'persist',
+        StepStatus.error,
+        errorDetail: 'Service creation failed. Check system logs.',
+      );
       throw Exception('Échec création du service WoL');
     }
     _updateStep('persist', StepStatus.success);

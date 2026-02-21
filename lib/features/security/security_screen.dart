@@ -17,7 +17,9 @@ class SecurityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    final isCheckingAll = ref.watch(securityProvider.select((s) => s.isCheckingAll));
+    final isCheckingAll = ref.watch(
+      securityProvider.select((s) => s.isCheckingAll),
+    );
     final theme = Theme.of(context);
     final os = OsDetector.currentOS;
 
@@ -55,9 +57,13 @@ class SecurityScreen extends ConsumerWidget {
                             // Bouton rafraîchir
                             if (!isCheckingAll)
                               IconButton(
-                                icon: Icon(Icons.refresh, color: context.chillAccent),
-                                onPressed: () =>
-                                    ref.read(securityProvider.notifier).checkAllStatuses(force: true),
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: context.chillAccent,
+                                ),
+                                onPressed: () => ref
+                                    .read(securityProvider.notifier)
+                                    .checkAllStatuses(force: true),
                                 tooltip: t(locale, 'info.refresh'),
                               ),
                           ],
@@ -82,7 +88,9 @@ class SecurityScreen extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(vertical: 32),
                               child: Column(
                                 children: [
-                                  CircularProgressIndicator(color: context.chillAccent),
+                                  CircularProgressIndicator(
+                                    color: context.chillAccent,
+                                  ),
                                   const SizedBox(height: 12),
                                   Text(
                                     t(locale, 'security.checking'),
@@ -99,7 +107,8 @@ class SecurityScreen extends ConsumerWidget {
 
                         // Section Scan (Linux: rkhunter, Windows: Defender)
                         if (!isCheckingAll &&
-                            (os == SupportedOS.linux || os == SupportedOS.windows))
+                            (os == SupportedOS.linux ||
+                                os == SupportedOS.windows))
                           _ScanSection(os: os),
 
                         const SizedBox(height: 32),
@@ -131,40 +140,149 @@ class SecurityScreen extends ConsumerWidget {
     switch (os) {
       case SupportedOS.windows:
         return const [
-          _ToggleItem(id: 'win.firewall', icon: Icons.shield, i18nKey: 'security.win.firewall'),
-          _ToggleItem(id: 'win.rdp', icon: Icons.desktop_windows, i18nKey: 'security.win.rdp'),
-          _ToggleItem(id: 'win.smb1', icon: Icons.folder_shared, i18nKey: 'security.win.smb1'),
-          _ToggleItem(id: 'win.remoteRegistry', icon: Icons.app_registration, i18nKey: 'security.win.remoteRegistry'),
-          _ToggleItem(id: 'win.ransomware', icon: Icons.lock_outline, i18nKey: 'security.win.ransomware'),
-          _ToggleItem(id: 'win.audit', icon: Icons.receipt_long, i18nKey: 'security.win.audit'),
-          _ToggleItem(id: 'win.updates', icon: Icons.update, i18nKey: 'security.win.updates'),
-          _ToggleItem(id: 'win.lsa', icon: Icons.security, i18nKey: 'security.win.lsa', needsReboot: true),
-          _ToggleItem(id: 'win.hvci', icon: Icons.memory, i18nKey: 'security.win.hvci', needsReboot: true),
+          _ToggleItem(
+            id: 'win.firewall',
+            icon: Icons.shield,
+            i18nKey: 'security.win.firewall',
+          ),
+          _ToggleItem(
+            id: 'win.rdp',
+            icon: Icons.desktop_windows,
+            i18nKey: 'security.win.rdp',
+          ),
+          _ToggleItem(
+            id: 'win.smb1',
+            icon: Icons.folder_shared,
+            i18nKey: 'security.win.smb1',
+          ),
+          _ToggleItem(
+            id: 'win.remoteRegistry',
+            icon: Icons.app_registration,
+            i18nKey: 'security.win.remoteRegistry',
+          ),
+          _ToggleItem(
+            id: 'win.ransomware',
+            icon: Icons.lock_outline,
+            i18nKey: 'security.win.ransomware',
+          ),
+          _ToggleItem(
+            id: 'win.audit',
+            icon: Icons.receipt_long,
+            i18nKey: 'security.win.audit',
+          ),
+          _ToggleItem(
+            id: 'win.updates',
+            icon: Icons.update,
+            i18nKey: 'security.win.updates',
+          ),
+          _ToggleItem(
+            id: 'win.lsa',
+            icon: Icons.security,
+            i18nKey: 'security.win.lsa',
+            needsReboot: true,
+          ),
+          _ToggleItem(
+            id: 'win.hvci',
+            icon: Icons.memory,
+            i18nKey: 'security.win.hvci',
+            needsReboot: true,
+          ),
           _ToggleItem(id: 'win.dns', icon: Icons.dns, i18nKey: 'security.dns'),
         ];
       case SupportedOS.linux:
         return const [
-          _InstallableToggle(toolId: 'ufw', toggleId: 'linux.firewall', icon: Icons.shield, i18nKey: 'security.linux.firewall'),
-          _ToggleItem(id: 'linux.sysctl', icon: Icons.settings_ethernet, i18nKey: 'security.linux.sysctl'),
+          _InstallableToggle(
+            toolId: 'ufw',
+            toggleId: 'linux.firewall',
+            icon: Icons.shield,
+            i18nKey: 'security.linux.firewall',
+          ),
+          _ToggleItem(
+            id: 'linux.sysctl',
+            icon: Icons.settings_ethernet,
+            i18nKey: 'security.linux.sysctl',
+          ),
           _ServicesSection(),
-          _StatusOnlyToggle(id: 'linux.permissions', icon: Icons.folder_special, i18nKey: 'security.linux.permissions'),
-          _InstallableToggle(toolId: 'fail2ban', toggleId: 'linux.fail2ban', icon: Icons.block, i18nKey: 'security.linux.fail2ban'),
-          _InstallableToggle(toolId: 'crowdsec', toggleId: 'linux.crowdsec', icon: Icons.groups, i18nKey: 'security.linux.crowdsec'),
-          _ToggleItem(id: 'linux.apparmor', icon: Icons.verified_user, i18nKey: 'security.linux.apparmor'),
-          _ToggleItem(id: 'linux.updates', icon: Icons.update, i18nKey: 'security.linux.updates'),
-          _ToggleItem(id: 'linux.rootLogin', icon: Icons.person_off, i18nKey: 'security.linux.rootLogin'),
-          _ToggleItem(id: 'linux.dns', icon: Icons.dns, i18nKey: 'security.dns'),
-          _InstallableToggle(toolId: 'rkhunter', icon: Icons.bug_report, i18nKey: 'security.linux.rkhunter'),
+          _StatusOnlyToggle(
+            id: 'linux.permissions',
+            icon: Icons.folder_special,
+            i18nKey: 'security.linux.permissions',
+          ),
+          _InstallableToggle(
+            toolId: 'fail2ban',
+            toggleId: 'linux.fail2ban',
+            icon: Icons.block,
+            i18nKey: 'security.linux.fail2ban',
+          ),
+          _InstallableToggle(
+            toolId: 'crowdsec',
+            toggleId: 'linux.crowdsec',
+            icon: Icons.groups,
+            i18nKey: 'security.linux.crowdsec',
+          ),
+          _ToggleItem(
+            id: 'linux.apparmor',
+            icon: Icons.verified_user,
+            i18nKey: 'security.linux.apparmor',
+          ),
+          _ToggleItem(
+            id: 'linux.updates',
+            icon: Icons.update,
+            i18nKey: 'security.linux.updates',
+          ),
+          _ToggleItem(
+            id: 'linux.rootLogin',
+            icon: Icons.person_off,
+            i18nKey: 'security.linux.rootLogin',
+          ),
+          _ToggleItem(
+            id: 'linux.dns',
+            icon: Icons.dns,
+            i18nKey: 'security.dns',
+          ),
+          _InstallableToggle(
+            toolId: 'rkhunter',
+            icon: Icons.bug_report,
+            i18nKey: 'security.linux.rkhunter',
+          ),
         ];
       case SupportedOS.macos:
         return const [
-          _ToggleItem(id: 'mac.firewall', icon: Icons.shield, i18nKey: 'security.mac.firewall'),
-          _ToggleItem(id: 'mac.stealth', icon: Icons.visibility_off, i18nKey: 'security.mac.stealth'),
-          _ToggleItem(id: 'mac.smb', icon: Icons.folder_shared, i18nKey: 'security.mac.smb'),
-          _ToggleItem(id: 'mac.updates', icon: Icons.update, i18nKey: 'security.mac.updates'),
-          _ToggleItem(id: 'mac.secureKeyboard', icon: Icons.keyboard, i18nKey: 'security.mac.secureKeyboard'),
-          _ToggleItem(id: 'mac.gatekeeper', icon: Icons.verified_user, i18nKey: 'security.mac.gatekeeper'),
-          _ToggleItem(id: 'mac.screenLock', icon: Icons.lock_clock, i18nKey: 'security.mac.screenLock'),
+          _ToggleItem(
+            id: 'mac.firewall',
+            icon: Icons.shield,
+            i18nKey: 'security.mac.firewall',
+          ),
+          _ToggleItem(
+            id: 'mac.stealth',
+            icon: Icons.visibility_off,
+            i18nKey: 'security.mac.stealth',
+          ),
+          _ToggleItem(
+            id: 'mac.smb',
+            icon: Icons.folder_shared,
+            i18nKey: 'security.mac.smb',
+          ),
+          _ToggleItem(
+            id: 'mac.updates',
+            icon: Icons.update,
+            i18nKey: 'security.mac.updates',
+          ),
+          _ToggleItem(
+            id: 'mac.secureKeyboard',
+            icon: Icons.keyboard,
+            i18nKey: 'security.mac.secureKeyboard',
+          ),
+          _ToggleItem(
+            id: 'mac.gatekeeper',
+            icon: Icons.verified_user,
+            i18nKey: 'security.mac.gatekeeper',
+          ),
+          _ToggleItem(
+            id: 'mac.screenLock',
+            icon: Icons.lock_clock,
+            i18nKey: 'security.mac.screenLock',
+          ),
           _ToggleItem(id: 'mac.dns', icon: Icons.dns, i18nKey: 'security.dns'),
         ];
     }
@@ -189,8 +307,12 @@ class _ToggleItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    final isEnabled = ref.watch(securityProvider.select((s) => s.toggleStates[id]));
-    final isLoading = ref.watch(securityProvider.select((s) => s.toggleLoading[id] ?? false));
+    final isEnabled = ref.watch(
+      securityProvider.select((s) => s.toggleStates[id]),
+    );
+    final isLoading = ref.watch(
+      securityProvider.select((s) => s.toggleLoading[id] ?? false),
+    );
 
     return SecurityToggleCard(
       title: t(locale, i18nKey),
@@ -219,7 +341,10 @@ class _ToggleItem extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       t(locale, 'security.reboot.message'),
-                      style: TextStyle(color: context.chillTextPrimary, fontSize: 13),
+                      style: TextStyle(
+                        color: context.chillTextPrimary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -250,10 +375,14 @@ class _InstallableToggle extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    final isInstalled = ref.watch(securityProvider.select((s) => s.installed[toolId] ?? false));
+    final isInstalled = ref.watch(
+      securityProvider.select((s) => s.installed[toolId] ?? false),
+    );
 
     if (!isInstalled) {
-      final isLoading = ref.watch(securityProvider.select((s) => s.toggleLoading[toolId] ?? false));
+      final isLoading = ref.watch(
+        securityProvider.select((s) => s.toggleLoading[toolId] ?? false),
+      );
       return SecurityToggleCard(
         title: t(locale, i18nKey),
         description: t(locale, '$i18nKey.desc'),
@@ -266,15 +395,20 @@ class _InstallableToggle extends ConsumerWidget {
     }
 
     if (toggleId != null) {
-      final isEnabled = ref.watch(securityProvider.select((s) => s.toggleStates[toggleId]));
-      final isLoading = ref.watch(securityProvider.select((s) => s.toggleLoading[toggleId] ?? false));
+      final isEnabled = ref.watch(
+        securityProvider.select((s) => s.toggleStates[toggleId]),
+      );
+      final isLoading = ref.watch(
+        securityProvider.select((s) => s.toggleLoading[toggleId] ?? false),
+      );
       return SecurityToggleCard(
         title: t(locale, i18nKey),
         description: t(locale, '$i18nKey.desc'),
         icon: icon,
         isEnabled: isEnabled,
         isLoading: isLoading,
-        onToggle: (enable) => ref.read(securityProvider.notifier).toggle(toggleId!, enable),
+        onToggle: (enable) =>
+            ref.read(securityProvider.notifier).toggle(toggleId!, enable),
       );
     }
 
@@ -295,13 +429,21 @@ class _StatusOnlyToggle extends ConsumerWidget {
   final IconData icon;
   final String i18nKey;
 
-  const _StatusOnlyToggle({required this.id, required this.icon, required this.i18nKey});
+  const _StatusOnlyToggle({
+    required this.id,
+    required this.icon,
+    required this.i18nKey,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    final isEnabled = ref.watch(securityProvider.select((s) => s.toggleStates[id]));
-    final isLoading = ref.watch(securityProvider.select((s) => s.toggleLoading[id] ?? false));
+    final isEnabled = ref.watch(
+      securityProvider.select((s) => s.toggleStates[id]),
+    );
+    final isLoading = ref.watch(
+      securityProvider.select((s) => s.toggleLoading[id] ?? false),
+    );
 
     return SecurityToggleCard(
       title: t(locale, i18nKey),
@@ -325,8 +467,12 @@ class _ServicesSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
     final services = ref.watch(securityProvider.select((s) => s.services));
-    final isCheckingAll = ref.watch(securityProvider.select((s) => s.isCheckingAll));
-    final loadingServices = ref.watch(securityProvider.select((s) => s.loadingServices));
+    final isCheckingAll = ref.watch(
+      securityProvider.select((s) => s.isCheckingAll),
+    );
+    final loadingServices = ref.watch(
+      securityProvider.select((s) => s.loadingServices),
+    );
 
     return ServicesToggleCard(
       title: t(locale, 'security.linux.services'),
@@ -334,7 +480,8 @@ class _ServicesSection extends ConsumerWidget {
       services: services,
       isLoading: isCheckingAll,
       loadingServices: loadingServices,
-      onToggleService: (name) => ref.read(securityProvider.notifier).toggleService(name),
+      onToggleService: (name) =>
+          ref.read(securityProvider.notifier).toggleService(name),
     );
   }
 }
@@ -348,13 +495,19 @@ class _ScanSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    final isScanRunning = ref.watch(securityProvider.select((s) => s.isScanRunning));
-    final scanWarnings = ref.watch(securityProvider.select((s) => s.scanWarnings));
+    final isScanRunning = ref.watch(
+      securityProvider.select((s) => s.isScanRunning),
+    );
+    final scanWarnings = ref.watch(
+      securityProvider.select((s) => s.scanWarnings),
+    );
     final theme = Theme.of(context);
 
     // Linux : ne montrer que si rkhunter est installé
     if (os == SupportedOS.linux) {
-      final rkhInstalled = ref.watch(securityProvider.select((s) => s.installed['rkhunter'] ?? false));
+      final rkhInstalled = ref.watch(
+        securityProvider.select((s) => s.installed['rkhunter'] ?? false),
+      );
       if (!rkhInstalled) return const SizedBox.shrink();
     }
 
@@ -382,9 +535,12 @@ class _ScanSection extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          t(locale, os == SupportedOS.windows
-              ? 'security.scan.desc.windows'
-              : 'security.scan.desc.linux'),
+          t(
+            locale,
+            os == SupportedOS.windows
+                ? 'security.scan.desc.windows'
+                : 'security.scan.desc.linux',
+          ),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: context.chillTextSecondary,
           ),
@@ -406,23 +562,15 @@ class _ScanSection extends ConsumerWidget {
                       color: context.chillAccent,
                     ),
                   )
-                : Icon(os == SupportedOS.windows
-                    ? Icons.shield
-                    : Icons.search),
+                : Icon(os == SupportedOS.windows ? Icons.shield : Icons.search),
             label: Text(
               isScanRunning
                   ? t(locale, 'security.scan.running')
                   : t(locale, 'security.scan.button'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
           ),
         ),
@@ -461,7 +609,9 @@ class _ScanSection extends ConsumerWidget {
         color: context.chillBgElevated,
         borderRadius: BorderRadius.circular(ChillRadius.xl),
         border: Border.all(
-          color: isClean ? context.chillGreen.withValues(alpha: 0.3) : context.chillOrange.withValues(alpha: 0.3),
+          color: isClean
+              ? context.chillGreen.withValues(alpha: 0.3)
+              : context.chillOrange.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -479,8 +629,10 @@ class _ScanSection extends ConsumerWidget {
                 child: Text(
                   isClean
                       ? t(locale, 'security.scan.clean')
-                      : t(locale, 'security.scan.warnings')
-                          .replaceAll('{count}', '${warnings.length}'),
+                      : t(
+                          locale,
+                          'security.scan.warnings',
+                        ).replaceAll('{count}', '${warnings.length}'),
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: isClean ? context.chillGreen : context.chillOrange,
                     fontWeight: FontWeight.w600,
@@ -491,25 +643,30 @@ class _ScanSection extends ConsumerWidget {
           ),
           if (!isClean) ...[
             const SizedBox(height: 12),
-            ...warnings.map((w) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.arrow_right,
-                          color: context.chillTextMuted, size: 18),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          w,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: context.chillTextSecondary,
-                          ),
+            ...warnings.map(
+              (w) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.arrow_right,
+                      color: context.chillTextMuted,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        w,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: context.chillTextSecondary,
                         ),
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -524,9 +681,15 @@ class _CheckupSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    final isCheckupRunning = ref.watch(securityProvider.select((s) => s.isCheckupRunning));
-    final checkupResults = ref.watch(securityProvider.select((s) => s.checkupResults));
-    final checkupScore = ref.watch(securityProvider.select((s) => s.checkupScore));
+    final isCheckupRunning = ref.watch(
+      securityProvider.select((s) => s.isCheckupRunning),
+    );
+    final checkupResults = ref.watch(
+      securityProvider.select((s) => s.checkupResults),
+    );
+    final checkupScore = ref.watch(
+      securityProvider.select((s) => s.checkupScore),
+    );
     final theme = Theme.of(context);
 
     return Column(
@@ -566,16 +729,10 @@ class _CheckupSection extends ConsumerWidget {
               isCheckupRunning
                   ? t(locale, 'security.checkup.running')
                   : t(locale, 'security.checkup.button'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
           ),
         ),
@@ -583,7 +740,13 @@ class _CheckupSection extends ConsumerWidget {
 
         // Résultats du checkup
         if (checkupResults != null)
-          _buildCheckupResults(context, checkupResults, checkupScore ?? 0, locale, theme),
+          _buildCheckupResults(
+            context,
+            checkupResults,
+            checkupScore ?? 0,
+            locale,
+            theme,
+          ),
       ],
     );
   }
@@ -597,12 +760,16 @@ class _CheckupSection extends ConsumerWidget {
     ThemeData theme,
   ) {
     // Vérifier si un check critique ou haut est en erreur
-    final hasCriticalError = results.any((item) =>
-        item.severity == CheckSeverity.critical &&
-        item.status == CheckupStatus.error);
-    final hasHighError = results.any((item) =>
-        item.severity == CheckSeverity.high &&
-        item.status == CheckupStatus.error);
+    final hasCriticalError = results.any(
+      (item) =>
+          item.severity == CheckSeverity.critical &&
+          item.status == CheckupStatus.error,
+    );
+    final hasHighError = results.any(
+      (item) =>
+          item.severity == CheckSeverity.high &&
+          item.status == CheckupStatus.error,
+    );
 
     // Couleur et label selon le score ET la criticité
     Color scoreColor;
@@ -678,7 +845,9 @@ class _CheckupSection extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Liste des résultats
-          ...results.map((item) => _buildCheckupItem(context, item, locale, theme)),
+          ...results.map(
+            (item) => _buildCheckupItem(context, item, locale, theme),
+          ),
         ],
       ),
     );
@@ -687,7 +856,9 @@ class _CheckupSection extends ConsumerWidget {
   /// Traduit un code de détail du checkup en texte localisé.
   String _localizeDetail(String id, String rawDetail, String locale) {
     final colonIndex = rawDetail.indexOf(':');
-    final code = colonIndex >= 0 ? rawDetail.substring(0, colonIndex) : rawDetail;
+    final code = colonIndex >= 0
+        ? rawDetail.substring(0, colonIndex)
+        : rawDetail;
     final value = colonIndex >= 0 ? rawDetail.substring(colonIndex + 1) : '';
 
     final key = 'security.detail.$id.$code';

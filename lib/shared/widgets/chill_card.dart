@@ -56,7 +56,9 @@ class ChillCard extends StatelessWidget {
                   Flexible(
                     child: Text(
                       title,
-                      style: theme.textTheme.titleLarge?.copyWith(fontSize: titleSize),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontSize: titleSize,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -66,7 +68,9 @@ class ChillCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         description,
-                        style: theme.textTheme.bodyMedium?.copyWith(fontSize: descSize),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: descSize,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),

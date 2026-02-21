@@ -31,17 +31,19 @@ void main() {
   // 1. setPin() avec PIN valide
   // ============================================
   group('setPin', () {
-    test('PIN valide (8 chiffres) → isEnabled = true, isUnlocked = true',
-        () async {
-      await waitForLoad();
-      final notifier = container.read(lockProvider.notifier);
+    test(
+      'PIN valide (8 chiffres) → isEnabled = true, isUnlocked = true',
+      () async {
+        await waitForLoad();
+        final notifier = container.read(lockProvider.notifier);
 
-      await notifier.setPin('12345678');
+        await notifier.setPin('12345678');
 
-      final state = container.read(lockProvider);
-      expect(state.isEnabled, true);
-      expect(state.isUnlocked, true);
-    });
+        final state = container.read(lockProvider);
+        expect(state.isEnabled, true);
+        expect(state.isUnlocked, true);
+      },
+    );
 
     // ============================================
     // 2. setPin() avec PIN invalide → ArgumentError
@@ -179,8 +181,9 @@ void main() {
       }
 
       final state = container.read(lockProvider);
-      final lockDuration =
-          state.lockedUntil!.difference(DateTime.now()).inSeconds;
+      final lockDuration = state.lockedUntil!
+          .difference(DateTime.now())
+          .inSeconds;
       // Should be approximately 30s (allow some tolerance for test execution)
       expect(lockDuration, greaterThan(25));
       expect(lockDuration, lessThanOrEqualTo(31));
@@ -211,8 +214,9 @@ void main() {
 
       final state = container.read(lockProvider);
       expect(state.failedAttempts, 10);
-      final lockDuration =
-          state.lockedUntil!.difference(DateTime.now()).inSeconds;
+      final lockDuration = state.lockedUntil!
+          .difference(DateTime.now())
+          .inSeconds;
       expect(lockDuration, greaterThan(55));
       expect(lockDuration, lessThanOrEqualTo(61));
     });
@@ -241,8 +245,9 @@ void main() {
 
       final state = container.read(lockProvider);
       expect(state.failedAttempts, 15);
-      final lockDuration =
-          state.lockedUntil!.difference(DateTime.now()).inSeconds;
+      final lockDuration = state.lockedUntil!
+          .difference(DateTime.now())
+          .inSeconds;
       expect(lockDuration, greaterThan(115));
       expect(lockDuration, lessThanOrEqualTo(121));
     });
@@ -341,8 +346,7 @@ void main() {
       // Simuler l'ancien format : sha256('$salt:$pin') avec sel
       const pin = '12345678';
       final salt = base64Encode(List.generate(16, (i) => i));
-      final legacyHash =
-          sha256.convert(utf8.encode('$salt:$pin')).toString();
+      final legacyHash = sha256.convert(utf8.encode('$salt:$pin')).toString();
 
       SharedPreferences.setMockInitialValues({
         'pin_hash': legacyHash,
@@ -372,9 +376,7 @@ void main() {
       const pin = '12345678';
       final oldHash = sha256.convert(utf8.encode(pin)).toString();
 
-      SharedPreferences.setMockInitialValues({
-        'pin_hash': oldHash,
-      });
+      SharedPreferences.setMockInitialValues({'pin_hash': oldHash});
       container.dispose();
       container = ProviderContainer();
       container.read(lockProvider);

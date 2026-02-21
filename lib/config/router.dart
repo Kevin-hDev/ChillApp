@@ -38,18 +38,9 @@ final router = GoRouter(
     ),
   ),
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const DashboardScreen(),
-    ),
-    GoRoute(
-      path: '/ssh',
-      builder: (context, state) => const SshSetupScreen(),
-    ),
-    GoRoute(
-      path: '/wol',
-      builder: (context, state) => const WolSetupScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
+    GoRoute(path: '/ssh', builder: (context, state) => const SshSetupScreen()),
+    GoRoute(path: '/wol', builder: (context, state) => const WolSetupScreen()),
     GoRoute(
       path: '/info',
       builder: (context, state) => const ConnectionInfoScreen(),

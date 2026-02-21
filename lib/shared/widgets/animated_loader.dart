@@ -10,7 +10,8 @@ class AnimatedLoader extends StatefulWidget {
   State<AnimatedLoader> createState() => _AnimatedLoaderState();
 }
 
-class _AnimatedLoaderState extends State<AnimatedLoader> with SingleTickerProviderStateMixin {
+class _AnimatedLoaderState extends State<AnimatedLoader>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _floatAnimation;
 
@@ -22,9 +23,10 @@ class _AnimatedLoaderState extends State<AnimatedLoader> with SingleTickerProvid
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _floatAnimation = Tween<double>(
+      begin: -8,
+      end: 8,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -44,7 +46,8 @@ class _AnimatedLoaderState extends State<AnimatedLoader> with SingleTickerProvid
             child: child,
           );
         },
-        child: widget.child ??
+        child:
+            widget.child ??
             Image.asset(
               'assets/images/loader.png',
               width: 100,

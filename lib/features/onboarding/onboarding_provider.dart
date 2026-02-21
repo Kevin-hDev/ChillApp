@@ -2,8 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../settings/settings_provider.dart';
 
 /// Provider pour savoir si l'onboarding a été vu
-final onboardingProvider =
-    NotifierProvider<OnboardingNotifier, bool>(OnboardingNotifier.new);
+final onboardingProvider = NotifierProvider<OnboardingNotifier, bool>(
+  OnboardingNotifier.new,
+);
 
 class OnboardingNotifier extends Notifier<bool> {
   @override

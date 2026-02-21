@@ -11,7 +11,9 @@ final sharedPrefsProvider = Provider<SharedPreferences>((ref) {
 });
 
 /// Provider pour le thème (true = sombre par défaut)
-final themeModeProvider = NotifierProvider<ThemeModeNotifier, bool>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, bool>(
+  ThemeModeNotifier.new,
+);
 
 class ThemeModeNotifier extends Notifier<bool> {
   @override
@@ -28,8 +30,9 @@ class ThemeModeNotifier extends Notifier<bool> {
 }
 
 /// Provider pour le lancement au démarrage (null = en cours de vérification)
-final autostartProvider =
-    NotifierProvider<AutostartNotifier, bool?>(AutostartNotifier.new);
+final autostartProvider = NotifierProvider<AutostartNotifier, bool?>(
+  AutostartNotifier.new,
+);
 
 class AutostartNotifier extends Notifier<bool?> {
   @override
@@ -57,8 +60,9 @@ class AutostartNotifier extends Notifier<bool?> {
           return File('$home/.config/autostart/chillapp.desktop').existsSync();
         case SupportedOS.macos:
           final home = Platform.environment['HOME'] ?? '';
-          return File('$home/Library/LaunchAgents/com.chill.chillapp.plist')
-              .existsSync();
+          return File(
+            '$home/Library/LaunchAgents/com.chill.chillapp.plist',
+          ).existsSync();
       }
     } catch (e) {
       debugPrint('[Autostart] Check error: $e');
@@ -102,8 +106,9 @@ class AutostartNotifier extends Notifier<bool?> {
         break;
       case SupportedOS.macos:
         final home = Platform.environment['HOME'] ?? '';
-        File('$home/Library/LaunchAgents/com.chill.chillapp.plist')
-            .writeAsStringSync(
+        File(
+          '$home/Library/LaunchAgents/com.chill.chillapp.plist',
+        ).writeAsStringSync(
           '<?xml version="1.0" encoding="UTF-8"?>\n'
           '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
           '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
@@ -139,8 +144,9 @@ class AutostartNotifier extends Notifier<bool?> {
         break;
       case SupportedOS.macos:
         final home = Platform.environment['HOME'] ?? '';
-        final file =
-            File('$home/Library/LaunchAgents/com.chill.chillapp.plist');
+        final file = File(
+          '$home/Library/LaunchAgents/com.chill.chillapp.plist',
+        );
         if (file.existsSync()) file.deleteSync();
         break;
     }

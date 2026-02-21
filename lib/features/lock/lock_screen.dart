@@ -88,7 +88,8 @@ class _LockScreenState extends ConsumerState<LockScreen>
       _onDigit('9');
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
+    if (key == LogicalKeyboardKey.backspace ||
+        key == LogicalKeyboardKey.delete) {
       _onDelete();
       return KeyEventResult.handled;
     }
@@ -133,7 +134,8 @@ class _LockScreenState extends ConsumerState<LockScreen>
     if (!ok) {
       final updatedState = ref.read(lockProvider);
       setState(() {
-        _error = updatedState.lockedUntil != null &&
+        _error =
+            updatedState.lockedUntil != null &&
                 DateTime.now().isBefore(updatedState.lockedUntil!)
             ? t(locale, 'lock.tooMany')
             : t(locale, 'lock.error');
@@ -155,100 +157,100 @@ class _LockScreenState extends ConsumerState<LockScreen>
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-              // Logo
-              Image.asset('assets/logo.png', width: 64, height: 64,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.lock_outline,
-                  size: 64,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Titre
-              Text(
-                t(locale, 'lock.title'),
-                style: theme.textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                t(locale, 'lock.enter'),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: context.chillTextSecondary,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Cercles PIN
-              AnimatedBuilder(
-                animation: _shakeAnimation,
-                builder: (context, child) {
-                  final dx = _shakeAnimation.value *
-                      10 *
-                      ((_shakeController.value * 4).remainder(2) > 1 ? -1 : 1);
-                  return Transform.translate(
-                    offset: Offset(dx, 0),
-                    child: child,
-                  );
-                },
-                child: Row(
+        body: Center(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(8, (i) {
-                    final filled = i < _pin.length;
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: filled ? accent : Colors.transparent,
-                        border: Border.all(
-                          color: filled ? accent : borderColor,
-                          width: 2,
-                        ),
+                  children: [
+                    // Logo
+                    Image.asset(
+                      'assets/logo.png',
+                      width: 64,
+                      height: 64,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.lock_outline, size: 64, color: accent),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Titre
+                    Text(
+                      t(locale, 'lock.title'),
+                      style: theme.textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      t(locale, 'lock.enter'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: context.chillTextSecondary,
                       ),
-                    );
-                  }),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Cercles PIN
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        final dx =
+                            _shakeAnimation.value *
+                            10 *
+                            ((_shakeController.value * 4).remainder(2) > 1
+                                ? -1
+                                : 1);
+                        return Transform.translate(
+                          offset: Offset(dx, 0),
+                          child: child,
+                        );
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(8, (i) {
+                          final filled = i < _pin.length;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 6),
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: filled ? accent : Colors.transparent,
+                              border: Border.all(
+                                color: filled ? accent : borderColor,
+                                width: 2,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Erreur
+                    SizedBox(
+                      height: 20,
+                      child: _error != null
+                          ? Text(
+                              _error!,
+                              style: TextStyle(
+                                color: context.chillRed,
+                                fontSize: 14,
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Pave numerique
+                    NumPad(onDigit: _onDigit, onDelete: _onDelete),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Erreur
-              SizedBox(
-                height: 20,
-                child: _error != null
-                    ? Text(
-                        _error!,
-                        style: TextStyle(
-                          color: context.chillRed,
-                          fontSize: 14,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 24),
-
-              // Pave numerique
-              NumPad(
-                onDigit: _onDigit,
-                onDelete: _onDelete,
-              ),
-              ],
             ),
           ),
         ),
-        ),
       ),
-    ),
     );
   }
 }
@@ -284,16 +286,26 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
   }
 
   static final _digitKeys = {
-    LogicalKeyboardKey.digit0: '0', LogicalKeyboardKey.numpad0: '0',
-    LogicalKeyboardKey.digit1: '1', LogicalKeyboardKey.numpad1: '1',
-    LogicalKeyboardKey.digit2: '2', LogicalKeyboardKey.numpad2: '2',
-    LogicalKeyboardKey.digit3: '3', LogicalKeyboardKey.numpad3: '3',
-    LogicalKeyboardKey.digit4: '4', LogicalKeyboardKey.numpad4: '4',
-    LogicalKeyboardKey.digit5: '5', LogicalKeyboardKey.numpad5: '5',
-    LogicalKeyboardKey.digit6: '6', LogicalKeyboardKey.numpad6: '6',
-    LogicalKeyboardKey.digit7: '7', LogicalKeyboardKey.numpad7: '7',
-    LogicalKeyboardKey.digit8: '8', LogicalKeyboardKey.numpad8: '8',
-    LogicalKeyboardKey.digit9: '9', LogicalKeyboardKey.numpad9: '9',
+    LogicalKeyboardKey.digit0: '0',
+    LogicalKeyboardKey.numpad0: '0',
+    LogicalKeyboardKey.digit1: '1',
+    LogicalKeyboardKey.numpad1: '1',
+    LogicalKeyboardKey.digit2: '2',
+    LogicalKeyboardKey.numpad2: '2',
+    LogicalKeyboardKey.digit3: '3',
+    LogicalKeyboardKey.numpad3: '3',
+    LogicalKeyboardKey.digit4: '4',
+    LogicalKeyboardKey.numpad4: '4',
+    LogicalKeyboardKey.digit5: '5',
+    LogicalKeyboardKey.numpad5: '5',
+    LogicalKeyboardKey.digit6: '6',
+    LogicalKeyboardKey.numpad6: '6',
+    LogicalKeyboardKey.digit7: '7',
+    LogicalKeyboardKey.numpad7: '7',
+    LogicalKeyboardKey.digit8: '8',
+    LogicalKeyboardKey.numpad8: '8',
+    LogicalKeyboardKey.digit9: '9',
+    LogicalKeyboardKey.numpad9: '9',
   };
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -304,7 +316,8 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
       _onDigit(digit);
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
+    if (key == LogicalKeyboardKey.backspace ||
+        key == LogicalKeyboardKey.delete) {
       _onDelete();
       return KeyEventResult.handled;
     }
@@ -351,70 +364,67 @@ class PinInputDialogState extends ConsumerState<PinInputDialog> {
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: Dialog(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(widget.title, style: theme.textTheme.titleLarge),
-            if (widget.subtitle != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                widget.subtitle!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: context.chillTextSecondary,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(widget.title, style: theme.textTheme.titleLarge),
+              if (widget.subtitle != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  widget.subtitle!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: context.chillTextSecondary,
+                  ),
                 ),
+              ],
+              const SizedBox(height: 24),
+
+              // Cercles
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(8, (i) {
+                  final filled = i < _pin.length;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: filled ? accent : Colors.transparent,
+                      border: Border.all(
+                        color: filled ? accent : borderColor,
+                        width: 2,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+
+              // Erreur
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: context.chillRed, fontSize: 13),
+                  ),
+                ),
+              const SizedBox(height: 12),
+
+              // Pave numerique compact
+              NumPad(
+                buttonSize: 60,
+                width: 240,
+                onDigit: _onDigit,
+                onDelete: _onDelete,
               ),
             ],
-            const SizedBox(height: 24),
-
-            // Cercles
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(8, (i) {
-                final filled = i < _pin.length;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: filled ? accent : Colors.transparent,
-                    border: Border.all(
-                      color: filled ? accent : borderColor,
-                      width: 2,
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 12),
-
-            // Erreur
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  _error!,
-                  style: TextStyle(
-                    color: context.chillRed,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 12),
-
-            // Pave numerique compact
-            NumPad(
-              buttonSize: 60,
-              width: 240,
-              onDigit: _onDigit,
-              onDelete: _onDelete,
-            ),
-          ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

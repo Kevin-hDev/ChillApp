@@ -36,44 +36,44 @@ class WolSetupScreen extends ConsumerWidget {
     return Scaffold(
       body: ChillBackground(
         child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final padding = responsivePadding(width);
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final padding = responsivePadding(width);
 
-          return SingleChildScrollView(
-            child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Padding(
-                padding: EdgeInsets.all(padding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header avec bouton retour
-                    Row(
+            return SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          tooltip: 'Retour',
-                          onPressed: () => context.go('/'),
+                        // Header avec bouton retour
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              tooltip: 'Retour',
+                              onPressed: () => context.go('/'),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                t(locale, 'wol.title'),
+                                style: theme.textTheme.headlineLarge,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            t(locale, 'wol.title'),
-                            style: theme.textTheme.headlineLarge,
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          t(locale, 'wol.intro'),
+                          style: theme.textTheme.bodyLarge,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      t(locale, 'wol.intro'),
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Contenu
+                        // Contenu
                         // Carte explicative
                         ExplanationCard(
                           titleKey: 'wol.explanation.title',
@@ -93,9 +93,7 @@ class WolSetupScreen extends ConsumerWidget {
                         const SizedBox(height: 24),
 
                         // Sur Mac : message "non disponible"
-                        if (isMac) ...[
-                          _MacUnavailableCard(locale: locale),
-                        ],
+                        if (isMac) ...[_MacUnavailableCard(locale: locale)],
 
                         // Sur Windows/Linux : interface de configuration
                         if (!isMac) ...[
@@ -103,24 +101,35 @@ class WolSetupScreen extends ConsumerWidget {
                           if (!wolState.isRunning && !wolState.isComplete)
                             Center(
                               child: ElevatedButton.icon(
-                                onPressed: () => ref.read(wolSetupProvider.notifier).runAll(),
+                                onPressed: () => ref
+                                    .read(wolSetupProvider.notifier)
+                                    .runAll(),
                                 icon: Icon(
-                                  wolState.errorMessage != null ? Icons.refresh : Icons.play_arrow,
+                                  wolState.errorMessage != null
+                                      ? Icons.refresh
+                                      : Icons.play_arrow,
                                 ),
                                 label: Text(
                                   wolState.errorMessage != null
                                       ? t(locale, 'wol.error.retry')
                                       : t(locale, 'wol.configureAll'),
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
                                 ),
                               ),
                             ),
 
                           // Message d'erreur global
-                          if (wolState.errorMessage != null && !wolState.isRunning) ...[
+                          if (wolState.errorMessage != null &&
+                              !wolState.isRunning) ...[
                             const SizedBox(height: 16),
                             ErrorBanner(message: wolState.errorMessage!),
                           ],
@@ -139,15 +148,17 @@ class WolSetupScreen extends ConsumerWidget {
                           ],
 
                           // Liste des etapes (visible des qu'on lance)
-                          if (wolState.steps.any((s) => s.status != StepStatus.pending)) ...[
+                          if (wolState.steps.any(
+                            (s) => s.status != StepStatus.pending,
+                          )) ...[
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: context.chillBgElevated,
-                                borderRadius: BorderRadius.circular(ChillRadius.xl),
-                                border: Border.all(
-                                  color: context.chillBorder,
+                                borderRadius: BorderRadius.circular(
+                                  ChillRadius.xl,
                                 ),
+                                border: Border.all(color: context.chillBorder),
                               ),
                               child: Column(
                                 children: wolState.steps.map((step) {
@@ -176,14 +187,14 @@ class WolSetupScreen extends ConsumerWidget {
                         ],
 
                         const SizedBox(height: 32),
-              ],
-            ),
-          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
-        ),
-      );
-    },
-      ),
       ),
     );
   }
@@ -216,7 +227,10 @@ class _BiosWarningCard extends StatelessWidget {
           Expanded(
             child: Text(
               t(locale, 'wol.biosWarning'),
-              style: theme.textTheme.bodyMedium?.copyWith(color: orange, height: 1.5),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: orange,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -252,7 +266,10 @@ class _LinuxWarningCard extends StatelessWidget {
           Expanded(
             child: Text(
               t(locale, 'wol.linuxWarning'),
-              style: theme.textTheme.bodyMedium?.copyWith(color: blue, height: 1.5),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: blue,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -277,9 +294,7 @@ class _MacUnavailableCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.chillBgElevated,
         borderRadius: BorderRadius.circular(ChillRadius.xl),
-        border: Border.all(
-          color: context.chillBorder,
-        ),
+        border: Border.all(color: context.chillBorder),
       ),
       child: Column(
         children: [
@@ -427,7 +442,10 @@ class _ResultCard extends StatelessWidget {
 
           // Adresse MAC
           if (macAddress != null) ...[
-            Text(t(locale, 'wol.result.mac'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'wol.result.mac'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: macAddress!, locale: locale),
             const SizedBox(height: 16),
@@ -435,7 +453,10 @@ class _ResultCard extends StatelessWidget {
 
           // Carte reseau
           if (adapterName != null) ...[
-            Text(t(locale, 'wol.result.adapter'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'wol.result.adapter'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: adapterName!, locale: locale),
             const SizedBox(height: 16),
@@ -443,7 +464,10 @@ class _ResultCard extends StatelessWidget {
 
           // IP Ethernet
           if (ipEthernet != null) ...[
-            Text(t(locale, 'wol.result.ipEthernet'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'wol.result.ipEthernet'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: ipEthernet!, locale: locale),
             const SizedBox(height: 16),
@@ -451,12 +475,14 @@ class _ResultCard extends StatelessWidget {
 
           // IP WiFi
           if (ipWifi != null) ...[
-            Text(t(locale, 'wol.result.ipWifi'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'wol.result.ipWifi'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: ipWifi!, locale: locale),
             const SizedBox(height: 16),
           ],
-
         ],
       ),
     );

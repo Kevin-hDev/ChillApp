@@ -16,7 +16,10 @@ ThemeData chillDarkTheme() {
       onSurface: ChillColorsDark.textPrimary,
       onError: ChillColorsDark.textPrimary,
     ),
-    textTheme: _buildTextTheme(ChillColorsDark.textPrimary, ChillColorsDark.textSecondary),
+    textTheme: _buildTextTheme(
+      ChillColorsDark.textPrimary,
+      ChillColorsDark.textSecondary,
+    ),
     cardTheme: CardThemeData(
       color: ChillColorsDark.bgElevated,
       shape: RoundedRectangleBorder(
@@ -34,9 +37,7 @@ ThemeData chillDarkTheme() {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       ),
     ),
-    dividerTheme: const DividerThemeData(
-      color: ChillColorsDark.border,
-    ),
+    dividerTheme: const DividerThemeData(color: ChillColorsDark.border),
   );
 }
 
@@ -54,7 +55,10 @@ ThemeData chillLightTheme() {
       onSurface: ChillColorsLight.textPrimary,
       onError: Colors.white,
     ),
-    textTheme: _buildTextTheme(ChillColorsLight.textPrimary, ChillColorsLight.textSecondary),
+    textTheme: _buildTextTheme(
+      ChillColorsLight.textPrimary,
+      ChillColorsLight.textSecondary,
+    ),
     cardTheme: CardThemeData(
       color: ChillColorsLight.bgElevated,
       shape: RoundedRectangleBorder(
@@ -72,9 +76,7 @@ ThemeData chillLightTheme() {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       ),
     ),
-    dividerTheme: const DividerThemeData(
-      color: ChillColorsLight.border,
-    ),
+    dividerTheme: const DividerThemeData(color: ChillColorsLight.border),
   );
 }
 

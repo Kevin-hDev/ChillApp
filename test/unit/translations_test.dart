@@ -6,8 +6,11 @@ void main() {
     test('FR et EN ont le même nombre de clés', () {
       final fr = translations['fr']!;
       final en = translations['en']!;
-      expect(fr.length, en.length,
-          reason: 'FR a ${fr.length} clés, EN a ${en.length} clés');
+      expect(
+        fr.length,
+        en.length,
+        reason: 'FR a ${fr.length} clés, EN a ${en.length} clés',
+      );
     });
 
     test('toutes les clés FR existent en EN', () {
@@ -19,8 +22,11 @@ void main() {
           missingInEn.add(key);
         }
       }
-      expect(missingInEn, isEmpty,
-          reason: 'Clés manquantes en EN : $missingInEn');
+      expect(
+        missingInEn,
+        isEmpty,
+        reason: 'Clés manquantes en EN : $missingInEn',
+      );
     });
 
     test('toutes les clés EN existent en FR', () {
@@ -32,8 +38,11 @@ void main() {
           missingInFr.add(key);
         }
       }
-      expect(missingInFr, isEmpty,
-          reason: 'Clés manquantes en FR : $missingInFr');
+      expect(
+        missingInFr,
+        isEmpty,
+        reason: 'Clés manquantes en FR : $missingInFr',
+      );
     });
 
     test('aucune valeur vide en FR', () {
@@ -44,8 +53,11 @@ void main() {
           emptyKeys.add(entry.key);
         }
       }
-      expect(emptyKeys, isEmpty,
-          reason: 'Clés avec valeur vide en FR : $emptyKeys');
+      expect(
+        emptyKeys,
+        isEmpty,
+        reason: 'Clés avec valeur vide en FR : $emptyKeys',
+      );
     });
 
     test('aucune valeur vide en EN', () {
@@ -56,8 +68,11 @@ void main() {
           emptyKeys.add(entry.key);
         }
       }
-      expect(emptyKeys, isEmpty,
-          reason: 'Clés avec valeur vide en EN : $emptyKeys');
+      expect(
+        emptyKeys,
+        isEmpty,
+        reason: 'Clés avec valeur vide en EN : $emptyKeys',
+      );
     });
 
     test('les clés critiques existent', () {
@@ -97,8 +112,11 @@ void main() {
         'settings.lock.desc',
       ];
       for (final key in criticalKeys) {
-        expect(fr.containsKey(key), true,
-            reason: 'Clé critique manquante : $key');
+        expect(
+          fr.containsKey(key),
+          true,
+          reason: 'Clé critique manquante : $key',
+        );
       }
     });
 

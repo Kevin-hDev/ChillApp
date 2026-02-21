@@ -33,44 +33,44 @@ class SshSetupScreen extends ConsumerWidget {
     return Scaffold(
       body: ChillBackground(
         child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final padding = responsivePadding(width);
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final padding = responsivePadding(width);
 
-          return SingleChildScrollView(
-            child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Padding(
-                padding: EdgeInsets.all(padding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header avec bouton retour
-                    Row(
+            return SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          tooltip: 'Retour',
-                          onPressed: () => context.go('/'),
+                        // Header avec bouton retour
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              tooltip: 'Retour',
+                              onPressed: () => context.go('/'),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                t(locale, 'ssh.title'),
+                                style: theme.textTheme.headlineLarge,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            t(locale, 'ssh.title'),
-                            style: theme.textTheme.headlineLarge,
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          t(locale, 'ssh.intro'),
+                          style: theme.textTheme.bodyLarge,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      t(locale, 'ssh.intro'),
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Contenu
+                        // Contenu
                         // Carte explicative
                         ExplanationCard(
                           titleKey: 'ssh.explanation.title',
@@ -83,24 +83,34 @@ class SshSetupScreen extends ConsumerWidget {
                         if (!sshState.isRunning && !sshState.isComplete)
                           Center(
                             child: ElevatedButton.icon(
-                              onPressed: () => ref.read(sshSetupProvider.notifier).runAll(),
+                              onPressed: () =>
+                                  ref.read(sshSetupProvider.notifier).runAll(),
                               icon: Icon(
-                                sshState.errorMessage != null ? Icons.refresh : Icons.play_arrow,
+                                sshState.errorMessage != null
+                                    ? Icons.refresh
+                                    : Icons.play_arrow,
                               ),
                               label: Text(
                                 sshState.errorMessage != null
                                     ? t(locale, 'ssh.error.retry')
                                     : t(locale, 'ssh.configureAll'),
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 16,
+                                ),
                               ),
                             ),
                           ),
 
                         // Message d'erreur global
-                        if (sshState.errorMessage != null && !sshState.isRunning) ...[
+                        if (sshState.errorMessage != null &&
+                            !sshState.isRunning) ...[
                           const SizedBox(height: 16),
                           ErrorBanner(message: sshState.errorMessage!),
                         ],
@@ -119,15 +129,17 @@ class SshSetupScreen extends ConsumerWidget {
                         ],
 
                         // Liste des etapes (visible des qu'on lance)
-                        if (sshState.steps.any((s) => s.status != StepStatus.pending)) ...[
+                        if (sshState.steps.any(
+                          (s) => s.status != StepStatus.pending,
+                        )) ...[
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               color: context.chillBgElevated,
-                              borderRadius: BorderRadius.circular(ChillRadius.xl),
-                              border: Border.all(
-                                color: context.chillBorder,
+                              borderRadius: BorderRadius.circular(
+                                ChillRadius.xl,
                               ),
+                              border: Border.all(color: context.chillBorder),
                             ),
                             child: Column(
                               children: sshState.steps.map((step) {
@@ -152,14 +164,14 @@ class SshSetupScreen extends ConsumerWidget {
                         ],
 
                         const SizedBox(height: 32),
-              ],
-            ),
-          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
-        ),
-      );
-    },
-      ),
       ),
     );
   }
@@ -183,8 +195,12 @@ class _ResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = context.chillAccent;
-    final connectEthernet = username != null && ipEthernet != null ? '$username@$ipEthernet' : '';
-    final connectWifi = username != null && ipWifi != null ? '$username@$ipWifi' : '';
+    final connectEthernet = username != null && ipEthernet != null
+        ? '$username@$ipEthernet'
+        : '';
+    final connectWifi = username != null && ipWifi != null
+        ? '$username@$ipWifi'
+        : '';
 
     return Container(
       width: double.infinity,
@@ -211,7 +227,10 @@ class _ResultCard extends StatelessWidget {
 
           // IP Ethernet
           if (ipEthernet != null) ...[
-            Text(t(locale, 'ssh.result.ipEthernet'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'ssh.result.ipEthernet'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: ipEthernet!, locale: locale),
             const SizedBox(height: 16),
@@ -219,7 +238,10 @@ class _ResultCard extends StatelessWidget {
 
           // IP WiFi
           if (ipWifi != null) ...[
-            Text(t(locale, 'ssh.result.ipWifi'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'ssh.result.ipWifi'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: ipWifi!, locale: locale),
             const SizedBox(height: 16),
@@ -227,7 +249,10 @@ class _ResultCard extends StatelessWidget {
 
           // Username
           if (username != null) ...[
-            Text(t(locale, 'ssh.result.username'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'ssh.result.username'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: username!, locale: locale),
             const SizedBox(height: 16),
@@ -235,7 +260,10 @@ class _ResultCard extends StatelessWidget {
 
           // Connexion Ethernet
           if (connectEthernet.isNotEmpty) ...[
-            Text(t(locale, 'ssh.result.connectEthernet'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'ssh.result.connectEthernet'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: connectEthernet, locale: locale),
             const SizedBox(height: 16),
@@ -243,7 +271,10 @@ class _ResultCard extends StatelessWidget {
 
           // Connexion WiFi
           if (connectWifi.isNotEmpty) ...[
-            Text(t(locale, 'ssh.result.connectWifi'), style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'ssh.result.connectWifi'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: connectWifi, locale: locale),
           ],

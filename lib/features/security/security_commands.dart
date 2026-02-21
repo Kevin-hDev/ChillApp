@@ -319,9 +319,11 @@ class SecurityCommands {
   // --- Firewall UFW ---
   static Future<bool?> checkLinuxFirewall() async {
     // Lire /etc/ufw/ufw.conf (lisible sans root) pour éviter le problème de permissions
-    final result = await CommandRunner.run(
-      'grep', ['-q', 'ENABLED=yes', '/etc/ufw/ufw.conf'],
-    );
+    final result = await CommandRunner.run('grep', [
+      '-q',
+      'ENABLED=yes',
+      '/etc/ufw/ufw.conf',
+    ]);
     if (result.success) return true;
     // Vérifier si ufw est installé
     final which = await CommandRunner.run('which', ['ufw']);
@@ -350,12 +352,15 @@ class SecurityCommands {
       case LinuxDistro.unknown:
         return false;
     }
-    final result = await _runLinuxElevated('#!/bin/bash\n$installCmd\nexit \$?\n');
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\n$installCmd\nexit \$?\n',
+    );
     return result.success;
   }
 
   static Future<bool> enableLinuxFirewall() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'ufw default deny incoming\n'
         'ufw default allow outgoing\n'
         'ufw allow ssh\n'
@@ -366,7 +371,9 @@ class SecurityCommands {
   }
 
   static Future<bool> disableLinuxFirewall() async {
-    final result = await _runLinuxElevated('#!/bin/bash\nufw disable\nexit \$?\n');
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\nufw disable\nexit \$?\n',
+    );
     return result.success;
   }
 
@@ -380,7 +387,8 @@ class SecurityCommands {
   }
 
   static Future<bool> enableLinuxSysctl() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'tee /etc/sysctl.d/99-hardening.conf > /dev/null <<EOF\n'
         'net.ipv4.conf.all.accept_redirects = 0\n'
         'net.ipv4.conf.all.send_redirects = 0\n'
@@ -395,7 +403,8 @@ class SecurityCommands {
   }
 
   static Future<bool> disableLinuxSysctl() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'rm -f /etc/sysctl.d/99-hardening.conf\n'
         '# Remettre les valeurs live du kernel aux défauts\n'
         'sysctl -w net.ipv4.conf.all.accept_redirects=1 > /dev/null 2>&1\n'
@@ -419,15 +428,16 @@ class SecurityCommands {
     ];
 
     for (final candidate in candidates) {
-      final result = await CommandRunner.run(
-        'systemctl',
-        ['is-active', '--quiet', candidate['name']!],
-      );
+      final result = await CommandRunner.run('systemctl', [
+        'is-active',
+        '--quiet',
+        candidate['name']!,
+      ]);
       // Le service existe si exit code est 0 (actif) ou 3 (inactif mais installé)
-      final existsResult = await CommandRunner.run(
-        'systemctl',
-        ['cat', candidate['name']!],
-      );
+      final existsResult = await CommandRunner.run('systemctl', [
+        'cat',
+        candidate['name']!,
+      ]);
       if (existsResult.success) {
         services.add({
           'name': candidate['name']!,
@@ -450,17 +460,14 @@ class SecurityCommands {
 
   // --- Permissions fichiers sensibles ---
   static Future<bool?> checkLinuxPermissions() async {
-    final result = await CommandRunner.run('stat', [
-      '-c',
-      '%a',
-      '/etc/shadow',
-    ]);
+    final result = await CommandRunner.run('stat', ['-c', '%a', '/etc/shadow']);
     if (!result.success) return null;
     return result.stdout.trim() == '600';
   }
 
   static Future<bool> enableLinuxPermissions() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'chmod 600 /etc/shadow 2>/dev/null\n'
         'chmod 600 /etc/gshadow 2>/dev/null\n'
         'chmod 644 /etc/passwd\n'
@@ -479,10 +486,11 @@ class SecurityCommands {
   static Future<bool?> checkLinuxFail2ban() async {
     final installed = await checkLinuxFail2banInstalled();
     if (!installed) return null;
-    final result = await CommandRunner.run(
-      'systemctl',
-      ['is-active', '--quiet', 'fail2ban'],
-    );
+    final result = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'fail2ban',
+    ]);
     return result.success;
   }
 
@@ -502,7 +510,9 @@ class SecurityCommands {
       case LinuxDistro.unknown:
         return false;
     }
-    final result = await _runLinuxElevated('#!/bin/bash\n$installCmd\nsystemctl enable --now fail2ban\nexit \$?\n');
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\n$installCmd\nsystemctl enable --now fail2ban\nexit \$?\n',
+    );
     return result.success;
   }
 
@@ -525,16 +535,18 @@ class SecurityCommands {
     final distro = await OsDetector.detectLinuxDistro();
     switch (distro) {
       case LinuxDistro.debian:
-        final result = await CommandRunner.run(
-          'systemctl',
-          ['is-active', '--quiet', 'unattended-upgrades'],
-        );
+        final result = await CommandRunner.run('systemctl', [
+          'is-active',
+          '--quiet',
+          'unattended-upgrades',
+        ]);
         return result.success;
       case LinuxDistro.fedora:
-        final result = await CommandRunner.run(
-          'systemctl',
-          ['is-active', '--quiet', 'dnf-automatic-install.timer'],
-        );
+        final result = await CommandRunner.run('systemctl', [
+          'is-active',
+          '--quiet',
+          'dnf-automatic-install.timer',
+        ]);
         return result.success;
       default:
         return null;
@@ -545,7 +557,8 @@ class SecurityCommands {
     final distro = await OsDetector.detectLinuxDistro();
     switch (distro) {
       case LinuxDistro.debian:
-        final script = '#!/bin/bash\n'
+        final script =
+            '#!/bin/bash\n'
             'apt install -y -qq unattended-upgrades\n'
             'echo \'APT::Periodic::Update-Package-Lists "1";\' > /etc/apt/apt.conf.d/20auto-upgrades\n'
             'echo \'APT::Periodic::Unattended-Upgrade "1";\' >> /etc/apt/apt.conf.d/20auto-upgrades\n'
@@ -554,7 +567,8 @@ class SecurityCommands {
         final result = await _runLinuxElevated(script);
         return result.success;
       case LinuxDistro.fedora:
-        final script = '#!/bin/bash\n'
+        final script =
+            '#!/bin/bash\n'
             'dnf install -y -q dnf-automatic\n'
             'systemctl enable --now dnf-automatic-install.timer\n'
             'exit 0\n';
@@ -586,9 +600,11 @@ class SecurityCommands {
   // --- Login root SSH (inversé : true = PermitRootLogin no = sécurisé) ---
   static Future<bool?> checkLinuxRootLogin() async {
     // Vérifier dans sshd_config (lisible sans root)
-    final result = await CommandRunner.run(
-      'grep', ['-E', r'^\s*PermitRootLogin', '/etc/ssh/sshd_config'],
-    );
+    final result = await CommandRunner.run('grep', [
+      '-E',
+      r'^\s*PermitRootLogin',
+      '/etc/ssh/sshd_config',
+    ]);
     if (!result.success) {
       // Pas de ligne PermitRootLogin → le défaut sur la plupart des distros
       // est "prohibit-password" (sécurisé)
@@ -600,7 +616,8 @@ class SecurityCommands {
 
   static Future<bool> enableLinuxRootLoginProtection() async {
     // Pattern élargi : gère "#PermitRootLogin", "# PermitRootLogin", "PermitRootLogin"
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'if grep -qE "^\\s*#?\\s*PermitRootLogin" /etc/ssh/sshd_config; then\n'
         '  sed -i -E \'s/^\\s*#?\\s*PermitRootLogin.*/PermitRootLogin no/\' /etc/ssh/sshd_config\n'
         'else\n'
@@ -617,7 +634,8 @@ class SecurityCommands {
   }
 
   static Future<bool> disableLinuxRootLoginProtection() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'if grep -qE "^\\s*#?\\s*PermitRootLogin" /etc/ssh/sshd_config; then\n'
         '  sed -i -E \'s/^\\s*#?\\s*PermitRootLogin.*/PermitRootLogin yes/\' /etc/ssh/sshd_config\n'
         'else\n'
@@ -635,30 +653,39 @@ class SecurityCommands {
   // --- DNS sécurisé Quad9 (Linux) ---
   static Future<bool?> checkLinuxDns() async {
     // Vérifier dans le fichier de config (pas resolv.conf qui est dynamique)
-    final hasResolved = await CommandRunner.run(
-      'systemctl', ['is-active', '--quiet', 'systemd-resolved'],
-    );
+    final hasResolved = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'systemd-resolved',
+    ]);
     if (hasResolved.success) {
       // Chercher une ligne DNS= non commentée contenant 9.9.9.9
-      final result = await CommandRunner.run(
-        'grep', ['-E', r'^DNS=.*9\.9\.9\.9', '/etc/systemd/resolved.conf'],
-      );
+      final result = await CommandRunner.run('grep', [
+        '-E',
+        r'^DNS=.*9\.9\.9\.9',
+        '/etc/systemd/resolved.conf',
+      ]);
       return result.success;
     }
     // Sans systemd-resolved, vérifier resolv.conf directement
-    final resolv = await CommandRunner.run(
-      'grep', ['-q', '9.9.9.9', '/etc/resolv.conf'],
-    );
+    final resolv = await CommandRunner.run('grep', [
+      '-q',
+      '9.9.9.9',
+      '/etc/resolv.conf',
+    ]);
     return resolv.success;
   }
 
   static Future<bool> enableLinuxDns() async {
     // Utiliser systemd-resolved si disponible, sinon resolv.conf
-    final hasResolved = await CommandRunner.run(
-      'systemctl', ['is-active', '--quiet', 'systemd-resolved'],
-    );
+    final hasResolved = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'systemd-resolved',
+    ]);
     if (hasResolved.success) {
-      final script = '#!/bin/bash\n'
+      final script =
+          '#!/bin/bash\n'
           'sed -i \'s/^#*DNS=.*/DNS=9.9.9.9 149.112.112.112/\' /etc/systemd/resolved.conf\n'
           'if ! grep -q "^DNS=" /etc/systemd/resolved.conf; then\n'
           '  echo "DNS=9.9.9.9 149.112.112.112" >> /etc/systemd/resolved.conf\n'
@@ -669,7 +696,8 @@ class SecurityCommands {
       return result.success;
     }
     // Fallback : modifier resolv.conf
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'cp /etc/resolv.conf /etc/resolv.conf.chill.bak\n'
         'echo "nameserver 9.9.9.9" > /etc/resolv.conf\n'
         'echo "nameserver 149.112.112.112" >> /etc/resolv.conf\n'
@@ -679,11 +707,14 @@ class SecurityCommands {
   }
 
   static Future<bool> disableLinuxDns() async {
-    final hasResolved = await CommandRunner.run(
-      'systemctl', ['is-active', '--quiet', 'systemd-resolved'],
-    );
+    final hasResolved = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'systemd-resolved',
+    ]);
     if (hasResolved.success) {
-      final script = '#!/bin/bash\n'
+      final script =
+          '#!/bin/bash\n'
           'sed -i \'s/^DNS=.*/#DNS=/\' /etc/systemd/resolved.conf\n'
           'systemctl restart systemd-resolved\n'
           'exit 0\n';
@@ -691,7 +722,8 @@ class SecurityCommands {
       return result.success;
     }
     // Restaurer depuis backup si disponible
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'if [ -f /etc/resolv.conf.chill.bak ]; then\n'
         '  cp /etc/resolv.conf.chill.bak /etc/resolv.conf\n'
         'fi\n'
@@ -709,10 +741,11 @@ class SecurityCommands {
   static Future<bool?> checkLinuxCrowdsec() async {
     final installed = await checkLinuxCrowdsecInstalled();
     if (!installed) return null;
-    final result = await CommandRunner.run(
-      'systemctl',
-      ['is-active', '--quiet', 'crowdsec'],
-    );
+    final result = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'crowdsec',
+    ]);
     return result.success;
   }
 
@@ -755,20 +788,23 @@ class SecurityCommands {
   // --- AppArmor ---
   static Future<bool?> checkLinuxAppArmor() async {
     // Vérifier si AppArmor est disponible sur le système
-    final moduleExists = await CommandRunner.run(
-      'cat', ['/sys/module/apparmor/parameters/enabled'],
-    );
+    final moduleExists = await CommandRunner.run('cat', [
+      '/sys/module/apparmor/parameters/enabled',
+    ]);
     if (!moduleExists.success) return null; // AppArmor pas disponible
     // Vérifier l'état du SERVICE (pas le module kernel qui reste
     // chargé en mémoire même après un disable)
-    final result = await CommandRunner.run(
-      'systemctl', ['is-active', '--quiet', 'apparmor'],
-    );
+    final result = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'apparmor',
+    ]);
     return result.success;
   }
 
   static Future<bool> enableLinuxAppArmor() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'systemctl enable --now apparmor 2>/dev/null\n'
         '# Mettre tous les profils en mode enforce\n'
         'if command -v aa-enforce >/dev/null 2>&1; then\n'
@@ -780,7 +816,8 @@ class SecurityCommands {
   }
 
   static Future<bool> disableLinuxAppArmor() async {
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'systemctl disable --now apparmor 2>/dev/null\n'
         'exit 0\n';
     final result = await _runLinuxElevated(script);
@@ -809,7 +846,9 @@ class SecurityCommands {
       case LinuxDistro.unknown:
         return false;
     }
-    final result = await _runLinuxElevated('#!/bin/bash\n$installCmd\nexit \$?\n');
+    final result = await _runLinuxElevated(
+      '#!/bin/bash\n$installCmd\nexit \$?\n',
+    );
     return result.success;
   }
 
@@ -871,9 +910,7 @@ class SecurityCommands {
 
   // --- Partage de fichiers SMB (inversé : true = désactivé = sécurisé) ---
   static Future<bool?> checkMacSmb() async {
-    final result = await CommandRunner.run('launchctl', [
-      'list',
-    ]);
+    final result = await CommandRunner.run('launchctl', ['list']);
     if (!result.success) return null;
     // Si smbd n'est pas dans la liste, il est désactivé = sécurisé
     return !result.stdout.contains('com.apple.smbd');
@@ -970,12 +1007,16 @@ class SecurityCommands {
   }
 
   static Future<bool> enableMacGatekeeper() async {
-    final result = await CommandRunner.runElevated('spctl', ['--master-enable']);
+    final result = await CommandRunner.runElevated('spctl', [
+      '--master-enable',
+    ]);
     return result.success;
   }
 
   static Future<bool> disableMacGatekeeper() async {
-    final result = await CommandRunner.runElevated('spctl', ['--master-disable']);
+    final result = await CommandRunner.runElevated('spctl', [
+      '--master-disable',
+    ]);
     return result.success;
   }
 
@@ -984,7 +1025,7 @@ class SecurityCommands {
     final result = await CommandRunner.run('bash', [
       '-c',
       'networksetup -getdnsservers Wi-Fi 2>/dev/null; '
-      'networksetup -getdnsservers Ethernet 2>/dev/null',
+          'networksetup -getdnsservers Ethernet 2>/dev/null',
     ]);
     if (!result.success) return null;
     return result.stdout.contains('9.9.9.9');
@@ -995,8 +1036,8 @@ class SecurityCommands {
     final result = await CommandRunner.runElevated('bash', [
       '-c',
       'networksetup -setdnsservers Wi-Fi 9.9.9.9 149.112.112.112 2>/dev/null; '
-      'networksetup -setdnsservers Ethernet 9.9.9.9 149.112.112.112 2>/dev/null; '
-      'exit 0',
+          'networksetup -setdnsservers Ethernet 9.9.9.9 149.112.112.112 2>/dev/null; '
+          'exit 0',
     ]);
     return result.success;
   }
@@ -1005,8 +1046,8 @@ class SecurityCommands {
     final result = await CommandRunner.runElevated('bash', [
       '-c',
       'networksetup -setdnsservers Wi-Fi empty 2>/dev/null; '
-      'networksetup -setdnsservers Ethernet empty 2>/dev/null; '
-      'exit 0',
+          'networksetup -setdnsservers Ethernet empty 2>/dev/null; '
+          'exit 0',
     ]);
     return result.success;
   }
@@ -1062,7 +1103,8 @@ class SecurityCommands {
     final outputFile = File('${tempDir.path}/rkhunter-results.txt');
     final tempScript = File('${tempDir.path}/scan.sh');
 
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'export LANG=C\n'
         'export LC_ALL=C\n'
         '# Mettre a jour la base de donnees\n'
@@ -1076,18 +1118,14 @@ class SecurityCommands {
     await Process.run('chmod', ['700', tempScript.path]);
 
     try {
-      await CommandRunner.run(
-        'pkexec',
-        ['bash', tempScript.path],
-        timeout: const Duration(minutes: 10),
-      );
+      await CommandRunner.run('pkexec', [
+        'bash',
+        tempScript.path,
+      ], timeout: const Duration(minutes: 10));
 
       if (outputFile.existsSync()) {
         final content = await outputFile.readAsString();
-        return content
-            .split('\n')
-            .where((l) => l.trim().isNotEmpty)
-            .toList();
+        return content.split('\n').where((l) => l.trim().isNotEmpty).toList();
       }
       return [];
     } finally {
@@ -1172,11 +1210,17 @@ class SecurityCommands {
         final daysSince = DateTime.now().difference(lastUpdate).inDays;
         results.add({
           'id': 'updates',
-          'status': daysSince <= 30 ? 'ok' : (daysSince <= 90 ? 'warning' : 'error'),
+          'status': daysSince <= 30
+              ? 'ok'
+              : (daysSince <= 90 ? 'warning' : 'error'),
           'detail': 'days:$daysSince',
         });
       } catch (_) {
-        results.add({'id': 'updates', 'status': 'warning', 'detail': 'unknown'});
+        results.add({
+          'id': 'updates',
+          'status': 'warning',
+          'detail': 'unknown',
+        });
       }
     } else {
       results.add({'id': 'updates', 'status': 'warning', 'detail': 'unknown'});
@@ -1262,7 +1306,8 @@ class SecurityCommands {
     // Écrire un script qui collecte tout et sort du JSON
     final tempDir = await Directory.systemTemp.createTemp('chill-checkup-');
     final outputFile = File('${tempDir.path}/results.json');
-    final script = '#!/bin/bash\n'
+    final script =
+        '#!/bin/bash\n'
         'export LANG=C\n'
         'export LC_ALL=C\n'
         '\n'
@@ -1440,18 +1485,22 @@ class SecurityCommands {
     await Process.run('chmod', ['700', tempScript.path]);
 
     try {
-      final cmdResult = await CommandRunner.runElevated('bash', [tempScript.path]);
+      final cmdResult = await CommandRunner.runElevated('bash', [
+        tempScript.path,
+      ]);
 
       if (outputFile.existsSync()) {
         final jsonStr = await outputFile.readAsString();
         try {
           final list = jsonDecode(jsonStr) as List;
           return list
-              .map((e) => {
-                    'id': e['id']?.toString() ?? '',
-                    'status': e['status']?.toString() ?? 'warning',
-                    'detail': e['detail']?.toString() ?? '',
-                  })
+              .map(
+                (e) => {
+                  'id': e['id']?.toString() ?? '',
+                  'status': e['status']?.toString() ?? 'warning',
+                  'detail': e['detail']?.toString() ?? '',
+                },
+              )
               .toList();
         } catch (e) {
           debugPrint('[Security] JSON parse error: $e');
@@ -1461,7 +1510,11 @@ class SecurityCommands {
       // Fallback si le JSON n'a pas été créé
       if (!cmdResult.success) {
         return [
-          {'id': 'error', 'status': 'error', 'detail': 'Checkup échoué: ${cmdResult.stderr}'}
+          {
+            'id': 'error',
+            'status': 'error',
+            'detail': 'Checkup échoué: ${cmdResult.stderr}',
+          },
         ];
       }
     } finally {
@@ -1565,4 +1618,3 @@ class SecurityCommands {
     return results;
   }
 }
-

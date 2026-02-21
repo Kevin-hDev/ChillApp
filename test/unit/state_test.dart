@@ -174,10 +174,7 @@ void main() {
 
     test('copyWith met à jour les statuts', () {
       const state = DashboardState();
-      final updated = state.copyWith(
-        sshConfigured: true,
-        wolConfigured: false,
-      );
+      final updated = state.copyWith(sshConfigured: true, wolConfigured: false);
       expect(updated.sshConfigured, true);
       expect(updated.wolConfigured, false);
     });
@@ -225,8 +222,18 @@ void main() {
     test('copyWith met à jour la liste de peers', () {
       const state = TailscaleState();
       final peers = [
-        TailscalePeer(hostname: 'phone', ipv4: '100.64.0.2', os: 'android', isOnline: true),
-        TailscalePeer(hostname: 'laptop', ipv4: '100.64.0.3', os: 'windows', isOnline: false),
+        TailscalePeer(
+          hostname: 'phone',
+          ipv4: '100.64.0.2',
+          os: 'android',
+          isOnline: true,
+        ),
+        TailscalePeer(
+          hostname: 'laptop',
+          ipv4: '100.64.0.3',
+          os: 'windows',
+          isOnline: false,
+        ),
       ];
       final updated = state.copyWith(peers: peers);
       expect(updated.peers.length, 2);
@@ -266,10 +273,22 @@ void main() {
   group('TailscaleConnectionStatus', () {
     test('contient les 4 valeurs attendues', () {
       expect(TailscaleConnectionStatus.values.length, 4);
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loading));
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.loggedOut));
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.connected));
-      expect(TailscaleConnectionStatus.values, contains(TailscaleConnectionStatus.error));
+      expect(
+        TailscaleConnectionStatus.values,
+        contains(TailscaleConnectionStatus.loading),
+      );
+      expect(
+        TailscaleConnectionStatus.values,
+        contains(TailscaleConnectionStatus.loggedOut),
+      );
+      expect(
+        TailscaleConnectionStatus.values,
+        contains(TailscaleConnectionStatus.connected),
+      );
+      expect(
+        TailscaleConnectionStatus.values,
+        contains(TailscaleConnectionStatus.error),
+      );
     });
   });
 

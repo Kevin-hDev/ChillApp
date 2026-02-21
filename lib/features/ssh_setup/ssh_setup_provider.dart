@@ -46,7 +46,9 @@ class SshSetupState {
   }
 }
 
-final sshSetupProvider = NotifierProvider<SshSetupNotifier, SshSetupState>(SshSetupNotifier.new);
+final sshSetupProvider = NotifierProvider<SshSetupNotifier, SshSetupState>(
+  SshSetupNotifier.new,
+);
 
 class SshSetupNotifier extends Notifier<SshSetupState> {
   @override
@@ -88,7 +90,8 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
   /// Met à jour le statut d'une étape
   void _updateStep(String id, StepStatus status, {String? errorDetail}) {
     final newSteps = state.steps.map((step) {
-      if (step.id == id) return step.copyWith(status: status, errorDetail: errorDetail);
+      if (step.id == id)
+        return step.copyWith(status: status, errorDetail: errorDetail);
       return step;
     }).toList();
     state = state.copyWith(steps: newSteps);
@@ -96,7 +99,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
   /// Lance toute la configuration
   Future<void> runAll() async {
-    state = state.copyWith(isRunning: true, isComplete: false, errorMessage: null);
+    state = state.copyWith(
+      isRunning: true,
+      isComplete: false,
+      errorMessage: null,
+    );
 
     try {
       final os = OsDetector.currentOS;
@@ -134,7 +141,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     );
     if (!result.success && !result.stderr.contains('already installed')) {
       debugPrint('[SSH] installClient stderr: ${result.stderr}');
-      _updateStep('installClient', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
+      _updateStep(
+        'installClient',
+        StepStatus.error,
+        errorDetail: 'Installation failed. Check system logs.',
+      );
       throw Exception('Échec installation client OpenSSH');
     }
     _updateStep('installClient', StepStatus.success);
@@ -146,7 +157,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     );
     if (!result.success && !result.stderr.contains('already installed')) {
       debugPrint('[SSH] installServer stderr: ${result.stderr}');
-      _updateStep('installServer', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
+      _updateStep(
+        'installServer',
+        StepStatus.error,
+        errorDetail: 'Installation failed. Check system logs.',
+      );
       throw Exception('Échec installation serveur OpenSSH');
     }
     _updateStep('installServer', StepStatus.success);
@@ -156,7 +171,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     result = await CommandRunner.runPowerShell('Start-Service sshd');
     if (!result.success && !result.stderr.contains('already running')) {
       debugPrint('[SSH] start stderr: ${result.stderr}');
-      _updateStep('start', StepStatus.error, errorDetail: 'Service start failed. Check system logs.');
+      _updateStep(
+        'start',
+        StepStatus.error,
+        errorDetail: 'Service start failed. Check system logs.',
+      );
       throw Exception('Échec démarrage SSH');
     }
     _updateStep('start', StepStatus.success);
@@ -168,7 +187,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     );
     if (!result.success) {
       debugPrint('[SSH] autostart stderr: ${result.stderr}');
-      _updateStep('autostart', StepStatus.error, errorDetail: 'Autostart configuration failed. Check system logs.');
+      _updateStep(
+        'autostart',
+        StepStatus.error,
+        errorDetail: 'Autostart configuration failed. Check system logs.',
+      );
       throw Exception('Échec activation au démarrage');
     }
     _updateStep('autostart', StepStatus.success);
@@ -187,7 +210,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
       );
       if (!result.success) {
         debugPrint('[SSH] firewall stderr: ${result.stderr}');
-        _updateStep('firewall', StepStatus.error, errorDetail: 'Firewall configuration failed. Check system logs.');
+        _updateStep(
+          'firewall',
+          StepStatus.error,
+          errorDetail: 'Firewall configuration failed. Check system logs.',
+        );
         throw Exception('Échec configuration pare-feu');
       }
     }
@@ -206,11 +233,13 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 6. Vérifier que SSH fonctionne
     _updateStep('verify', StepStatus.running);
-    result = await CommandRunner.runPowerShell(
-      "(Get-Service sshd).Status",
-    );
+    result = await CommandRunner.runPowerShell("(Get-Service sshd).Status");
     if (!result.success || !result.stdout.contains('Running')) {
-      _updateStep('verify', StepStatus.error, errorDetail: 'SSH ne semble pas actif');
+      _updateStep(
+        'verify',
+        StepStatus.error,
+        errorDetail: 'SSH ne semble pas actif',
+      );
       throw Exception('SSH non actif');
     }
     _updateStep('verify', StepStatus.success);
@@ -244,7 +273,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
         installCmd = 'pacman -S --noconfirm openssh';
         break;
       case LinuxDistro.unknown:
-        _updateStep('install', StepStatus.error, errorDetail: 'Distribution non reconnue');
+        _updateStep(
+          'install',
+          StepStatus.error,
+          errorDetail: 'Distribution non reconnue',
+        );
         throw Exception('Distribution Linux non reconnue');
     }
 
@@ -297,24 +330,40 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     try {
       result = await CommandRunner.runElevated('bash', [tempScript.path]);
     } finally {
-      try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[SSH] Cleanup error: $e'); }
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (e) {
+        debugPrint('[SSH] Cleanup error: $e');
+      }
     }
 
     // Analyser le résultat par code de sortie
     if (result.exitCode == 126 || result.exitCode == 127) {
-      _updateStep('install', StepStatus.error, errorDetail: 'Autorisation refusée');
+      _updateStep(
+        'install',
+        StepStatus.error,
+        errorDetail: 'Autorisation refusée',
+      );
       throw Exception('Autorisation refusée');
     }
     if (result.exitCode == 10) {
       debugPrint('[SSH] install stderr: ${result.stderr}');
-      _updateStep('install', StepStatus.error, errorDetail: 'Installation failed. Check system logs.');
+      _updateStep(
+        'install',
+        StepStatus.error,
+        errorDetail: 'Installation failed. Check system logs.',
+      );
       throw Exception('Échec installation OpenSSH');
     }
     _updateStep('install', StepStatus.success);
 
     if (result.exitCode == 20) {
       debugPrint('[SSH] start stderr: ${result.stderr}');
-      _updateStep('start', StepStatus.error, errorDetail: 'Service start failed. Check system logs.');
+      _updateStep(
+        'start',
+        StepStatus.error,
+        errorDetail: 'Service start failed. Check system logs.',
+      );
       throw Exception('Échec démarrage SSH');
     }
     _updateStep('start', StepStatus.success);
@@ -324,12 +373,24 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 4. Vérifier que SSH tourne
     _updateStep('verify', StepStatus.running);
-    var verifyResult = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'sshd']);
+    var verifyResult = await CommandRunner.run('systemctl', [
+      'is-active',
+      '--quiet',
+      'sshd',
+    ]);
     if (!verifyResult.success) {
-      verifyResult = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'ssh']);
+      verifyResult = await CommandRunner.run('systemctl', [
+        'is-active',
+        '--quiet',
+        'ssh',
+      ]);
     }
     if (!verifyResult.success) {
-      _updateStep('verify', StepStatus.error, errorDetail: 'SSH ne semble pas actif');
+      _updateStep(
+        'verify',
+        StepStatus.error,
+        errorDetail: 'SSH ne semble pas actif',
+      );
       throw Exception('SSH non actif');
     }
     _updateStep('verify', StepStatus.success);
@@ -350,10 +411,17 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
   Future<void> _runMac() async {
     // 1. Activer l'accès à distance
     _updateStep('enableRemoteLogin', StepStatus.running);
-    final result = await CommandRunner.runElevated('systemsetup', ['-setremotelogin', 'on']);
+    final result = await CommandRunner.runElevated('systemsetup', [
+      '-setremotelogin',
+      'on',
+    ]);
     if (!result.success) {
       debugPrint('[SSH] enableRemoteLogin stderr: ${result.stderr}');
-      _updateStep('enableRemoteLogin', StepStatus.error, errorDetail: 'Remote login activation failed. Check system logs.');
+      _updateStep(
+        'enableRemoteLogin',
+        StepStatus.error,
+        errorDetail: 'Remote login activation failed. Check system logs.',
+      );
       throw Exception('Échec activation accès à distance');
     }
     _updateStep('enableRemoteLogin', StepStatus.success);
@@ -368,9 +436,15 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 2. Vérifier
     _updateStep('verify', StepStatus.running);
-    final verifyResult = await CommandRunner.runElevated('systemsetup', ['-getremotelogin']);
+    final verifyResult = await CommandRunner.runElevated('systemsetup', [
+      '-getremotelogin',
+    ]);
     if (!verifyResult.stdout.contains('On')) {
-      _updateStep('verify', StepStatus.error, errorDetail: 'SSH ne semble pas actif');
+      _updateStep(
+        'verify',
+        StepStatus.error,
+        errorDetail: 'SSH ne semble pas actif',
+      );
       throw Exception('SSH non actif');
     }
     _updateStep('verify', StepStatus.success);

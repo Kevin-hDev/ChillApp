@@ -267,7 +267,9 @@ class _OnboardingImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? ChillColorsDark.border : ChillColorsLight.border;
+    final borderColor = isDark
+        ? ChillColorsDark.border
+        : ChillColorsLight.border;
 
     return Container(
       decoration: BoxDecoration(
@@ -283,10 +285,7 @@ class _OnboardingImage extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(ChillRadius.xl),
-        child: Image.asset(
-          path,
-          fit: BoxFit.contain,
-        ),
+        child: Image.asset(path, fit: BoxFit.contain),
       ),
     );
   }

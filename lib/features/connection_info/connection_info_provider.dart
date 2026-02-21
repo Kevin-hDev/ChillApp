@@ -48,7 +48,9 @@ class ConnectionInfoState {
 }
 
 final connectionInfoProvider =
-    NotifierProvider<ConnectionInfoNotifier, ConnectionInfoState>(ConnectionInfoNotifier.new);
+    NotifierProvider<ConnectionInfoNotifier, ConnectionInfoState>(
+      ConnectionInfoNotifier.new,
+    );
 
 class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
   DateTime? _lastFetch;
@@ -63,7 +65,9 @@ class ConnectionInfoNotifier extends Notifier<ConnectionInfoState> {
 
   /// Récupère toutes les infos de connexion (cache TTL 5 min)
   Future<void> fetchAll({bool force = false}) async {
-    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!) < _ttl) {
+    if (!force &&
+        _lastFetch != null &&
+        DateTime.now().difference(_lastFetch!) < _ttl) {
       return;
     }
     state = state.copyWith(isLoading: true, error: null);

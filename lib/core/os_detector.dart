@@ -28,9 +28,16 @@ class OsDetector {
       if (result != LinuxDistro.unknown) return result;
 
       // Fallback : lire ID_LIKE pour les distros dérivées
-      final idLikeMatch = RegExp(r'^ID_LIKE=(.+)$', multiLine: true).firstMatch(content);
+      final idLikeMatch = RegExp(
+        r'^ID_LIKE=(.+)$',
+        multiLine: true,
+      ).firstMatch(content);
       if (idLikeMatch != null) {
-        final parents = idLikeMatch.group(1)!.replaceAll('"', '').trim().split(RegExp(r'\s+'));
+        final parents = idLikeMatch
+            .group(1)!
+            .replaceAll('"', '')
+            .trim()
+            .split(RegExp(r'\s+'));
         for (final parent in parents) {
           final parentResult = _matchDistro(parent);
           if (parentResult != LinuxDistro.unknown) return parentResult;

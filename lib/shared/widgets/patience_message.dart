@@ -12,7 +12,8 @@ class PatienceMessage extends StatefulWidget {
   State<PatienceMessage> createState() => _PatienceMessageState();
 }
 
-class _PatienceMessageState extends State<PatienceMessage> with SingleTickerProviderStateMixin {
+class _PatienceMessageState extends State<PatienceMessage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
 
@@ -24,9 +25,10 @@ class _PatienceMessageState extends State<PatienceMessage> with SingleTickerProv
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    _opacityAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _opacityAnimation = Tween<double>(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

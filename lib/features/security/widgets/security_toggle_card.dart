@@ -57,11 +57,7 @@ class _SecurityToggleCardState extends State<SecurityToggleCard> {
                 // Ligne principale : icône + titre + action
                 Row(
                   children: [
-                    Icon(
-                      widget.icon,
-                      size: 22,
-                      color: context.chillAccent,
-                    ),
+                    Icon(widget.icon, size: 22, color: context.chillAccent),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -137,9 +133,6 @@ class _SecurityToggleCardState extends State<SecurityToggleCard> {
       );
     }
 
-    return Switch(
-      value: widget.isEnabled!,
-      onChanged: widget.onToggle,
-    );
+    return Switch(value: widget.isEnabled!, onChanged: widget.onToggle);
   }
 }

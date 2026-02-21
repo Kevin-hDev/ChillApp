@@ -26,59 +26,61 @@ class TailscaleScreen extends ConsumerWidget {
     return Scaffold(
       body: ChillBackground(
         child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final padding = responsivePadding(width);
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final padding = responsivePadding(width);
 
-          return SingleChildScrollView(
-            child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Padding(
-                padding: EdgeInsets.all(padding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header avec bouton retour
-                    Row(
+            return SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => context.go('/'),
-                          tooltip: 'Retour',
+                        // Header avec bouton retour
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              onPressed: () => context.go('/'),
+                              tooltip: 'Retour',
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                t(locale, 'tailscale.title'),
+                                style: theme.textTheme.headlineLarge,
+                              ),
+                            ),
+                            if (tsState.status !=
+                                TailscaleConnectionStatus.loading)
+                              IconButton(
+                                icon: const Icon(Icons.refresh),
+                                onPressed: () => ref
+                                    .read(tailscaleProvider.notifier)
+                                    .refreshStatus(),
+                              ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            t(locale, 'tailscale.title'),
-                            style: theme.textTheme.headlineLarge,
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          t(locale, 'tailscale.intro'),
+                          style: theme.textTheme.bodyLarge,
                         ),
-                        if (tsState.status != TailscaleConnectionStatus.loading)
-                          IconButton(
-                            icon: const Icon(Icons.refresh),
-                            onPressed: () =>
-                                ref.read(tailscaleProvider.notifier).refreshStatus(),
-                          ),
+                        const SizedBox(height: 24),
+
+                        // Contenu selon l'état
+                        _buildContent(context, ref, tsState, locale, theme),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      t(locale, 'tailscale.intro'),
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Contenu selon l'état
-                    _buildContent(context, ref, tsState, locale, theme),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -92,7 +94,9 @@ class TailscaleScreen extends ConsumerWidget {
   ) {
     switch (tsState.status) {
       case TailscaleConnectionStatus.loading:
-        return Center(child: CircularProgressIndicator(color: context.chillAccent));
+        return Center(
+          child: CircularProgressIndicator(color: context.chillAccent),
+        );
       case TailscaleConnectionStatus.loggedOut:
         return _buildLoggedOut(context, ref, tsState, locale, theme);
       case TailscaleConnectionStatus.connected:
@@ -133,7 +137,11 @@ class TailscaleScreen extends ConsumerWidget {
                 ),
               ),
               child: Center(
-                child: Icon(Icons.vpn_lock, color: context.chillAccent, size: 36),
+                child: Icon(
+                  Icons.vpn_lock,
+                  color: context.chillAccent,
+                  size: 36,
+                ),
               ),
             ),
           ),
@@ -151,10 +159,16 @@ class TailscaleScreen extends ConsumerWidget {
                 icon: const Icon(Icons.login),
                 label: Text(
                   t(locale, 'tailscale.login.button'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -170,9 +184,20 @@ class TailscaleScreen extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () async {
                   // Ouvrir la page d'inscription Tailscale
-                  if (Platform.isLinux) await Process.run('xdg-open', ['https://login.tailscale.com/start']);
-                  if (Platform.isWindows) await Process.run('cmd', ['/c', 'start', 'https://login.tailscale.com/start']);
-                  if (Platform.isMacOS) await Process.run('open', ['https://login.tailscale.com/start']);
+                  if (Platform.isLinux)
+                    await Process.run('xdg-open', [
+                      'https://login.tailscale.com/start',
+                    ]);
+                  if (Platform.isWindows)
+                    await Process.run('cmd', [
+                      '/c',
+                      'start',
+                      'https://login.tailscale.com/start',
+                    ]);
+                  if (Platform.isMacOS)
+                    await Process.run('open', [
+                      'https://login.tailscale.com/start',
+                    ]);
                 },
                 icon: const Icon(Icons.person_add_outlined),
                 label: Text(t(locale, 'tailscale.signup.button')),
@@ -214,7 +239,9 @@ class TailscaleScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Text(
                 t(locale, 'tailscale.connected.title'),
-                style: theme.textTheme.titleMedium?.copyWith(color: context.chillAccent),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: context.chillAccent,
+                ),
               ),
             ],
           ),
@@ -305,7 +332,9 @@ class TailscaleScreen extends ConsumerWidget {
             border: Border.all(color: context.chillBorder),
           ),
           child: Column(
-            children: pcPeers.map((peer) => _PeerTile(peer: peer, locale: locale)).toList(),
+            children: pcPeers
+                .map((peer) => _PeerTile(peer: peer, locale: locale))
+                .toList(),
           ),
         ),
       ]);
@@ -316,7 +345,11 @@ class TailscaleScreen extends ConsumerWidget {
       widgets.addAll([
         Row(
           children: [
-            Icon(Icons.phone_android, size: 18, color: context.chillTextSecondary),
+            Icon(
+              Icons.phone_android,
+              size: 18,
+              color: context.chillTextSecondary,
+            ),
             const SizedBox(width: 8),
             Text(
               '${t(locale, 'tailscale.connected.peersMobile')} (${mobilePeers.length})',
@@ -335,7 +368,9 @@ class TailscaleScreen extends ConsumerWidget {
             border: Border.all(color: context.chillBorder),
           ),
           child: Column(
-            children: mobilePeers.map((peer) => _PeerTile(peer: peer, locale: locale)).toList(),
+            children: mobilePeers
+                .map((peer) => _PeerTile(peer: peer, locale: locale))
+                .toList(),
           ),
         ),
       ]);
@@ -345,8 +380,11 @@ class TailscaleScreen extends ConsumerWidget {
   }
 
   Widget _buildError(
-    BuildContext context, WidgetRef ref, TailscaleState tsState,
-    String locale, ThemeData theme,
+    BuildContext context,
+    WidgetRef ref,
+    TailscaleState tsState,
+    String locale,
+    ThemeData theme,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +407,9 @@ class TailscaleScreen extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       t(locale, 'tailscale.error.title'),
-                      style: theme.textTheme.titleMedium?.copyWith(color: context.chillRed),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: context.chillRed,
+                      ),
                     ),
                   ),
                 ],
@@ -403,11 +443,7 @@ class _SelfInfoCard extends StatelessWidget {
   final String? hostname;
   final String? ip;
 
-  const _SelfInfoCard({
-    required this.locale,
-    this.hostname,
-    this.ip,
-  });
+  const _SelfInfoCard({required this.locale, this.hostname, this.ip});
 
   @override
   Widget build(BuildContext context) {
@@ -426,19 +462,25 @@ class _SelfInfoCard extends StatelessWidget {
         children: [
           Text(
             t(locale, 'tailscale.connected.selfTitle'),
-            style: theme.textTheme.headlineSmall?.copyWith(color: context.chillAccent),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: context.chillAccent,
+            ),
           ),
           const SizedBox(height: 16),
           if (hostname != null) ...[
-            Text(t(locale, 'tailscale.connected.hostname'),
-                style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'tailscale.connected.hostname'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: hostname!, locale: locale),
             const SizedBox(height: 16),
           ],
           if (ip != null) ...[
-            Text(t(locale, 'tailscale.connected.ip'),
-                style: theme.textTheme.bodyMedium),
+            Text(
+              t(locale, 'tailscale.connected.ip'),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 4),
             CopyableInfo(value: ip!, locale: locale),
           ],
@@ -468,7 +510,9 @@ class _PeerTile extends StatelessWidget {
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: peer.isOnline ? context.chillGreen : context.chillTextMuted,
+              color: peer.isOnline
+                  ? context.chillGreen
+                  : context.chillTextMuted,
               shape: BoxShape.circle,
             ),
           ),
@@ -495,7 +539,13 @@ class _PeerTile extends StatelessWidget {
             ),
           ),
           // IP copiable
-          Flexible(child: CopyableInfo(value: peer.ipv4, compact: true, locale: locale)),
+          Flexible(
+            child: CopyableInfo(
+              value: peer.ipv4,
+              compact: true,
+              locale: locale,
+            ),
+          ),
         ],
       ),
     );

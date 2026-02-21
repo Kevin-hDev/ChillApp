@@ -7,10 +7,7 @@ import '../../config/design_tokens.dart';
 class ChillBackground extends StatelessWidget {
   final Widget child;
 
-  const ChillBackground({
-    super.key,
-    required this.child,
-  });
+  const ChillBackground({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -43,18 +40,14 @@ class ChillBackground extends StatelessWidget {
         // Ondulations concentriques (ripple arcs)
         Positioned.fill(
           child: IgnorePointer(
-            child: CustomPaint(
-              painter: _RippleArcsPainter(isDark: isDark),
-            ),
+            child: CustomPaint(painter: _RippleArcsPainter(isDark: isDark)),
           ),
         ),
 
         // Grille de points — statique, pas d'animation pour éviter le clignotement
         Positioned.fill(
           child: IgnorePointer(
-            child: CustomPaint(
-              painter: _DotGridPainter(isDark: isDark),
-            ),
+            child: CustomPaint(painter: _DotGridPainter(isDark: isDark)),
           ),
         ),
 
@@ -72,8 +65,9 @@ class ChillDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor =
-        isDark ? ChillColorsDark.border : ChillColorsLight.border;
+    final borderColor = isDark
+        ? ChillColorsDark.border
+        : ChillColorsLight.border;
 
     return Container(
       height: 1,
@@ -103,9 +97,7 @@ class _DotGridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const spacing = 28.0;
     const dotRadius = 0.8;
-    final dotColor = isDark
-        ? const Color(0xFF3A3D45)
-        : const Color(0xFF9CA3AF);
+    final dotColor = isDark ? const Color(0xFF3A3D45) : const Color(0xFF9CA3AF);
 
     // Centre du masque elliptique : 50% horizontal, 40% vertical (comme le CSS)
     final centerX = size.width * 0.5;

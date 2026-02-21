@@ -28,7 +28,8 @@ void main() {
 
     test('run retourne une erreur pour commande inexistante', () async {
       final result = await CommandRunner.run(
-        'commande_qui_existe_pas_du_tout_12345', [],
+        'commande_qui_existe_pas_du_tout_12345',
+        [],
       );
       expect(result.success, false);
     });

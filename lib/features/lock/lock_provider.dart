@@ -50,8 +50,9 @@ class LockState {
   }
 }
 
-final lockProvider =
-    NotifierProvider<LockNotifier, LockState>(LockNotifier.new);
+final lockProvider = NotifierProvider<LockNotifier, LockState>(
+  LockNotifier.new,
+);
 
 class LockNotifier extends Notifier<LockState> {
   static const _pinHashKey = 'pin_hash';
@@ -83,8 +84,12 @@ class LockNotifier extends Notifier<LockState> {
   }
 
   /// PBKDF2 avec HMAC-SHA256, 100 000 iterations
-  Uint8List _pbkdf2(String password, String salt,
-      {int iterations = 100000, int keyLength = 32}) {
+  Uint8List _pbkdf2(
+    String password,
+    String salt, {
+    int iterations = 100000,
+    int keyLength = 32,
+  }) {
     final hmac = Hmac(sha256, utf8.encode(password));
     final saltBytes = utf8.encode(salt);
     var result = <int>[];
@@ -210,10 +215,11 @@ class LockNotifier extends Notifier<LockState> {
       final lockSeconds = _lockDurationSeconds(newAttempts);
       DateTime? newLockedUntil;
       if (lockSeconds > 0) {
-        newLockedUntil =
-            DateTime.now().add(Duration(seconds: lockSeconds));
+        newLockedUntil = DateTime.now().add(Duration(seconds: lockSeconds));
         await prefs.setInt(
-            _lockedUntilKey, newLockedUntil.millisecondsSinceEpoch);
+          _lockedUntilKey,
+          newLockedUntil.millisecondsSinceEpoch,
+        );
       }
       state = state.copyWith(
         failedAttempts: newAttempts,

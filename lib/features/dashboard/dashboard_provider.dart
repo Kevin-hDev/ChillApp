@@ -8,9 +8,17 @@ class DashboardState {
   final bool? wolConfigured;
   final bool? tailscaleConnected;
 
-  const DashboardState({this.sshConfigured, this.wolConfigured, this.tailscaleConnected});
+  const DashboardState({
+    this.sshConfigured,
+    this.wolConfigured,
+    this.tailscaleConnected,
+  });
 
-  DashboardState copyWith({bool? sshConfigured, bool? wolConfigured, bool? tailscaleConnected}) {
+  DashboardState copyWith({
+    bool? sshConfigured,
+    bool? wolConfigured,
+    bool? tailscaleConnected,
+  }) {
     return DashboardState(
       sshConfigured: sshConfigured ?? this.sshConfigured,
       wolConfigured: wolConfigured ?? this.wolConfigured,
@@ -19,8 +27,9 @@ class DashboardState {
   }
 }
 
-final dashboardProvider =
-    NotifierProvider<DashboardNotifier, DashboardState>(DashboardNotifier.new);
+final dashboardProvider = NotifierProvider<DashboardNotifier, DashboardState>(
+  DashboardNotifier.new,
+);
 
 class DashboardNotifier extends Notifier<DashboardState> {
   DateTime? _lastFetch;
@@ -41,14 +50,13 @@ class DashboardNotifier extends Notifier<DashboardState> {
   }
 
   Future<void> checkAll({bool force = false}) async {
-    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!) < _ttl) {
+    if (!force &&
+        _lastFetch != null &&
+        DateTime.now().difference(_lastFetch!) < _ttl) {
       return;
     }
     final os = OsDetector.currentOS;
-    final results = await Future.wait([
-      _checkSsh(os),
-      _checkWol(os),
-    ]);
+    final results = await Future.wait([_checkSsh(os), _checkWol(os)]);
     _lastFetch = DateTime.now();
     state = DashboardState(
       sshConfigured: results[0],
@@ -68,13 +76,23 @@ class DashboardNotifier extends Notifier<DashboardState> {
           return result.stdout.contains('Running');
 
         case SupportedOS.linux:
-          var result = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'sshd']);
+          var result = await CommandRunner.run('systemctl', [
+            'is-active',
+            '--quiet',
+            'sshd',
+          ]);
           if (result.success) return true;
-          result = await CommandRunner.run('systemctl', ['is-active', '--quiet', 'ssh']);
+          result = await CommandRunner.run('systemctl', [
+            'is-active',
+            '--quiet',
+            'ssh',
+          ]);
           return result.success;
 
         case SupportedOS.macos:
-          final result = await CommandRunner.run('systemsetup', ['-getremotelogin']);
+          final result = await CommandRunner.run('systemsetup', [
+            '-getremotelogin',
+          ]);
           return result.stdout.contains('On');
       }
     } catch (_) {
@@ -105,9 +123,11 @@ class DashboardNotifier extends Notifier<DashboardState> {
 
         case SupportedOS.linux:
           // Vérifier si le service wol-enable est activé (créé par notre app)
-          final result = await CommandRunner.run(
-            'systemctl', ['is-enabled', '--quiet', 'wol-enable.service'],
-          );
+          final result = await CommandRunner.run('systemctl', [
+            'is-enabled',
+            '--quiet',
+            'wol-enable.service',
+          ]);
           return result.success;
 
         case SupportedOS.macos:
@@ -117,5 +137,4 @@ class DashboardNotifier extends Notifier<DashboardState> {
       return false;
     }
   }
-
 }

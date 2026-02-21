@@ -18,8 +18,9 @@ class ChillApp extends ConsumerWidget {
     final lockState = ref.watch(lockProvider);
     final onboardingDone = ref.watch(onboardingProvider);
     final themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    final borderColor =
-        isDark ? ChillColorsDark.border : ChillColorsLight.border;
+    final borderColor = isDark
+        ? ChillColorsDark.border
+        : ChillColorsLight.border;
 
     // Attendre que l'etat du lock soit charge depuis SharedPreferences
     if (lockState.isLoading) {

@@ -37,14 +37,19 @@ class NetworkInfo {
       ]);
       return result.stdout.isNotEmpty ? result.stdout : null;
     } else if (Platform.isMacOS) {
-      final hwResult = await CommandRunner.run('networksetup', ['-listallhardwareports']);
+      final hwResult = await CommandRunner.run('networksetup', [
+        '-listallhardwareports',
+      ]);
       final lines = hwResult.stdout.split('\n');
       for (int i = 0; i < lines.length; i++) {
         if (lines[i].contains('Ethernet') || lines[i].contains('Thunderbolt')) {
           if (i + 1 < lines.length) {
             final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
             if (match != null) {
-              final r = await CommandRunner.run('ipconfig', ['getifaddr', match.group(1)!]);
+              final r = await CommandRunner.run('ipconfig', [
+                'getifaddr',
+                match.group(1)!,
+              ]);
               if (r.stdout.isNotEmpty) return r.stdout;
             }
           }
@@ -74,10 +79,10 @@ class NetworkInfo {
       final wifiFind = await CommandRunner.run('bash', [
         '-c',
         'for iface in \$(ls /sys/class/net/); do '
-        'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
-        'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
-        'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
-        'fi; done; exit 1',
+            'if [ -d "/sys/class/net/\$iface/wireless" ]; then '
+            'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+            'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+            'fi; done; exit 1',
       ]);
       if (!wifiFind.success || wifiFind.stdout.isEmpty) return null;
       final wifiIface = wifiFind.stdout.trim();
@@ -88,14 +93,19 @@ class NetworkInfo {
       ]);
       return result.stdout.isNotEmpty ? result.stdout : null;
     } else if (Platform.isMacOS) {
-      final hwResult = await CommandRunner.run('networksetup', ['-listallhardwareports']);
+      final hwResult = await CommandRunner.run('networksetup', [
+        '-listallhardwareports',
+      ]);
       final lines = hwResult.stdout.split('\n');
       for (int i = 0; i < lines.length; i++) {
         if (lines[i].contains('Wi-Fi')) {
           if (i + 1 < lines.length) {
             final match = RegExp(r'Device:\s*(en\d+)').firstMatch(lines[i + 1]);
             if (match != null) {
-              final r = await CommandRunner.run('ipconfig', ['getifaddr', match.group(1)!]);
+              final r = await CommandRunner.run('ipconfig', [
+                'getifaddr',
+                match.group(1)!,
+              ]);
               if (r.stdout.isNotEmpty) return r.stdout;
             }
           }
@@ -134,7 +144,9 @@ class NetworkInfo {
   static Future<String?> getMacAddress(String adapter) async {
     if (!Platform.isLinux) return null;
     if (!isValidInterfaceName(adapter)) return null;
-    final result = await CommandRunner.run('cat', ['/sys/class/net/$adapter/address']);
+    final result = await CommandRunner.run('cat', [
+      '/sys/class/net/$adapter/address',
+    ]);
     return result.stdout.isNotEmpty ? result.stdout : null;
   }
 
@@ -144,18 +156,20 @@ class NetworkInfo {
     final result = await CommandRunner.run('bash', [
       '-c',
       'FALLBACK=""; '
-      'for iface in \$(ls /sys/class/net/); do '
-      'if [ "\$iface" = "lo" ]; then continue; fi; '
-      'if [ -d "/sys/class/net/\$iface/wireless" ]; then continue; fi; '
-      'if [ -e "/sys/class/net/\$iface/device" ]; then '
-      'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
-      'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
-      'FALLBACK="\$iface"; '
-      'fi; '
-      'done; '
-      'if [ -n "\$FALLBACK" ]; then echo "\$FALLBACK"; exit 0; fi; '
-      'exit 1',
+          'for iface in \$(ls /sys/class/net/); do '
+          'if [ "\$iface" = "lo" ]; then continue; fi; '
+          'if [ -d "/sys/class/net/\$iface/wireless" ]; then continue; fi; '
+          'if [ -e "/sys/class/net/\$iface/device" ]; then '
+          'carrier=\$(cat /sys/class/net/\$iface/carrier 2>/dev/null || echo "0"); '
+          'if [ "\$carrier" = "1" ]; then echo "\$iface"; exit 0; fi; '
+          'FALLBACK="\$iface"; '
+          'fi; '
+          'done; '
+          'if [ -n "\$FALLBACK" ]; then echo "\$FALLBACK"; exit 0; fi; '
+          'exit 1',
     ]);
-    return result.success && result.stdout.isNotEmpty ? result.stdout.trim() : null;
+    return result.success && result.stdout.isNotEmpty
+        ? result.stdout.trim()
+        : null;
   }
 }

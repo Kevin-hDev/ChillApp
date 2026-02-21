@@ -32,148 +32,149 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: ChillBackground(
         child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final padding = responsivePadding(width);
-          final columns = width < 600 ? 2 : 3;
-          final topSpacing = width < 600 ? 24.0 : 48.0;
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final padding = responsivePadding(width);
+            final columns = width < 600 ? 2 : 3;
+            final topSpacing = width < 600 ? 24.0 : 48.0;
 
-          // Calculer la hauteur disponible pour la grille
-          final height = constraints.maxHeight;
-          final dividerHeight = 1.0 + 8.0; // divider + spacing après
-          // La Row du header a la hauteur du plus grand enfant :
-          // texte (~68px) vs icône GitHub (110px) → 110px
-          final headerRowHeight = 110.0;
-          final headerHeight = topSpacing + headerRowHeight + 16 + dividerHeight + 8;
-          final gridHeight = height - headerHeight - padding * 2;
-          final rows = (6 / columns).ceil();
-          final totalSpacing = (rows - 1) * 16.0;
-          final cardHeight = (gridHeight - totalSpacing) / rows;
-          final gridWidth = width - padding * 2;
-          final totalHSpacing = (columns - 1) * 16.0;
-          final cardWidth = (gridWidth - totalHSpacing) / columns;
-          final aspectRatio = cardWidth / cardHeight;
+            // Calculer la hauteur disponible pour la grille
+            final height = constraints.maxHeight;
+            final dividerHeight = 1.0 + 8.0; // divider + spacing après
+            // La Row du header a la hauteur du plus grand enfant :
+            // texte (~68px) vs icône GitHub (110px) → 110px
+            final headerRowHeight = 110.0;
+            final headerHeight =
+                topSpacing + headerRowHeight + 16 + dividerHeight + 8;
+            final gridHeight = height - headerHeight - padding * 2;
+            final rows = (6 / columns).ceil();
+            final totalSpacing = (rows - 1) * 16.0;
+            final cardHeight = (gridHeight - totalSpacing) / rows;
+            final gridWidth = width - padding * 2;
+            final totalHSpacing = (columns - 1) * 16.0;
+            final cardWidth = (gridWidth - totalHSpacing) / columns;
+            final aspectRatio = cardWidth / cardHeight;
 
-          return Center(
-            child: Padding(
-              padding: EdgeInsets.all(padding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: topSpacing),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t(locale, 'dashboard.welcome'),
-                              style: theme.textTheme.headlineLarge,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              t(locale, 'dashboard.description'),
-                              style: theme.textTheme.bodyLarge,
-                            ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: _openGitHub,
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Image.asset(
-                            'assets/images/icons_github.png',
-                            width: 110,
-                            height: 110,
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: topSpacing),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t(locale, 'dashboard.welcome'),
+                                style: theme.textTheme.headlineLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                t(locale, 'dashboard.description'),
+                                style: theme.textTheme.bodyLarge,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Ligne séparatrice fine (comme le site)
-                  const ChillDivider(),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: aspectRatio.clamp(0.5, 3.0),
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                      ChillCard(
-                        icon: Icons.terminal,
-                        title: t(locale, 'dashboard.ssh.title'),
-                        description: t(locale, 'dashboard.ssh.desc'),
-                        onTap: () => context.go('/ssh'),
-                        badge: dashboard.sshConfigured != null
-                            ? StatusBadge(
-                                label: dashboard.sshConfigured!
-                                    ? t(locale, 'status.configured')
-                                    : t(locale, 'status.notConfigured'),
-                                isConfigured: dashboard.sshConfigured!,
-                              )
-                            : null,
-                      ),
-                      ChillCard(
-                        icon: Icons.power_settings_new,
-                        title: t(locale, 'dashboard.wol.title'),
-                        description: t(locale, 'dashboard.wol.desc'),
-                        onTap: () => context.go('/wol'),
-                        badge: dashboard.wolConfigured != null
-                            ? StatusBadge(
-                                label: dashboard.wolConfigured!
-                                    ? t(locale, 'status.configured')
-                                    : t(locale, 'status.notConfigured'),
-                                isConfigured: dashboard.wolConfigured!,
-                              )
-                            : null,
-                      ),
-                      ChillCard(
-                        icon: Icons.vpn_lock,
-                        title: t(locale, 'dashboard.tailscale.title'),
-                        description: t(locale, 'dashboard.tailscale.desc'),
-                        onTap: () => context.go('/tailscale'),
-                        badge: dashboard.tailscaleConnected != null
-                            ? StatusBadge(
-                                label: dashboard.tailscaleConnected!
-                                    ? t(locale, 'status.connected')
-                                    : t(locale, 'status.notConnected'),
-                                isConfigured: dashboard.tailscaleConnected!,
-                              )
-                            : null,
-                      ),
-                      ChillCard(
-                        icon: Icons.info_outline,
-                        title: t(locale, 'dashboard.info.title'),
-                        description: t(locale, 'dashboard.info.desc'),
-                        onTap: () => context.go('/info'),
-                      ),
-                      ChillCard(
-                        icon: Icons.settings,
-                        title: t(locale, 'nav.settings'),
-                        description: '',
-                        onTap: () => context.go('/settings'),
-                      ),
-                      ChillCard(
-                        icon: Icons.shield_outlined,
-                        title: t(locale, 'dashboard.security.title'),
-                        description: t(locale, 'dashboard.security.desc'),
-                        onTap: () => context.go('/security'),
-                      ),
+                        GestureDetector(
+                          onTap: _openGitHub,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: Image.asset(
+                              'assets/images/icons_github.png',
+                              width: 110,
+                              height: 110,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    // Ligne séparatrice fine (comme le site)
+                    const ChillDivider(),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: GridView.count(
+                        crossAxisCount: columns,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: aspectRatio.clamp(0.5, 3.0),
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          ChillCard(
+                            icon: Icons.terminal,
+                            title: t(locale, 'dashboard.ssh.title'),
+                            description: t(locale, 'dashboard.ssh.desc'),
+                            onTap: () => context.go('/ssh'),
+                            badge: dashboard.sshConfigured != null
+                                ? StatusBadge(
+                                    label: dashboard.sshConfigured!
+                                        ? t(locale, 'status.configured')
+                                        : t(locale, 'status.notConfigured'),
+                                    isConfigured: dashboard.sshConfigured!,
+                                  )
+                                : null,
+                          ),
+                          ChillCard(
+                            icon: Icons.power_settings_new,
+                            title: t(locale, 'dashboard.wol.title'),
+                            description: t(locale, 'dashboard.wol.desc'),
+                            onTap: () => context.go('/wol'),
+                            badge: dashboard.wolConfigured != null
+                                ? StatusBadge(
+                                    label: dashboard.wolConfigured!
+                                        ? t(locale, 'status.configured')
+                                        : t(locale, 'status.notConfigured'),
+                                    isConfigured: dashboard.wolConfigured!,
+                                  )
+                                : null,
+                          ),
+                          ChillCard(
+                            icon: Icons.vpn_lock,
+                            title: t(locale, 'dashboard.tailscale.title'),
+                            description: t(locale, 'dashboard.tailscale.desc'),
+                            onTap: () => context.go('/tailscale'),
+                            badge: dashboard.tailscaleConnected != null
+                                ? StatusBadge(
+                                    label: dashboard.tailscaleConnected!
+                                        ? t(locale, 'status.connected')
+                                        : t(locale, 'status.notConnected'),
+                                    isConfigured: dashboard.tailscaleConnected!,
+                                  )
+                                : null,
+                          ),
+                          ChillCard(
+                            icon: Icons.info_outline,
+                            title: t(locale, 'dashboard.info.title'),
+                            description: t(locale, 'dashboard.info.desc'),
+                            onTap: () => context.go('/info'),
+                          ),
+                          ChillCard(
+                            icon: Icons.settings,
+                            title: t(locale, 'nav.settings'),
+                            description: '',
+                            onTap: () => context.go('/settings'),
+                          ),
+                          ChillCard(
+                            icon: Icons.shield_outlined,
+                            title: t(locale, 'dashboard.security.title'),
+                            description: t(locale, 'dashboard.security.desc'),
+                            onTap: () => context.go('/security'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
       ),
     );
   }

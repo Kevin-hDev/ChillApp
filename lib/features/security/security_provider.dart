@@ -5,6 +5,7 @@ import 'security_commands.dart';
 import 'widgets/services_toggle_card.dart';
 
 enum CheckupStatus { ok, warning, error }
+
 enum CheckSeverity { critical, high, medium, minor }
 
 /// Poids de chaque niveau de sévérité pour le calcul du score
@@ -126,8 +127,9 @@ class SecurityState {
   }
 }
 
-final securityProvider =
-    NotifierProvider<SecurityNotifier, SecurityState>(SecurityNotifier.new);
+final securityProvider = NotifierProvider<SecurityNotifier, SecurityState>(
+  SecurityNotifier.new,
+);
 
 class SecurityNotifier extends Notifier<SecurityState> {
   DateTime? _lastFetch;
@@ -142,7 +144,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
 
   /// Vérifie l'état de chaque toggle selon l'OS (cache TTL 2 min)
   Future<void> checkAllStatuses({bool force = false}) async {
-    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!) < _ttl) {
+    if (!force &&
+        _lastFetch != null &&
+        DateTime.now().difference(_lastFetch!) < _ttl) {
       return;
     }
     state = state.copyWith(isCheckingAll: true);
@@ -175,7 +179,8 @@ class SecurityNotifier extends Notifier<SecurityState> {
     states['win.firewall'] = await SecurityCommands.checkWindowsFirewall();
     states['win.rdp'] = await SecurityCommands.checkWindowsRdp();
     states['win.smb1'] = await SecurityCommands.checkWindowsSmb1();
-    states['win.remoteRegistry'] = await SecurityCommands.checkWindowsRemoteRegistry();
+    states['win.remoteRegistry'] =
+        await SecurityCommands.checkWindowsRemoteRegistry();
     states['win.ransomware'] = await SecurityCommands.checkWindowsRansomware();
     states['win.audit'] = await SecurityCommands.checkWindowsAudit();
     states['win.updates'] = await SecurityCommands.checkWindowsUpdates();
@@ -192,28 +197,40 @@ class SecurityNotifier extends Notifier<SecurityState> {
 
     // Vérifier les installations
     installedMap['ufw'] = await SecurityCommands.checkLinuxUfwInstalled();
-    installedMap['fail2ban'] = await SecurityCommands.checkLinuxFail2banInstalled();
-    installedMap['rkhunter'] = await SecurityCommands.checkLinuxRkhunterInstalled();
-    installedMap['crowdsec'] = await SecurityCommands.checkLinuxCrowdsecInstalled();
+    installedMap['fail2ban'] =
+        await SecurityCommands.checkLinuxFail2banInstalled();
+    installedMap['rkhunter'] =
+        await SecurityCommands.checkLinuxRkhunterInstalled();
+    installedMap['crowdsec'] =
+        await SecurityCommands.checkLinuxCrowdsecInstalled();
 
-    states['linux.firewall'] = installedMap['ufw']! ? await SecurityCommands.checkLinuxFirewall() : null;
+    states['linux.firewall'] = installedMap['ufw']!
+        ? await SecurityCommands.checkLinuxFirewall()
+        : null;
     states['linux.sysctl'] = await SecurityCommands.checkLinuxSysctl();
-    states['linux.permissions'] = await SecurityCommands.checkLinuxPermissions();
-    states['linux.fail2ban'] = installedMap['fail2ban']! ? await SecurityCommands.checkLinuxFail2ban() : null;
+    states['linux.permissions'] =
+        await SecurityCommands.checkLinuxPermissions();
+    states['linux.fail2ban'] = installedMap['fail2ban']!
+        ? await SecurityCommands.checkLinuxFail2ban()
+        : null;
     states['linux.updates'] = await SecurityCommands.checkLinuxUpdates();
     states['linux.rootLogin'] = await SecurityCommands.checkLinuxRootLogin();
     states['linux.dns'] = await SecurityCommands.checkLinuxDns();
-    states['linux.crowdsec'] = installedMap['crowdsec']! ? await SecurityCommands.checkLinuxCrowdsec() : null;
+    states['linux.crowdsec'] = installedMap['crowdsec']!
+        ? await SecurityCommands.checkLinuxCrowdsec()
+        : null;
     states['linux.apparmor'] = await SecurityCommands.checkLinuxAppArmor();
 
     // Détecter les services
     final servicesList = await SecurityCommands.detectLinuxServices();
     final services = servicesList
-        .map((s) => ServiceItem(
-              name: s['name'] as String,
-              displayName: s['display'] as String,
-              isActive: s['active'] as bool,
-            ))
+        .map(
+          (s) => ServiceItem(
+            name: s['name'] as String,
+            displayName: s['display'] as String,
+            isActive: s['active'] as bool,
+          ),
+        )
         .toList();
 
     state = state.copyWith(
@@ -230,7 +247,8 @@ class SecurityNotifier extends Notifier<SecurityState> {
     states['mac.stealth'] = await SecurityCommands.checkMacStealth();
     states['mac.smb'] = await SecurityCommands.checkMacSmb();
     states['mac.updates'] = await SecurityCommands.checkMacUpdates();
-    states['mac.secureKeyboard'] = await SecurityCommands.checkMacSecureKeyboard();
+    states['mac.secureKeyboard'] =
+        await SecurityCommands.checkMacSecureKeyboard();
     states['mac.gatekeeper'] = await SecurityCommands.checkMacGatekeeper();
     states['mac.screenLock'] = await SecurityCommands.checkMacScreenLock();
     states['mac.dns'] = await SecurityCommands.checkMacDns();
@@ -278,36 +296,64 @@ class SecurityNotifier extends Notifier<SecurityState> {
   Future<bool?> _checkSingleToggle(String id) async {
     switch (id) {
       // Linux
-      case 'linux.firewall': return SecurityCommands.checkLinuxFirewall();
-      case 'linux.sysctl': return SecurityCommands.checkLinuxSysctl();
-      case 'linux.permissions': return SecurityCommands.checkLinuxPermissions();
-      case 'linux.fail2ban': return SecurityCommands.checkLinuxFail2ban();
-      case 'linux.updates': return SecurityCommands.checkLinuxUpdates();
-      case 'linux.rootLogin': return SecurityCommands.checkLinuxRootLogin();
-      case 'linux.dns': return SecurityCommands.checkLinuxDns();
-      case 'linux.crowdsec': return SecurityCommands.checkLinuxCrowdsec();
-      case 'linux.apparmor': return SecurityCommands.checkLinuxAppArmor();
+      case 'linux.firewall':
+        return SecurityCommands.checkLinuxFirewall();
+      case 'linux.sysctl':
+        return SecurityCommands.checkLinuxSysctl();
+      case 'linux.permissions':
+        return SecurityCommands.checkLinuxPermissions();
+      case 'linux.fail2ban':
+        return SecurityCommands.checkLinuxFail2ban();
+      case 'linux.updates':
+        return SecurityCommands.checkLinuxUpdates();
+      case 'linux.rootLogin':
+        return SecurityCommands.checkLinuxRootLogin();
+      case 'linux.dns':
+        return SecurityCommands.checkLinuxDns();
+      case 'linux.crowdsec':
+        return SecurityCommands.checkLinuxCrowdsec();
+      case 'linux.apparmor':
+        return SecurityCommands.checkLinuxAppArmor();
       // Windows
-      case 'win.firewall': return SecurityCommands.checkWindowsFirewall();
-      case 'win.rdp': return SecurityCommands.checkWindowsRdp();
-      case 'win.smb1': return SecurityCommands.checkWindowsSmb1();
-      case 'win.remoteRegistry': return SecurityCommands.checkWindowsRemoteRegistry();
-      case 'win.ransomware': return SecurityCommands.checkWindowsRansomware();
-      case 'win.audit': return SecurityCommands.checkWindowsAudit();
-      case 'win.updates': return SecurityCommands.checkWindowsUpdates();
-      case 'win.lsa': return SecurityCommands.checkWindowsLsa();
-      case 'win.hvci': return SecurityCommands.checkWindowsHvci();
-      case 'win.dns': return SecurityCommands.checkWindowsDns();
+      case 'win.firewall':
+        return SecurityCommands.checkWindowsFirewall();
+      case 'win.rdp':
+        return SecurityCommands.checkWindowsRdp();
+      case 'win.smb1':
+        return SecurityCommands.checkWindowsSmb1();
+      case 'win.remoteRegistry':
+        return SecurityCommands.checkWindowsRemoteRegistry();
+      case 'win.ransomware':
+        return SecurityCommands.checkWindowsRansomware();
+      case 'win.audit':
+        return SecurityCommands.checkWindowsAudit();
+      case 'win.updates':
+        return SecurityCommands.checkWindowsUpdates();
+      case 'win.lsa':
+        return SecurityCommands.checkWindowsLsa();
+      case 'win.hvci':
+        return SecurityCommands.checkWindowsHvci();
+      case 'win.dns':
+        return SecurityCommands.checkWindowsDns();
       // macOS
-      case 'mac.firewall': return SecurityCommands.checkMacFirewall();
-      case 'mac.stealth': return SecurityCommands.checkMacStealth();
-      case 'mac.smb': return SecurityCommands.checkMacSmb();
-      case 'mac.updates': return SecurityCommands.checkMacUpdates();
-      case 'mac.secureKeyboard': return SecurityCommands.checkMacSecureKeyboard();
-      case 'mac.gatekeeper': return SecurityCommands.checkMacGatekeeper();
-      case 'mac.screenLock': return SecurityCommands.checkMacScreenLock();
-      case 'mac.dns': return SecurityCommands.checkMacDns();
-      default: return null;
+      case 'mac.firewall':
+        return SecurityCommands.checkMacFirewall();
+      case 'mac.stealth':
+        return SecurityCommands.checkMacStealth();
+      case 'mac.smb':
+        return SecurityCommands.checkMacSmb();
+      case 'mac.updates':
+        return SecurityCommands.checkMacUpdates();
+      case 'mac.secureKeyboard':
+        return SecurityCommands.checkMacSecureKeyboard();
+      case 'mac.gatekeeper':
+        return SecurityCommands.checkMacGatekeeper();
+      case 'mac.screenLock':
+        return SecurityCommands.checkMacScreenLock();
+      case 'mac.dns':
+        return SecurityCommands.checkMacDns();
+      default:
+        return null;
     }
   }
 
@@ -315,68 +361,117 @@ class SecurityNotifier extends Notifier<SecurityState> {
     switch (id) {
       // Windows
       case 'win.firewall':
-        return enable ? SecurityCommands.enableWindowsFirewall() : SecurityCommands.disableWindowsFirewall();
+        return enable
+            ? SecurityCommands.enableWindowsFirewall()
+            : SecurityCommands.disableWindowsFirewall();
       case 'win.rdp':
-        return enable ? SecurityCommands.enableWindowsRdpProtection() : SecurityCommands.disableWindowsRdpProtection();
+        return enable
+            ? SecurityCommands.enableWindowsRdpProtection()
+            : SecurityCommands.disableWindowsRdpProtection();
       case 'win.smb1':
-        return enable ? SecurityCommands.enableWindowsSmb1Protection() : SecurityCommands.disableWindowsSmb1Protection();
+        return enable
+            ? SecurityCommands.enableWindowsSmb1Protection()
+            : SecurityCommands.disableWindowsSmb1Protection();
       case 'win.remoteRegistry':
         return enable
             ? SecurityCommands.enableWindowsRemoteRegistryProtection()
             : SecurityCommands.disableWindowsRemoteRegistryProtection();
       case 'win.ransomware':
-        return enable ? SecurityCommands.enableWindowsRansomware() : SecurityCommands.disableWindowsRansomware();
+        return enable
+            ? SecurityCommands.enableWindowsRansomware()
+            : SecurityCommands.disableWindowsRansomware();
       case 'win.audit':
-        return enable ? SecurityCommands.enableWindowsAudit() : SecurityCommands.disableWindowsAudit();
+        return enable
+            ? SecurityCommands.enableWindowsAudit()
+            : SecurityCommands.disableWindowsAudit();
       case 'win.updates':
-        return enable ? SecurityCommands.enableWindowsUpdates() : SecurityCommands.disableWindowsUpdates();
+        return enable
+            ? SecurityCommands.enableWindowsUpdates()
+            : SecurityCommands.disableWindowsUpdates();
       case 'win.lsa':
-        return enable ? SecurityCommands.enableWindowsLsa() : SecurityCommands.disableWindowsLsa();
+        return enable
+            ? SecurityCommands.enableWindowsLsa()
+            : SecurityCommands.disableWindowsLsa();
       case 'win.hvci':
-        return enable ? SecurityCommands.enableWindowsHvci() : SecurityCommands.disableWindowsHvci();
+        return enable
+            ? SecurityCommands.enableWindowsHvci()
+            : SecurityCommands.disableWindowsHvci();
       case 'win.dns':
-        return enable ? SecurityCommands.enableWindowsDns() : SecurityCommands.disableWindowsDns();
+        return enable
+            ? SecurityCommands.enableWindowsDns()
+            : SecurityCommands.disableWindowsDns();
 
       // Linux
       case 'linux.firewall':
-        return enable ? SecurityCommands.enableLinuxFirewall() : SecurityCommands.disableLinuxFirewall();
+        return enable
+            ? SecurityCommands.enableLinuxFirewall()
+            : SecurityCommands.disableLinuxFirewall();
       case 'linux.sysctl':
-        return enable ? SecurityCommands.enableLinuxSysctl() : SecurityCommands.disableLinuxSysctl();
+        return enable
+            ? SecurityCommands.enableLinuxSysctl()
+            : SecurityCommands.disableLinuxSysctl();
       case 'linux.permissions':
-        if (!enable) return false; // Pas de disable — on ne relâche pas les permissions
+        if (!enable)
+          return false; // Pas de disable — on ne relâche pas les permissions
         return SecurityCommands.enableLinuxPermissions();
       case 'linux.fail2ban':
-        return enable ? SecurityCommands.enableLinuxFail2ban() : SecurityCommands.disableLinuxFail2ban();
+        return enable
+            ? SecurityCommands.enableLinuxFail2ban()
+            : SecurityCommands.disableLinuxFail2ban();
       case 'linux.updates':
-        return enable ? SecurityCommands.enableLinuxUpdates() : SecurityCommands.disableLinuxUpdates();
+        return enable
+            ? SecurityCommands.enableLinuxUpdates()
+            : SecurityCommands.disableLinuxUpdates();
       case 'linux.rootLogin':
         return enable
             ? SecurityCommands.enableLinuxRootLoginProtection()
             : SecurityCommands.disableLinuxRootLoginProtection();
       case 'linux.dns':
-        return enable ? SecurityCommands.enableLinuxDns() : SecurityCommands.disableLinuxDns();
+        return enable
+            ? SecurityCommands.enableLinuxDns()
+            : SecurityCommands.disableLinuxDns();
       case 'linux.crowdsec':
-        return enable ? SecurityCommands.enableLinuxCrowdsec() : SecurityCommands.disableLinuxCrowdsec();
+        return enable
+            ? SecurityCommands.enableLinuxCrowdsec()
+            : SecurityCommands.disableLinuxCrowdsec();
       case 'linux.apparmor':
-        return enable ? SecurityCommands.enableLinuxAppArmor() : SecurityCommands.disableLinuxAppArmor();
+        return enable
+            ? SecurityCommands.enableLinuxAppArmor()
+            : SecurityCommands.disableLinuxAppArmor();
 
       // macOS
       case 'mac.firewall':
-        return enable ? SecurityCommands.enableMacFirewall() : SecurityCommands.disableMacFirewall();
+        return enable
+            ? SecurityCommands.enableMacFirewall()
+            : SecurityCommands.disableMacFirewall();
       case 'mac.stealth':
-        return enable ? SecurityCommands.enableMacStealth() : SecurityCommands.disableMacStealth();
+        return enable
+            ? SecurityCommands.enableMacStealth()
+            : SecurityCommands.disableMacStealth();
       case 'mac.smb':
-        return enable ? SecurityCommands.enableMacSmbProtection() : SecurityCommands.disableMacSmbProtection();
+        return enable
+            ? SecurityCommands.enableMacSmbProtection()
+            : SecurityCommands.disableMacSmbProtection();
       case 'mac.updates':
-        return enable ? SecurityCommands.enableMacUpdates() : SecurityCommands.disableMacUpdates();
+        return enable
+            ? SecurityCommands.enableMacUpdates()
+            : SecurityCommands.disableMacUpdates();
       case 'mac.secureKeyboard':
-        return enable ? SecurityCommands.enableMacSecureKeyboard() : SecurityCommands.disableMacSecureKeyboard();
+        return enable
+            ? SecurityCommands.enableMacSecureKeyboard()
+            : SecurityCommands.disableMacSecureKeyboard();
       case 'mac.gatekeeper':
-        return enable ? SecurityCommands.enableMacGatekeeper() : SecurityCommands.disableMacGatekeeper();
+        return enable
+            ? SecurityCommands.enableMacGatekeeper()
+            : SecurityCommands.disableMacGatekeeper();
       case 'mac.screenLock':
-        return enable ? SecurityCommands.enableMacScreenLock() : SecurityCommands.disableMacScreenLock();
+        return enable
+            ? SecurityCommands.enableMacScreenLock()
+            : SecurityCommands.disableMacScreenLock();
       case 'mac.dns':
-        return enable ? SecurityCommands.enableMacDns() : SecurityCommands.disableMacDns();
+        return enable
+            ? SecurityCommands.enableMacDns()
+            : SecurityCommands.disableMacDns();
 
       default:
         return false;
@@ -430,7 +525,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
     state = state.copyWith(loadingServices: loadingServices);
 
     try {
-      final currentService = state.services.firstWhere((s) => s.name == serviceName);
+      final currentService = state.services.firstWhere(
+        (s) => s.name == serviceName,
+      );
       final success = await SecurityCommands.toggleLinuxService(
         serviceName,
         !currentService.isActive,

@@ -8,15 +8,20 @@ const Map<String, Map<String, String>> translations = {
     'onboarding.continue': 'Continuer',
     'onboarding.start': 'C\'est parti !',
     'onboarding.welcome.title': 'Bienvenue sur Chill',
-    'onboarding.welcome.desc': 'Configure ton PC en quelques clics, sans toucher au terminal. SSH, Wake-on-LAN, Tailscale — tout est regroupé ici.',
+    'onboarding.welcome.desc':
+        'Configure ton PC en quelques clics, sans toucher au terminal. SSH, Wake-on-LAN, Tailscale — tout est regroupé ici.',
     'onboarding.ssh.title': 'SSH sans prise de tête',
-    'onboarding.ssh.desc': 'Active le serveur SSH de ton PC automatiquement. Connecte-toi depuis n\'importe quel appareil en toute sécurité.',
+    'onboarding.ssh.desc':
+        'Active le serveur SSH de ton PC automatiquement. Connecte-toi depuis n\'importe quel appareil en toute sécurité.',
     'onboarding.wol.title': 'Allume ton PC avec ton téléphone',
-    'onboarding.wol.desc': 'Configure le Wake-on-LAN pour allumer ton PC depuis ton téléphone quand tu es chez toi, connecté au même WiFi.',
+    'onboarding.wol.desc':
+        'Configure le Wake-on-LAN pour allumer ton PC depuis ton téléphone quand tu es chez toi, connecté au même WiFi.',
     'onboarding.tailscale.title': 'Accès depuis n\'importe où',
-    'onboarding.tailscale.desc': 'Tailscale crée un tunnel sécurisé entre tes appareils. Accède à ton PC depuis le travail, un café ou en 4G — sans ouvrir de ports.',
+    'onboarding.tailscale.desc':
+        'Tailscale crée un tunnel sécurisé entre tes appareils. Accède à ton PC depuis le travail, un café ou en 4G — sans ouvrir de ports.',
     'onboarding.ready.title': 'Tout est prêt !',
-    'onboarding.ready.desc': 'Choisis ce que tu veux configurer et laisse-toi guider. Chill s\'occupe de tout.',
+    'onboarding.ready.desc':
+        'Choisis ce que tu veux configurer et laisse-toi guider. Chill s\'occupe de tout.',
 
     // Navigation
     'nav.dashboard': 'Accueil',
@@ -37,9 +42,11 @@ const Map<String, Map<String, String>> translations = {
 
     // SSH Setup
     'ssh.title': 'Configuration SSH',
-    'ssh.intro': 'Installe et active le serveur SSH pour que ChillShell puisse se connecter à ce PC.',
+    'ssh.intro':
+        'Installe et active le serveur SSH pour que ChillShell puisse se connecter à ce PC.',
     'ssh.explanation.title': 'Qu\'est-ce que ça fait ?',
-    'ssh.explanation.content': 'Cette configuration installe un service appelé SSH sur ton ordinateur. '
+    'ssh.explanation.content':
+        'Cette configuration installe un service appelé SSH sur ton ordinateur. '
         'SSH permet à ChillShell (l\'app mobile) de se connecter à ce PC à distance, '
         'comme une télécommande sécurisée. '
         'Concrètement, on va installer le logiciel nécessaire, l\'activer, '
@@ -67,9 +74,12 @@ const Map<String, Map<String, String>> translations = {
 
     // WoL Setup
     'wol.title': 'Configuration Wake-on-LAN',
-    'wol.intro': 'Active le Wake-on-LAN pour pouvoir allumer ce PC avec ton téléphone via ChillShell.',
-    'wol.biosWarning': 'Le BIOS doit être configuré manuellement. Une fois la configuration terminée, clique sur le bouton tutoriel BIOS juste en dessous.',
-    'wol.notAvailableMac': 'Le Wake-on-LAN n\'est pas disponible sur Mac en V1.',
+    'wol.intro':
+        'Active le Wake-on-LAN pour pouvoir allumer ce PC avec ton téléphone via ChillShell.',
+    'wol.biosWarning':
+        'Le BIOS doit être configuré manuellement. Une fois la configuration terminée, clique sur le bouton tutoriel BIOS juste en dessous.',
+    'wol.notAvailableMac':
+        'Le Wake-on-LAN n\'est pas disponible sur Mac en V1.',
     'wol.configureAll': 'Tout configurer',
     'wol.step.findAdapter': 'Trouver la carte Ethernet',
     'wol.step.enableMagicPacket': 'Activer Wake on Magic Packet',
@@ -80,7 +90,8 @@ const Map<String, Map<String, String>> translations = {
     'wol.step.installEthtool': 'Installer ethtool',
     'wol.step.enableWol': 'Activer le Wake-on-LAN',
     'wol.explanation.title': 'Qu\'est-ce que ça fait ?',
-    'wol.explanation.content': 'Le Wake-on-LAN (WoL) permet d\'allumer ton PC avec ton téléphone, tant que tu es connecté au même WiFi. '
+    'wol.explanation.content':
+        'Le Wake-on-LAN (WoL) permet d\'allumer ton PC avec ton téléphone, tant que tu es connecté au même WiFi. '
         'ChillShell envoie un signal spécial appelé "Magic Packet" à ta carte réseau, '
         'et celle-ci allume ton PC même quand il est éteint. '
         'On va activer cette fonctionnalité sur ta carte réseau '
@@ -92,13 +103,15 @@ const Map<String, Map<String, String>> translations = {
     'wol.result.adapter': 'Carte réseau',
     'wol.result.ipEthernet': 'Adresse IP Ethernet',
     'wol.result.ipWifi': 'Adresse IP WiFi',
-    'wol.result.reminder': 'N\'oublie pas de configurer ton BIOS ! '
+    'wol.result.reminder':
+        'N\'oublie pas de configurer ton BIOS ! '
         'Le WoL ne fonctionnera pas sans la configuration BIOS. '
         'Consulte le tuto BIOS sur le site ChillShell.',
     'wol.biosTutorial': 'Voir le tutoriel BIOS',
     'wol.biosTutorial.desc': 'Apprends à activer le WoL dans ton BIOS',
     'wol.error.retry': 'Réessayer',
-    'wol.linuxWarning': 'Sur Linux, le Wake-on-LAN peut ne pas fonctionner selon ta carte réseau '
+    'wol.linuxWarning':
+        'Sur Linux, le Wake-on-LAN peut ne pas fonctionner selon ta carte réseau '
         'et ton noyau Linux. Le WoL fonctionne de manière plus fiable quand le PC '
         'est éteint depuis Windows. Si tu fais du dual-boot, éteins depuis Windows '
         'avant d\'essayer d\'allumer via WoL.',
@@ -107,20 +120,25 @@ const Map<String, Map<String, String>> translations = {
     'dashboard.tailscale.title': 'Tailscale',
     'dashboard.tailscale.desc': 'Accède à ton PC de n\'importe où.',
     'tailscale.title': 'Tailscale',
-    'tailscale.intro': 'Accède à ce PC depuis n\'importe où grâce à Tailscale, intégré directement dans Chill.',
+    'tailscale.intro':
+        'Accède à ce PC depuis n\'importe où grâce à Tailscale, intégré directement dans Chill.',
     'tailscale.explanation.title': 'Qu\'est-ce que Tailscale ?',
-    'tailscale.explanation.content': 'Tailscale crée un réseau privé entre tes appareils, accessible depuis n\'importe où dans le monde. '
+    'tailscale.explanation.content':
+        'Tailscale crée un réseau privé entre tes appareils, accessible depuis n\'importe où dans le monde. '
         'Contrairement au WiFi local, Tailscale fonctionne même si tu es dans un café, au travail ou en 4G. '
         'ChillShell peut se connecter à ce PC via son adresse Tailscale, sans configuration de routeur ni ouverture de ports. '
         'C\'est comme un VPN, mais simple et gratuit pour un usage personnel.',
     'tailscale.login.title': 'Se connecter à Tailscale',
-    'tailscale.login.desc': 'Connecte-toi avec ton compte Tailscale. Ton navigateur va s\'ouvrir pour l\'authentification.',
+    'tailscale.login.desc':
+        'Connecte-toi avec ton compte Tailscale. Ton navigateur va s\'ouvrir pour l\'authentification.',
     'tailscale.login.button': 'Se connecter',
-    'tailscale.login.waiting': 'En attente de connexion... Vérifie ton navigateur.',
+    'tailscale.login.waiting':
+        'En attente de connexion... Vérifie ton navigateur.',
     'tailscale.signup.button': 'Créer un compte',
     'tailscale.signup.desc': 'Pas encore de compte Tailscale ? C\'est gratuit.',
     'tailscale.error.retry': 'Réessayer',
-    'tailscale.error.daemonNotFound': 'Le moteur Tailscale est introuvable. Réinstalle l\'application.',
+    'tailscale.error.daemonNotFound':
+        'Le moteur Tailscale est introuvable. Réinstalle l\'application.',
     'tailscale.connected.title': 'Connecté',
     'tailscale.connected.selfTitle': 'Ce PC sur Tailscale',
     'tailscale.connected.hostname': 'Nom de la machine',
@@ -128,7 +146,8 @@ const Map<String, Map<String, String>> translations = {
     'tailscale.connected.peersTitle': 'Appareils sur ton réseau',
     'tailscale.connected.peersPC': 'Ordinateurs',
     'tailscale.connected.peersMobile': 'Mobiles',
-    'tailscale.connected.noPeers': 'Aucun autre appareil trouvé. Installe Tailscale sur un autre appareil pour le voir ici.',
+    'tailscale.connected.noPeers':
+        'Aucun autre appareil trouvé. Installe Tailscale sur un autre appareil pour le voir ici.',
     'tailscale.connected.online': 'En ligne',
     'tailscale.connected.offline': 'Hors ligne',
     'tailscale.connected.logout': 'Se déconnecter',
@@ -151,7 +170,8 @@ const Map<String, Map<String, String>> translations = {
     'info.refresh': 'Rafraîchir',
     'info.notFound': 'Non trouvée',
     'info.recommend.title': 'Recommandé : utilise Tailscale',
-    'info.recommend.content': 'Les adresses IP ci-dessus changent régulièrement et ne fonctionnent que sur ton réseau local. '
+    'info.recommend.content':
+        'Les adresses IP ci-dessus changent régulièrement et ne fonctionnent que sur ton réseau local. '
         'Pour une connexion sécurisée et stable depuis n\'importe où, utilise plutôt ton adresse IP Tailscale. '
         'Rends-toi sur l\'onglet Tailscale pour créer ton compte et te connecter.',
     'info.recommend.button': 'Aller sur Tailscale',
@@ -165,7 +185,8 @@ const Map<String, Map<String, String>> translations = {
     'settings.langFr': 'Français',
     'settings.langEn': 'English',
     'settings.autostart': 'Lancement au démarrage',
-    'settings.autostart.desc': 'Lance Chill automatiquement quand tu allumes ton PC.',
+    'settings.autostart.desc':
+        'Lance Chill automatiquement quand tu allumes ton PC.',
     'settings.lock': 'Verrouillage PIN',
     'settings.lock.desc': 'Protège l\'accès à l\'application',
     'settings.lock.change': 'Changer le PIN',
@@ -173,7 +194,8 @@ const Map<String, Map<String, String>> translations = {
     'settings.lock.confirm': 'Confirme ton code PIN',
     'settings.lock.mismatch': 'Les codes PIN ne correspondent pas',
     'settings.lock.enterCurrent': 'Entre ton PIN actuel',
-    'settings.lock.warning': 'Choisis un code dont tu te souviendras. '
+    'settings.lock.warning':
+        'Choisis un code dont tu te souviendras. '
         'Aucune procédure de réinitialisation n\'est disponible. '
         'Si tu oublies ton PIN, tu devras réinstaller l\'application.',
 
@@ -189,10 +211,12 @@ const Map<String, Map<String, String>> translations = {
 
     // Sécurité — Page
     'security.title': 'Sécurité du système',
-    'security.intro': 'Renforce la sécurité de ton OS. Active ou désactive les protections selon tes besoins.',
+    'security.intro':
+        'Renforce la sécurité de ton OS. Active ou désactive les protections selon tes besoins.',
     'security.toggles.title': 'Protections',
     'security.checkup.title': 'Checkup système',
-    'security.checkup.desc': 'Analyse l\'état de sécurité de ton système. Rien n\'est modifié, on constate.',
+    'security.checkup.desc':
+        'Analyse l\'état de sécurité de ton système. Rien n\'est modifié, on constate.',
     'security.checkup.button': 'Lancer le checkup',
     'security.checkup.running': 'Analyse en cours...',
     'security.checkup.score': 'Score',
@@ -208,72 +232,100 @@ const Map<String, Map<String, String>> translations = {
     'security.needsInstall': 'Pas installé',
     'security.install': 'Installer',
     'security.install.confirm': 'Installer ?',
-    'security.install.desc': 'Cette action va installer le logiciel sur ton système. Mot de passe administrateur requis.',
+    'security.install.desc':
+        'Cette action va installer le logiciel sur ton système. Mot de passe administrateur requis.',
     'security.install.success': 'Installé avec succès.',
     'security.elevationDenied': 'Autorisation refusée',
     'security.error': 'Erreur lors de l\'exécution',
 
     // Sécurité — Windows
     'security.win.firewall': 'Pare-feu Windows',
-    'security.win.firewall.desc': 'Active le pare-feu sur tous les profils réseau (privé, public, domaine). Bloque les connexions entrantes non autorisées.',
+    'security.win.firewall.desc':
+        'Active le pare-feu sur tous les profils réseau (privé, public, domaine). Bloque les connexions entrantes non autorisées.',
     'security.win.rdp': 'Bureau à distance',
-    'security.win.rdp.desc': 'Désactive le Bureau à distance (Remote Desktop). Si tu n\'utilises pas cette fonctionnalité, la désactiver empêche les accès non autorisés.',
+    'security.win.rdp.desc':
+        'Désactive le Bureau à distance (Remote Desktop). Si tu n\'utilises pas cette fonctionnalité, la désactiver empêche les accès non autorisés.',
     'security.win.smb1': 'Protocole SMBv1',
-    'security.win.smb1.desc': 'Désactive le protocole SMBv1, un ancien protocole réseau exploité par des ransomwares comme WannaCry. Aucun logiciel moderne n\'en a besoin.',
+    'security.win.smb1.desc':
+        'Désactive le protocole SMBv1, un ancien protocole réseau exploité par des ransomwares comme WannaCry. Aucun logiciel moderne n\'en a besoin.',
     'security.win.remoteRegistry': 'Remote Registry',
-    'security.win.remoteRegistry.desc': 'Désactive le service Remote Registry qui permet de modifier la base de registre à distance. Inutile pour un usage personnel.',
+    'security.win.remoteRegistry.desc':
+        'Désactive le service Remote Registry qui permet de modifier la base de registre à distance. Inutile pour un usage personnel.',
     'security.win.ransomware': 'Anti-ransomware',
-    'security.win.ransomware.desc': 'Active la protection des dossiers contre les ransomwares (Controlled Folder Access). Peut bloquer certains programmes — tu devras peut-être ajouter des exceptions.',
+    'security.win.ransomware.desc':
+        'Active la protection des dossiers contre les ransomwares (Controlled Folder Access). Peut bloquer certains programmes — tu devras peut-être ajouter des exceptions.',
     'security.win.audit': 'Audit des connexions',
-    'security.win.audit.desc': 'Active la journalisation des tentatives de connexion (réussies et échouées). Utile pour détecter des tentatives d\'intrusion.',
+    'security.win.audit.desc':
+        'Active la journalisation des tentatives de connexion (réussies et échouées). Utile pour détecter des tentatives d\'intrusion.',
     'security.win.updates': 'Mises à jour auto',
-    'security.win.updates.desc': 'Force les mises à jour Windows automatiques. Les correctifs de sécurité sont installés dès qu\'ils sont disponibles.',
+    'security.win.updates.desc':
+        'Force les mises à jour Windows automatiques. Les correctifs de sécurité sont installés dès qu\'ils sont disponibles.',
     'security.win.lsa': 'Protection LSA',
-    'security.win.lsa.desc': 'Active la protection LSA (RunAsPPL) qui empêche l\'injection de code dans le processus de sécurité Windows. Protège les identifiants stockés en mémoire.',
+    'security.win.lsa.desc':
+        'Active la protection LSA (RunAsPPL) qui empêche l\'injection de code dans le processus de sécurité Windows. Protège les identifiants stockés en mémoire.',
     'security.win.hvci': 'Intégrité mémoire (Core Isolation)',
-    'security.win.hvci.desc': 'Active l\'intégrité de la mémoire (HVCI). Utilise la virtualisation pour isoler les processus critiques et empêcher les drivers malveillants. Nécessite un redémarrage.',
+    'security.win.hvci.desc':
+        'Active l\'intégrité de la mémoire (HVCI). Utilise la virtualisation pour isoler les processus critiques et empêcher les drivers malveillants. Nécessite un redémarrage.',
 
     // Sécurité — DNS (tous OS)
     'security.dns': 'DNS sécurisé (Quad9)',
-    'security.dns.desc': 'Utilise les serveurs DNS Quad9 (9.9.9.9) qui bloquent automatiquement les sites malveillants et le phishing. Gratuit, rapide et respectueux de la vie privée.',
+    'security.dns.desc':
+        'Utilise les serveurs DNS Quad9 (9.9.9.9) qui bloquent automatiquement les sites malveillants et le phishing. Gratuit, rapide et respectueux de la vie privée.',
 
     // Sécurité — Linux
     'security.linux.firewall': 'Pare-feu (UFW)',
-    'security.linux.firewall.desc': 'Active le pare-feu UFW avec une politique par défaut : bloquer les connexions entrantes, autoriser les sortantes. SSH reste autorisé.',
+    'security.linux.firewall.desc':
+        'Active le pare-feu UFW avec une politique par défaut : bloquer les connexions entrantes, autoriser les sortantes. SSH reste autorisé.',
     'security.linux.sysctl': 'Paramètres réseau sécurisés',
-    'security.linux.sysctl.desc': 'Empêche le PC d\'accepter des instructions réseau frauduleuses (redirection de trafic, usurpation d\'adresse).',
+    'security.linux.sysctl.desc':
+        'Empêche le PC d\'accepter des instructions réseau frauduleuses (redirection de trafic, usurpation d\'adresse).',
     'security.linux.services': 'Services inutiles',
-    'security.linux.services.desc': 'Désactive les services que tu n\'utilises pas (impression, découverte réseau...). Choisis ceux à désactiver.',
+    'security.linux.services.desc':
+        'Désactive les services que tu n\'utilises pas (impression, découverte réseau...). Choisis ceux à désactiver.',
     'security.linux.permissions': 'Permissions fichiers sensibles',
-    'security.linux.permissions.desc': 'Vérifie et corrige les permissions des fichiers système sensibles (/etc/shadow, /etc/ssh).',
+    'security.linux.permissions.desc':
+        'Vérifie et corrige les permissions des fichiers système sensibles (/etc/shadow, /etc/ssh).',
     'security.linux.fail2ban': 'Fail2Ban (anti brute-force)',
-    'security.linux.fail2ban.desc': 'Bannit temporairement les adresses IP qui échouent à se connecter en SSH trop de fois. Protection contre les attaques par force brute.',
+    'security.linux.fail2ban.desc':
+        'Bannit temporairement les adresses IP qui échouent à se connecter en SSH trop de fois. Protection contre les attaques par force brute.',
     'security.linux.updates': 'Mises à jour auto sécurité',
-    'security.linux.updates.desc': 'Active les mises à jour de sécurité automatiques. Les correctifs critiques sont installés sans intervention.',
+    'security.linux.updates.desc':
+        'Active les mises à jour de sécurité automatiques. Les correctifs critiques sont installés sans intervention.',
     'security.linux.rootLogin': 'Login root par mot de passe',
-    'security.linux.rootLogin.desc': 'Désactive la connexion directe au compte root par mot de passe. Le root reste accessible via sudo.',
+    'security.linux.rootLogin.desc':
+        'Désactive la connexion directe au compte root par mot de passe. Le root reste accessible via sudo.',
     'security.linux.crowdsec': 'CrowdSec (protection collaborative)',
-    'security.linux.crowdsec.desc': 'Outil de sécurité communautaire qui analyse le comportement des connexions et bloque les IP malveillantes grâce à une base de données partagée par des milliers d\'utilisateurs.',
+    'security.linux.crowdsec.desc':
+        'Outil de sécurité communautaire qui analyse le comportement des connexions et bloque les IP malveillantes grâce à une base de données partagée par des milliers d\'utilisateurs.',
     'security.linux.apparmor': 'AppArmor',
-    'security.linux.apparmor.desc': 'Système de contrôle d\'accès qui limite ce que chaque programme peut faire sur ton système. Empêche les logiciels de sortir de leur zone autorisée.',
+    'security.linux.apparmor.desc':
+        'Système de contrôle d\'accès qui limite ce que chaque programme peut faire sur ton système. Empêche les logiciels de sortir de leur zone autorisée.',
     'security.linux.rkhunter': 'rkhunter (détection rootkits)',
-    'security.linux.rkhunter.desc': 'Outil de détection de rootkits et fichiers suspects. Doit être installé pour fonctionner.',
+    'security.linux.rkhunter.desc':
+        'Outil de détection de rootkits et fichiers suspects. Doit être installé pour fonctionner.',
 
     // Sécurité — macOS
     'security.mac.firewall': 'Pare-feu applicatif',
-    'security.mac.firewall.desc': 'Active le pare-feu intégré de macOS. Bloque les connexions entrantes non autorisées par application.',
+    'security.mac.firewall.desc':
+        'Active le pare-feu intégré de macOS. Bloque les connexions entrantes non autorisées par application.',
     'security.mac.stealth': 'Mode furtif',
-    'security.mac.stealth.desc': 'Le Mac ne répond plus aux pings et scans de ports. La machine devient invisible sur le réseau.',
+    'security.mac.stealth.desc':
+        'Le Mac ne répond plus aux pings et scans de ports. La machine devient invisible sur le réseau.',
     'security.mac.smb': 'Partage de fichiers (SMB)',
-    'security.mac.smb.desc': 'Désactive le partage de fichiers réseau. Si tu ne partages pas de fichiers, désactiver cette option renforce la sécurité.',
+    'security.mac.smb.desc':
+        'Désactive le partage de fichiers réseau. Si tu ne partages pas de fichiers, désactiver cette option renforce la sécurité.',
     'security.mac.updates': 'Mises à jour auto',
-    'security.mac.updates.desc': 'Active la vérification et l\'installation automatique des mises à jour et correctifs de sécurité.',
+    'security.mac.updates.desc':
+        'Active la vérification et l\'installation automatique des mises à jour et correctifs de sécurité.',
     'security.mac.secureKeyboard': 'Saisie clavier sécurisée',
-    'security.mac.secureKeyboard.desc': 'Empêche les autres applications d\'intercepter ce que tu tapes dans le Terminal (protection keylogger).',
+    'security.mac.secureKeyboard.desc':
+        'Empêche les autres applications d\'intercepter ce que tu tapes dans le Terminal (protection keylogger).',
     'security.mac.gatekeeper': 'Gatekeeper',
-    'security.mac.gatekeeper.desc': 'Bloque l\'exécution des applications non signées par Apple. Protège contre les logiciels malveillants.',
+    'security.mac.gatekeeper.desc':
+        'Bloque l\'exécution des applications non signées par Apple. Protège contre les logiciels malveillants.',
     'security.mac.screenLock': 'Verrouillage écran immédiat',
-    'security.mac.screenLock.desc': 'Demande le mot de passe immédiatement après la mise en veille. Empêche l\'accès physique non autorisé.',
+    'security.mac.screenLock.desc':
+        'Demande le mot de passe immédiatement après la mise en veille. Empêche l\'accès physique non autorisé.',
 
     // Sécurité — Checkup items
     'security.checkup.firewall': 'Pare-feu',
@@ -312,15 +364,19 @@ const Map<String, Map<String, String>> translations = {
 
     // Sécurité — Scan
     'security.scan.title': 'Analyse de sécurité',
-    'security.scan.desc.linux': 'Lance une analyse rkhunter pour détecter les rootkits, fichiers suspects et modifications système anormales.',
-    'security.scan.desc.windows': 'Lance une analyse rapide Windows Defender pour détecter les menaces sur ton système.',
+    'security.scan.desc.linux':
+        'Lance une analyse rkhunter pour détecter les rootkits, fichiers suspects et modifications système anormales.',
+    'security.scan.desc.windows':
+        'Lance une analyse rapide Windows Defender pour détecter les menaces sur ton système.',
     'security.scan.button': 'Lancer l\'analyse',
     'security.scan.running': 'Analyse en cours...',
-    'security.scan.patience': 'Ça peut prendre quelques minutes, ne ferme pas l\'app.',
+    'security.scan.patience':
+        'Ça peut prendre quelques minutes, ne ferme pas l\'app.',
     'security.scan.clean': 'Aucune menace détectée',
     'security.scan.warnings': '{count} avertissement(s) détecté(s)',
     'security.reboot.title': 'Redémarrage nécessaire',
-    'security.reboot.message': 'Ce réglage sera appliqué au prochain redémarrage de ton PC. Pense à redémarrer pour que la protection soit active.',
+    'security.reboot.message':
+        'Ce réglage sera appliqué au prochain redémarrage de ton PC. Pense à redémarrer pour que la protection soit active.',
     'security.reboot.ok': 'Compris',
 
     // Sécurité — Détails checkup (traduits depuis les codes)
@@ -363,9 +419,11 @@ const Map<String, Map<String, String>> translations = {
     'security.detail.sip.active': 'SIP activé',
     'security.detail.sip.inactive': 'SIP désactivé (risque élevé)',
     'security.detail.macPolicy.apparmor': 'AppArmor actif',
-    'security.detail.macPolicy.apparmor_inactive': 'AppArmor installé mais inactif',
+    'security.detail.macPolicy.apparmor_inactive':
+        'AppArmor installé mais inactif',
     'security.detail.macPolicy.selinux': 'SELinux en mode Enforcing',
-    'security.detail.macPolicy.selinux_permissive': 'SELinux en mode Permissive',
+    'security.detail.macPolicy.selinux_permissive':
+        'SELinux en mode Permissive',
     'security.detail.macPolicy.none': 'Aucun contrôle d\'accès détecté',
     'security.detail.dns.active': 'DNS Quad9 configuré',
     'security.detail.dns.inactive': 'DNS par défaut (non sécurisé)',
@@ -373,7 +431,8 @@ const Map<String, Map<String, String>> translations = {
     'security.detail.crowdsec.inactive': 'CrowdSec installé mais inactif',
     'security.detail.crowdsec.missing': 'Non installé',
     'security.detail.autoUpdates.active': 'Mises à jour automatiques activées',
-    'security.detail.autoUpdates.inactive': 'Mises à jour automatiques désactivées',
+    'security.detail.autoUpdates.inactive':
+        'Mises à jour automatiques désactivées',
     'security.detail.hvci.active': 'Intégrité mémoire activée',
     'security.detail.hvci.inactive': 'Intégrité mémoire désactivée',
     'security.detail.audit.active': 'Audit des connexions activé',
@@ -396,15 +455,20 @@ const Map<String, Map<String, String>> translations = {
     'onboarding.continue': 'Continue',
     'onboarding.start': 'Let\'s go!',
     'onboarding.welcome.title': 'Welcome to Chill',
-    'onboarding.welcome.desc': 'Set up your PC in a few clicks, no terminal needed. SSH, Wake-on-LAN, Tailscale — all in one place.',
+    'onboarding.welcome.desc':
+        'Set up your PC in a few clicks, no terminal needed. SSH, Wake-on-LAN, Tailscale — all in one place.',
     'onboarding.ssh.title': 'SSH made simple',
-    'onboarding.ssh.desc': 'Activate your PC\'s SSH server automatically. Connect from any device securely.',
+    'onboarding.ssh.desc':
+        'Activate your PC\'s SSH server automatically. Connect from any device securely.',
     'onboarding.wol.title': 'Turn on your PC with your phone',
-    'onboarding.wol.desc': 'Set up Wake-on-LAN to power on your PC from your phone when you\'re home, connected to the same WiFi.',
+    'onboarding.wol.desc':
+        'Set up Wake-on-LAN to power on your PC from your phone when you\'re home, connected to the same WiFi.',
     'onboarding.tailscale.title': 'Access from anywhere',
-    'onboarding.tailscale.desc': 'Tailscale creates a secure tunnel between your devices. Access your PC from work, a cafe or on mobile data — no port forwarding needed.',
+    'onboarding.tailscale.desc':
+        'Tailscale creates a secure tunnel between your devices. Access your PC from work, a cafe or on mobile data — no port forwarding needed.',
     'onboarding.ready.title': 'All set!',
-    'onboarding.ready.desc': 'Pick what you want to configure and follow the steps. Chill handles everything.',
+    'onboarding.ready.desc':
+        'Pick what you want to configure and follow the steps. Chill handles everything.',
 
     // Navigation
     'nav.dashboard': 'Home',
@@ -425,9 +489,11 @@ const Map<String, Map<String, String>> translations = {
 
     // SSH Setup
     'ssh.title': 'SSH Setup',
-    'ssh.intro': 'Install and activate the SSH server so ChillShell can connect to this PC.',
+    'ssh.intro':
+        'Install and activate the SSH server so ChillShell can connect to this PC.',
     'ssh.explanation.title': 'What does this do?',
-    'ssh.explanation.content': 'This setup installs a service called SSH on your computer. '
+    'ssh.explanation.content':
+        'This setup installs a service called SSH on your computer. '
         'SSH allows ChillShell (the mobile app) to connect to this PC remotely, '
         'like a secure remote control. '
         'We will install the necessary software, activate it, '
@@ -455,8 +521,10 @@ const Map<String, Map<String, String>> translations = {
 
     // WoL Setup
     'wol.title': 'Wake-on-LAN Setup',
-    'wol.intro': 'Enable Wake-on-LAN to turn on this PC with your phone via ChillShell.',
-    'wol.biosWarning': 'BIOS must be configured manually. Once the setup is complete, click the BIOS tutorial button just below.',
+    'wol.intro':
+        'Enable Wake-on-LAN to turn on this PC with your phone via ChillShell.',
+    'wol.biosWarning':
+        'BIOS must be configured manually. Once the setup is complete, click the BIOS tutorial button just below.',
     'wol.notAvailableMac': 'Wake-on-LAN is not available on Mac in V1.',
     'wol.configureAll': 'Configure All',
     'wol.step.findAdapter': 'Find Ethernet adapter',
@@ -468,7 +536,8 @@ const Map<String, Map<String, String>> translations = {
     'wol.step.installEthtool': 'Install ethtool',
     'wol.step.enableWol': 'Enable Wake-on-LAN',
     'wol.explanation.title': 'What does this do?',
-    'wol.explanation.content': 'Wake-on-LAN (WoL) lets you turn on your PC with your phone, as long as you\'re on the same WiFi. '
+    'wol.explanation.content':
+        'Wake-on-LAN (WoL) lets you turn on your PC with your phone, as long as you\'re on the same WiFi. '
         'ChillShell sends a special signal called a "Magic Packet" to your network card, '
         'which powers on your PC even when it\'s off. '
         'We will enable this feature on your network card '
@@ -480,13 +549,15 @@ const Map<String, Map<String, String>> translations = {
     'wol.result.adapter': 'Network adapter',
     'wol.result.ipEthernet': 'Ethernet IP Address',
     'wol.result.ipWifi': 'WiFi IP Address',
-    'wol.result.reminder': 'Don\'t forget to configure your BIOS! '
+    'wol.result.reminder':
+        'Don\'t forget to configure your BIOS! '
         'WoL won\'t work without the BIOS configuration. '
         'Check the BIOS tutorial on the ChillShell website.',
     'wol.biosTutorial': 'See the BIOS tutorial',
     'wol.biosTutorial.desc': 'Learn how to enable WoL in your BIOS',
     'wol.error.retry': 'Retry',
-    'wol.linuxWarning': 'On Linux, Wake-on-LAN may not work depending on your network card '
+    'wol.linuxWarning':
+        'On Linux, Wake-on-LAN may not work depending on your network card '
         'and Linux kernel. WoL works more reliably when the PC is shut down from Windows. '
         'If you dual-boot, shut down from Windows before trying to wake via WoL.',
 
@@ -494,20 +565,24 @@ const Map<String, Map<String, String>> translations = {
     'dashboard.tailscale.title': 'Tailscale',
     'dashboard.tailscale.desc': 'Access your PC from anywhere.',
     'tailscale.title': 'Tailscale',
-    'tailscale.intro': 'Access this PC from anywhere with Tailscale, built right into Chill.',
+    'tailscale.intro':
+        'Access this PC from anywhere with Tailscale, built right into Chill.',
     'tailscale.explanation.title': 'What is Tailscale?',
-    'tailscale.explanation.content': 'Tailscale creates a private network between your devices, accessible from anywhere in the world. '
+    'tailscale.explanation.content':
+        'Tailscale creates a private network between your devices, accessible from anywhere in the world. '
         'Unlike local WiFi, Tailscale works even if you\'re at a cafe, at work, or on cellular data. '
         'ChillShell can connect to this PC via its Tailscale address, without router configuration or opening ports. '
         'It\'s like a VPN, but simple and free for personal use.',
     'tailscale.login.title': 'Connect to Tailscale',
-    'tailscale.login.desc': 'Sign in with your Tailscale account. Your browser will open for authentication.',
+    'tailscale.login.desc':
+        'Sign in with your Tailscale account. Your browser will open for authentication.',
     'tailscale.login.button': 'Sign in',
     'tailscale.login.waiting': 'Waiting for sign-in... Check your browser.',
     'tailscale.signup.button': 'Create account',
     'tailscale.signup.desc': 'No Tailscale account yet? It\'s free.',
     'tailscale.error.retry': 'Try again',
-    'tailscale.error.daemonNotFound': 'Tailscale engine not found. Reinstall the application.',
+    'tailscale.error.daemonNotFound':
+        'Tailscale engine not found. Reinstall the application.',
     'tailscale.connected.title': 'Connected',
     'tailscale.connected.selfTitle': 'This PC on Tailscale',
     'tailscale.connected.hostname': 'Machine name',
@@ -515,7 +590,8 @@ const Map<String, Map<String, String>> translations = {
     'tailscale.connected.peersTitle': 'Devices on your network',
     'tailscale.connected.peersPC': 'Computers',
     'tailscale.connected.peersMobile': 'Mobile devices',
-    'tailscale.connected.noPeers': 'No other devices found. Install Tailscale on another device to see it here.',
+    'tailscale.connected.noPeers':
+        'No other devices found. Install Tailscale on another device to see it here.',
     'tailscale.connected.online': 'Online',
     'tailscale.connected.offline': 'Offline',
     'tailscale.connected.logout': 'Sign out',
@@ -538,7 +614,8 @@ const Map<String, Map<String, String>> translations = {
     'info.refresh': 'Refresh',
     'info.notFound': 'Not found',
     'info.recommend.title': 'Recommended: use Tailscale',
-    'info.recommend.content': 'The IP addresses above change regularly and only work on your local network. '
+    'info.recommend.content':
+        'The IP addresses above change regularly and only work on your local network. '
         'For a secure and stable connection from anywhere, use your Tailscale IP address instead. '
         'Go to the Tailscale tab to create your account and connect.',
     'info.recommend.button': 'Go to Tailscale',
@@ -552,7 +629,8 @@ const Map<String, Map<String, String>> translations = {
     'settings.langFr': 'Français',
     'settings.langEn': 'English',
     'settings.autostart': 'Launch at startup',
-    'settings.autostart.desc': 'Automatically launch Chill when you turn on your PC.',
+    'settings.autostart.desc':
+        'Automatically launch Chill when you turn on your PC.',
     'settings.lock': 'PIN Lock',
     'settings.lock.desc': 'Protect access to the application',
     'settings.lock.change': 'Change PIN',
@@ -560,7 +638,8 @@ const Map<String, Map<String, String>> translations = {
     'settings.lock.confirm': 'Confirm your PIN',
     'settings.lock.mismatch': 'PINs do not match',
     'settings.lock.enterCurrent': 'Enter your current PIN',
-    'settings.lock.warning': 'Choose a code you will remember. '
+    'settings.lock.warning':
+        'Choose a code you will remember. '
         'No reset procedure is available. '
         'If you forget your PIN, you will need to reinstall the application.',
 
@@ -576,10 +655,12 @@ const Map<String, Map<String, String>> translations = {
 
     // Security — Page
     'security.title': 'System Security',
-    'security.intro': 'Harden your OS security. Enable or disable protections as needed.',
+    'security.intro':
+        'Harden your OS security. Enable or disable protections as needed.',
     'security.toggles.title': 'Protections',
     'security.checkup.title': 'System Checkup',
-    'security.checkup.desc': 'Analyze your system\'s security state. Nothing is modified, only checked.',
+    'security.checkup.desc':
+        'Analyze your system\'s security state. Nothing is modified, only checked.',
     'security.checkup.button': 'Run checkup',
     'security.checkup.running': 'Analyzing...',
     'security.checkup.score': 'Score',
@@ -595,72 +676,100 @@ const Map<String, Map<String, String>> translations = {
     'security.needsInstall': 'Not installed',
     'security.install': 'Install',
     'security.install.confirm': 'Install?',
-    'security.install.desc': 'This will install the software on your system. Admin password required.',
+    'security.install.desc':
+        'This will install the software on your system. Admin password required.',
     'security.install.success': 'Installed successfully.',
     'security.elevationDenied': 'Permission denied',
     'security.error': 'Execution error',
 
     // Security — Windows
     'security.win.firewall': 'Windows Firewall',
-    'security.win.firewall.desc': 'Enable the firewall on all network profiles (private, public, domain). Blocks unauthorized incoming connections.',
+    'security.win.firewall.desc':
+        'Enable the firewall on all network profiles (private, public, domain). Blocks unauthorized incoming connections.',
     'security.win.rdp': 'Remote Desktop',
-    'security.win.rdp.desc': 'Disable Remote Desktop. If you don\'t use this feature, disabling it prevents unauthorized access.',
+    'security.win.rdp.desc':
+        'Disable Remote Desktop. If you don\'t use this feature, disabling it prevents unauthorized access.',
     'security.win.smb1': 'SMBv1 Protocol',
-    'security.win.smb1.desc': 'Disable the SMBv1 protocol, an old network protocol exploited by ransomware like WannaCry. No modern software needs it.',
+    'security.win.smb1.desc':
+        'Disable the SMBv1 protocol, an old network protocol exploited by ransomware like WannaCry. No modern software needs it.',
     'security.win.remoteRegistry': 'Remote Registry',
-    'security.win.remoteRegistry.desc': 'Disable the Remote Registry service that allows remote modification of the Windows registry. Unnecessary for personal use.',
+    'security.win.remoteRegistry.desc':
+        'Disable the Remote Registry service that allows remote modification of the Windows registry. Unnecessary for personal use.',
     'security.win.ransomware': 'Anti-ransomware',
-    'security.win.ransomware.desc': 'Enable Controlled Folder Access to protect folders from ransomware. May block some programs — you might need to add exceptions.',
+    'security.win.ransomware.desc':
+        'Enable Controlled Folder Access to protect folders from ransomware. May block some programs — you might need to add exceptions.',
     'security.win.audit': 'Login Auditing',
-    'security.win.audit.desc': 'Enable logging of login attempts (successful and failed). Useful for detecting intrusion attempts.',
+    'security.win.audit.desc':
+        'Enable logging of login attempts (successful and failed). Useful for detecting intrusion attempts.',
     'security.win.updates': 'Auto Updates',
-    'security.win.updates.desc': 'Force automatic Windows updates. Security patches are installed as soon as they\'re available.',
+    'security.win.updates.desc':
+        'Force automatic Windows updates. Security patches are installed as soon as they\'re available.',
     'security.win.lsa': 'LSA Protection',
-    'security.win.lsa.desc': 'Enable LSA Protection (RunAsPPL) which prevents code injection into the Windows security process. Protects credentials stored in memory.',
+    'security.win.lsa.desc':
+        'Enable LSA Protection (RunAsPPL) which prevents code injection into the Windows security process. Protects credentials stored in memory.',
     'security.win.hvci': 'Memory Integrity (Core Isolation)',
-    'security.win.hvci.desc': 'Enable Memory Integrity (HVCI). Uses virtualization to isolate critical processes and prevent malicious drivers. Requires a restart.',
+    'security.win.hvci.desc':
+        'Enable Memory Integrity (HVCI). Uses virtualization to isolate critical processes and prevent malicious drivers. Requires a restart.',
 
     // Security — DNS (all OS)
     'security.dns': 'Secure DNS (Quad9)',
-    'security.dns.desc': 'Use Quad9 DNS servers (9.9.9.9) which automatically block malicious sites and phishing. Free, fast and privacy-friendly.',
+    'security.dns.desc':
+        'Use Quad9 DNS servers (9.9.9.9) which automatically block malicious sites and phishing. Free, fast and privacy-friendly.',
 
     // Security — Linux
     'security.linux.firewall': 'Firewall (UFW)',
-    'security.linux.firewall.desc': 'Enable UFW firewall with default policy: block incoming, allow outgoing. SSH stays allowed.',
+    'security.linux.firewall.desc':
+        'Enable UFW firewall with default policy: block incoming, allow outgoing. SSH stays allowed.',
     'security.linux.sysctl': 'Secure Network Settings',
-    'security.linux.sysctl.desc': 'Prevent the PC from accepting fraudulent network instructions (traffic redirection, address spoofing).',
+    'security.linux.sysctl.desc':
+        'Prevent the PC from accepting fraudulent network instructions (traffic redirection, address spoofing).',
     'security.linux.services': 'Unnecessary Services',
-    'security.linux.services.desc': 'Disable services you don\'t use (printing, network discovery...). Choose which ones to disable.',
+    'security.linux.services.desc':
+        'Disable services you don\'t use (printing, network discovery...). Choose which ones to disable.',
     'security.linux.permissions': 'Sensitive File Permissions',
-    'security.linux.permissions.desc': 'Check and fix permissions of sensitive system files (/etc/shadow, /etc/ssh).',
+    'security.linux.permissions.desc':
+        'Check and fix permissions of sensitive system files (/etc/shadow, /etc/ssh).',
     'security.linux.fail2ban': 'Fail2Ban (brute-force protection)',
-    'security.linux.fail2ban.desc': 'Temporarily ban IP addresses that fail SSH login too many times. Protection against brute-force attacks.',
+    'security.linux.fail2ban.desc':
+        'Temporarily ban IP addresses that fail SSH login too many times. Protection against brute-force attacks.',
     'security.linux.updates': 'Auto Security Updates',
-    'security.linux.updates.desc': 'Enable automatic security updates. Critical patches are installed without intervention.',
+    'security.linux.updates.desc':
+        'Enable automatic security updates. Critical patches are installed without intervention.',
     'security.linux.rootLogin': 'Root Password Login',
-    'security.linux.rootLogin.desc': 'Disable direct root login by password. Root remains accessible via sudo.',
+    'security.linux.rootLogin.desc':
+        'Disable direct root login by password. Root remains accessible via sudo.',
     'security.linux.crowdsec': 'CrowdSec (collaborative protection)',
-    'security.linux.crowdsec.desc': 'Community security tool that analyzes connection behavior and blocks malicious IPs using a shared database from thousands of users.',
+    'security.linux.crowdsec.desc':
+        'Community security tool that analyzes connection behavior and blocks malicious IPs using a shared database from thousands of users.',
     'security.linux.apparmor': 'AppArmor',
-    'security.linux.apparmor.desc': 'Mandatory access control system that limits what each program can do on your system. Prevents software from escaping their authorized zone.',
+    'security.linux.apparmor.desc':
+        'Mandatory access control system that limits what each program can do on your system. Prevents software from escaping their authorized zone.',
     'security.linux.rkhunter': 'rkhunter (rootkit detection)',
-    'security.linux.rkhunter.desc': 'Tool for detecting rootkits and suspicious files. Must be installed to work.',
+    'security.linux.rkhunter.desc':
+        'Tool for detecting rootkits and suspicious files. Must be installed to work.',
 
     // Security — macOS
     'security.mac.firewall': 'Application Firewall',
-    'security.mac.firewall.desc': 'Enable macOS built-in firewall. Blocks unauthorized incoming connections per application.',
+    'security.mac.firewall.desc':
+        'Enable macOS built-in firewall. Blocks unauthorized incoming connections per application.',
     'security.mac.stealth': 'Stealth Mode',
-    'security.mac.stealth.desc': 'Mac stops responding to pings and port scans. The machine becomes invisible on the network.',
+    'security.mac.stealth.desc':
+        'Mac stops responding to pings and port scans. The machine becomes invisible on the network.',
     'security.mac.smb': 'File Sharing (SMB)',
-    'security.mac.smb.desc': 'Disable network file sharing. If you don\'t share files, disabling this improves security.',
+    'security.mac.smb.desc':
+        'Disable network file sharing. If you don\'t share files, disabling this improves security.',
     'security.mac.updates': 'Auto Updates',
-    'security.mac.updates.desc': 'Enable automatic checking and installation of updates and security patches.',
+    'security.mac.updates.desc':
+        'Enable automatic checking and installation of updates and security patches.',
     'security.mac.secureKeyboard': 'Secure Keyboard Entry',
-    'security.mac.secureKeyboard.desc': 'Prevent other apps from intercepting what you type in Terminal (keylogger protection).',
+    'security.mac.secureKeyboard.desc':
+        'Prevent other apps from intercepting what you type in Terminal (keylogger protection).',
     'security.mac.gatekeeper': 'Gatekeeper',
-    'security.mac.gatekeeper.desc': 'Block execution of apps not signed by Apple. Protects against malware.',
+    'security.mac.gatekeeper.desc':
+        'Block execution of apps not signed by Apple. Protects against malware.',
     'security.mac.screenLock': 'Immediate Screen Lock',
-    'security.mac.screenLock.desc': 'Require password immediately after sleep. Prevents unauthorized physical access.',
+    'security.mac.screenLock.desc':
+        'Require password immediately after sleep. Prevents unauthorized physical access.',
 
     // Security — Checkup items
     'security.checkup.firewall': 'Firewall',
@@ -699,15 +808,19 @@ const Map<String, Map<String, String>> translations = {
 
     // Security — Scan
     'security.scan.title': 'Security Scan',
-    'security.scan.desc.linux': 'Run an rkhunter scan to detect rootkits, suspicious files and abnormal system changes.',
-    'security.scan.desc.windows': 'Run a quick Windows Defender scan to detect threats on your system.',
+    'security.scan.desc.linux':
+        'Run an rkhunter scan to detect rootkits, suspicious files and abnormal system changes.',
+    'security.scan.desc.windows':
+        'Run a quick Windows Defender scan to detect threats on your system.',
     'security.scan.button': 'Run scan',
     'security.scan.running': 'Scanning...',
-    'security.scan.patience': 'This may take a few minutes, don\'t close the app.',
+    'security.scan.patience':
+        'This may take a few minutes, don\'t close the app.',
     'security.scan.clean': 'No threats detected',
     'security.scan.warnings': '{count} warning(s) detected',
     'security.reboot.title': 'Reboot required',
-    'security.reboot.message': 'This setting will be applied after your next reboot. Remember to restart your PC for the protection to take effect.',
+    'security.reboot.message':
+        'This setting will be applied after your next reboot. Remember to restart your PC for the protection to take effect.',
     'security.reboot.ok': 'Got it',
 
     // Security — Checkup detail translations (from codes)
@@ -750,9 +863,11 @@ const Map<String, Map<String, String>> translations = {
     'security.detail.sip.active': 'SIP enabled',
     'security.detail.sip.inactive': 'SIP disabled (high risk)',
     'security.detail.macPolicy.apparmor': 'AppArmor active',
-    'security.detail.macPolicy.apparmor_inactive': 'AppArmor installed but inactive',
+    'security.detail.macPolicy.apparmor_inactive':
+        'AppArmor installed but inactive',
     'security.detail.macPolicy.selinux': 'SELinux in Enforcing mode',
-    'security.detail.macPolicy.selinux_permissive': 'SELinux in Permissive mode',
+    'security.detail.macPolicy.selinux_permissive':
+        'SELinux in Permissive mode',
     'security.detail.macPolicy.none': 'No access control detected',
     'security.detail.dns.active': 'Quad9 DNS configured',
     'security.detail.dns.inactive': 'Default DNS (not secured)',

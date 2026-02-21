@@ -49,11 +49,7 @@ class CommandRunner {
         stderr: 'La commande a dépassé le délai d\'attente.',
       );
     } on ProcessException catch (e) {
-      return CommandResult(
-        exitCode: -1,
-        stdout: '',
-        stderr: e.message,
-      );
+      return CommandResult(exitCode: -1, stdout: '', stderr: e.message);
     }
   }
 
@@ -62,7 +58,11 @@ class CommandRunner {
     String command, {
     Duration? timeout,
   }) async {
-    return run('powershell', ['-NoProfile', '-Command', command], timeout: timeout);
+    return run('powershell', [
+      '-NoProfile',
+      '-Command',
+      command,
+    ], timeout: timeout);
   }
 
   /// Exécute une commande PowerShell avec élévation UAC (Windows).
@@ -79,7 +79,8 @@ class CommandRunner {
     try {
       // Le script exécute la commande, puis écrit "DONE" dans un fichier marqueur
       final markerPath = doneMarker.path.replaceAll('\\', '\\\\');
-      final scriptContent = '$command\n'
+      final scriptContent =
+          '$command\n'
           '"DONE" | Out-File -FilePath "$markerPath" -Encoding ascii\n';
       await tempScript.writeAsString(scriptContent);
 
@@ -94,8 +95,10 @@ class CommandRunner {
             '@("-NoProfile","-ExecutionPolicy","Bypass","-File","$scriptPath") -Wait',
       ], timeout: timeout);
 
-      debugPrint('[Elevated] Start-Process result: exit=${result.exitCode} '
-          'stdout=[${result.stdout}] stderr=[${result.stderr}]');
+      debugPrint(
+        '[Elevated] Start-Process result: exit=${result.exitCode} '
+        'stdout=[${result.stdout}] stderr=[${result.stderr}]',
+      );
 
       // Vérifier que le marqueur "done" a été créé par le script élevé
       if (doneMarker.existsSync()) {
@@ -129,7 +132,10 @@ class CommandRunner {
   }
 
   /// Exécute une commande avec privilèges élevés
-  static Future<CommandResult> runElevated(String executable, List<String> args) async {
+  static Future<CommandResult> runElevated(
+    String executable,
+    List<String> args,
+  ) async {
     if (Platform.isWindows) {
       // Sur Windows : écrire un script .ps1 temporaire pour éviter
       // le triple nesting PowerShell et les injections via arguments
@@ -149,7 +155,11 @@ class CommandRunner {
               '@("-NoProfile","-ExecutionPolicy","Bypass","-File","$scriptPath") -Wait',
         ]);
       } finally {
-        try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[CommandRunner] Cleanup error: $e'); }
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (e) {
+          debugPrint('[CommandRunner] Cleanup error: $e');
+        }
       }
     } else if (Platform.isLinux) {
       // Sur Linux : utiliser pkexec (boîte de dialogue graphique)
@@ -161,7 +171,8 @@ class CommandRunner {
       final tempDir = await Directory.systemTemp.createTemp('chill-');
       final tempScript = File('${tempDir.path}/elevated.sh');
       try {
-        final scriptContent = '#!/bin/bash\n'
+        final scriptContent =
+            '#!/bin/bash\n'
             'exec ${_shellQuote(executable)} ${args.map(_shellQuote).join(' ')}\n';
         await tempScript.writeAsString(scriptContent);
         await Process.run('chmod', ['700', tempScript.path]);
@@ -175,7 +186,11 @@ class CommandRunner {
           'do shell script "bash \\"$escapedPath\\"" with administrator privileges',
         ]);
       } finally {
-        try { await tempDir.delete(recursive: true); } catch (e) { debugPrint('[CommandRunner] Cleanup error: $e'); }
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (e) {
+          debugPrint('[CommandRunner] Cleanup error: $e');
+        }
       }
     }
     throw UnsupportedError('OS non supporté');

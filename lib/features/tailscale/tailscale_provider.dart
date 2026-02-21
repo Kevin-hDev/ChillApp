@@ -4,12 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum TailscaleConnectionStatus {
-  loading,
-  loggedOut,
-  connected,
-  error,
-}
+enum TailscaleConnectionStatus { loading, loggedOut, connected, error }
 
 class TailscalePeer {
   final String hostname;
@@ -61,8 +56,9 @@ class TailscaleState {
   }
 }
 
-final tailscaleProvider =
-    NotifierProvider<TailscaleNotifier, TailscaleState>(TailscaleNotifier.new);
+final tailscaleProvider = NotifierProvider<TailscaleNotifier, TailscaleState>(
+  TailscaleNotifier.new,
+);
 
 class TailscaleNotifier extends Notifier<TailscaleState> {
   Process? _daemon;
@@ -116,7 +112,8 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
 
     // macOS debug : le binaire peut avoir un suffixe -macos
     if (Platform.isMacOS) {
-      final macDebugPath = '$projectDir${sep}tailscale-daemon${sep}chill-tailscale-macos';
+      final macDebugPath =
+          '$projectDir${sep}tailscale-daemon${sep}chill-tailscale-macos';
       if (File(macDebugPath).existsSync()) {
         _checkExecutable(macDebugPath);
         return macDebugPath;
@@ -124,7 +121,9 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
     }
 
     // fallback PATH
-    debugPrint('[Tailscale] WARNING: Using PATH fallback for daemon. Binary not found at expected locations.');
+    debugPrint(
+      '[Tailscale] WARNING: Using PATH fallback for daemon. Binary not found at expected locations.',
+    );
     return name;
   }
 
@@ -180,9 +179,7 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
             // Déjà connecté, demander le statut complet
             _sendCommand({'cmd': 'status'});
           } else {
-            state = state.copyWith(
-              status: TailscaleConnectionStatus.loggedOut,
-            );
+            state = state.copyWith(status: TailscaleConnectionStatus.loggedOut);
           }
 
         case 'auth_url':
@@ -203,7 +200,10 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
             final selfHostname = event['self_hostname'] as String?;
             final selfIp = event['self_ip'] as String?;
             final peersJson = event['peers'] as List<dynamic>? ?? [];
-            final peers = peersJson.map(_parsePeer).whereType<TailscalePeer>().toList();
+            final peers = peersJson
+                .map(_parsePeer)
+                .whereType<TailscalePeer>()
+                .toList();
 
             state = state.copyWith(
               status: TailscaleConnectionStatus.connected,
@@ -308,18 +308,24 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
     if (Platform.isLinux) {
       final result = await Process.run('xdg-open', [url]);
       if (result.exitCode != 0) {
-        debugPrint('[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}');
+        debugPrint(
+          '[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}',
+        );
       }
     } else if (Platform.isWindows) {
       // Le string vide comme titre empêche l'injection via caractères spéciaux dans l'URL
       final result = await Process.run('cmd', ['/c', 'start', '', url]);
       if (result.exitCode != 0) {
-        debugPrint('[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}');
+        debugPrint(
+          '[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}',
+        );
       }
     } else if (Platform.isMacOS) {
       final result = await Process.run('open', [url]);
       if (result.exitCode != 0) {
-        debugPrint('[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}');
+        debugPrint(
+          '[Tailscale] Failed to open URL (exit ${result.exitCode}): ${result.stderr}',
+        );
       }
     }
   }
@@ -368,13 +374,15 @@ class TailscaleNotifier extends Notifier<TailscaleState> {
         // Envoyer la commande shutdown
         process.stdin.writeln(jsonEncode({'cmd': 'shutdown'}));
         // Laisser le daemon se fermer proprement (max 3s)
-        unawaited(process.exitCode.timeout(
-          const Duration(seconds: 3),
-          onTimeout: () {
-            process.kill();
-            return -1;
-          },
-        ));
+        unawaited(
+          process.exitCode.timeout(
+            const Duration(seconds: 3),
+            onTimeout: () {
+              process.kill();
+              return -1;
+            },
+          ),
+        );
       } catch (e) {
         debugPrint('[Tailscale] Shutdown error: $e');
         process.kill();
