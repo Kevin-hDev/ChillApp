@@ -68,7 +68,7 @@ const Map<String, Map<String, String>> translations = {
     // WoL Setup
     'wol.title': 'Configuration Wake-on-LAN',
     'wol.intro': 'Active le Wake-on-LAN pour pouvoir allumer ce PC avec ton téléphone via ChillShell.',
-    'wol.biosWarning': 'Le BIOS doit être configuré manuellement (consulte le tuto BIOS sur le site).',
+    'wol.biosWarning': 'Le BIOS doit être configuré manuellement. Une fois la configuration terminée, clique sur le bouton tutoriel BIOS juste en dessous.',
     'wol.notAvailableMac': 'Le Wake-on-LAN n\'est pas disponible sur Mac en V1.',
     'wol.configureAll': 'Tout configurer',
     'wol.step.findAdapter': 'Trouver la carte Ethernet',
@@ -95,6 +95,8 @@ const Map<String, Map<String, String>> translations = {
     'wol.result.reminder': 'N\'oublie pas de configurer ton BIOS ! '
         'Le WoL ne fonctionnera pas sans la configuration BIOS. '
         'Consulte le tuto BIOS sur le site ChillShell.',
+    'wol.biosTutorial': 'Voir le tutoriel BIOS',
+    'wol.biosTutorial.desc': 'Apprends à activer le WoL dans ton BIOS',
     'wol.error.retry': 'Réessayer',
     'wol.linuxWarning': 'Sur Linux, le Wake-on-LAN peut ne pas fonctionner selon ta carte réseau '
         'et ton noyau Linux. Le WoL fonctionne de manière plus fiable quand le PC '
@@ -454,7 +456,7 @@ const Map<String, Map<String, String>> translations = {
     // WoL Setup
     'wol.title': 'Wake-on-LAN Setup',
     'wol.intro': 'Enable Wake-on-LAN to turn on this PC with your phone via ChillShell.',
-    'wol.biosWarning': 'BIOS must be configured manually (see the BIOS tutorial on the website).',
+    'wol.biosWarning': 'BIOS must be configured manually. Once the setup is complete, click the BIOS tutorial button just below.',
     'wol.notAvailableMac': 'Wake-on-LAN is not available on Mac in V1.',
     'wol.configureAll': 'Configure All',
     'wol.step.findAdapter': 'Find Ethernet adapter',
@@ -481,6 +483,8 @@ const Map<String, Map<String, String>> translations = {
     'wol.result.reminder': 'Don\'t forget to configure your BIOS! '
         'WoL won\'t work without the BIOS configuration. '
         'Check the BIOS tutorial on the ChillShell website.',
+    'wol.biosTutorial': 'See the BIOS tutorial',
+    'wol.biosTutorial.desc': 'Learn how to enable WoL in your BIOS',
     'wol.error.retry': 'Retry',
     'wol.linuxWarning': 'On Linux, Wake-on-LAN may not work depending on your network card '
         'and Linux kernel. WoL works more reliably when the PC is shut down from Windows. '

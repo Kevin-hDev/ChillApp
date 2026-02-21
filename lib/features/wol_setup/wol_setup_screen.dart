@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/design_tokens.dart';
 import '../../core/os_detector.dart';
 import '../../i18n/locale_provider.dart';
@@ -169,6 +170,8 @@ class WolSetupScreen extends ConsumerWidget {
                               ipWifi: wolState.ipWifi,
                               adapterName: wolState.adapterName,
                             ),
+                            const SizedBox(height: 16),
+                            _BiosTutorialCard(locale: locale),
                           ],
                         ],
 
@@ -299,6 +302,84 @@ class _MacUnavailableCard extends StatelessWidget {
   }
 }
 
+/// Bouton tutoriel BIOS avec icone custom
+class _BiosTutorialCard extends StatelessWidget {
+  final String locale;
+
+  /// URL du tutoriel BIOS sur le site web
+  /// TODO: Remplacer par l'URL definitive une fois le site deploye
+  static const _biosTutorialUrl = 'https://chillshell.dev/tuto/bios';
+
+  const _BiosTutorialCard({required this.locale});
+
+  Future<void> _openTutorial() async {
+    final uri = Uri.parse(_biosTutorialUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _openTutorial,
+        borderRadius: BorderRadius.circular(ChillRadius.xl),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: context.chillBgElevated,
+            borderRadius: BorderRadius.circular(ChillRadius.xl),
+            border: Border.all(color: context.chillBorder),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(ChillRadius.md),
+                child: Image.asset(
+                  'assets/images/logo_bios.png',
+                  width: 72,
+                  height: 72,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t(locale, 'wol.biosTutorial'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      t(locale, 'wol.biosTutorial.desc'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: context.chillTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.open_in_new_rounded,
+                color: context.chillTextMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Carte resultat avec MAC, carte reseau, IPs et rappel BIOS
 class _ResultCard extends StatelessWidget {
   final String locale;
@@ -376,29 +457,6 @@ class _ResultCard extends StatelessWidget {
             const SizedBox(height: 16),
           ],
 
-          // Rappel BIOS
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: orange.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(ChillRadius.lg),
-              border: Border.all(color: orange.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.lightbulb_outline, color: orange, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    t(locale, 'wol.result.reminder'),
-                    style: theme.textTheme.bodySmall?.copyWith(color: orange, height: 1.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
