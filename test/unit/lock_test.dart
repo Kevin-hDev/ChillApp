@@ -5,27 +5,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chill_app/features/lock/lock_provider.dart';
+import 'package:chill_app/features/settings/settings_provider.dart';
 
 void main() {
   late ProviderContainer container;
 
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-    container = ProviderContainer();
-    // Trigger initial build (async _load).
-    container.read(lockProvider);
+  Future<ProviderContainer> createContainer([
+    Map<String, Object> initialValues = const {},
+  ]) async {
+    SharedPreferences.setMockInitialValues(initialValues);
+    final prefs = await SharedPreferences.getInstance();
+    return ProviderContainer(
+      overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+    );
+  }
+
+  setUp(() async {
+    container = await createContainer();
   });
 
   tearDown(() {
     container.dispose();
   });
-
-  /// Wait for the async _load() to finish by pumping microtasks.
-  Future<void> waitForLoad() async {
-    // Allow the async _load() future to complete.
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-  }
 
   // ============================================
   // 1. setPin() avec PIN valide
@@ -34,7 +35,6 @@ void main() {
     test(
       'PIN valide (8 chiffres) → isEnabled = true, isUnlocked = true',
       () async {
-        await waitForLoad();
         final notifier = container.read(lockProvider.notifier);
 
         await notifier.setPin('12345678');
@@ -49,28 +49,24 @@ void main() {
     // 2. setPin() avec PIN invalide → ArgumentError
     // ============================================
     test('PIN vide → ArgumentError', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       expect(() => notifier.setPin(''), throwsArgumentError);
     });
 
     test('PIN trop court (4 chiffres) → ArgumentError', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       expect(() => notifier.setPin('1234'), throwsArgumentError);
     });
 
     test('PIN trop long (9 chiffres) → ArgumentError', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       expect(() => notifier.setPin('123456789'), throwsArgumentError);
     });
 
     test('PIN avec lettres → ArgumentError', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       expect(() => notifier.setPin('1234abcd'), throwsArgumentError);
@@ -82,7 +78,6 @@ void main() {
   // ============================================
   group('verifyPin', () {
     test('PIN correct → true, failedAttempts = 0', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -100,7 +95,6 @@ void main() {
     // 4. verifyPin() avec PIN incorrect
     // ============================================
     test('PIN incorrect → false, failedAttempts++', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -115,7 +109,6 @@ void main() {
     });
 
     test('Plusieurs echecs incrementent failedAttempts', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -135,7 +128,6 @@ void main() {
   // ============================================
   group('Rate limiting', () {
     test('5 echecs → lockedUntil non null', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -151,7 +143,6 @@ void main() {
     });
 
     test('4 echecs → pas de lock', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -170,7 +161,6 @@ void main() {
     // 6. Backoff exponentiel : 5→30s, 10→60s, 15→120s
     // ============================================
     test('backoff exponentiel : 5 echecs → ~30s', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -195,19 +185,25 @@ void main() {
       final pastMs = DateTime.now()
           .subtract(const Duration(seconds: 1))
           .millisecondsSinceEpoch;
-      await waitForLoad();
+
+      // Set initial PIN first, then seed failures
       final notifier = container.read(lockProvider.notifier);
       await notifier.setPin('12345678');
       notifier.lock();
 
+      // Seed 9 failures via SharedPreferences and recreate container
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('pin_failed_attempts', 9);
-      await prefs.setInt('pin_locked_until', pastMs);
-      // Reload state from prefs
+      // Keep the pin hash and salt that were just set
+      final pinHash = prefs.getString('pin_hash')!;
+      final pinSalt = prefs.getString('pin_salt')!;
+
       container.dispose();
-      container = ProviderContainer();
-      container.read(lockProvider);
-      await waitForLoad();
+      container = await createContainer({
+        'pin_hash': pinHash,
+        'pin_salt': pinSalt,
+        'pin_failed_attempts': 9,
+        'pin_locked_until': pastMs,
+      });
 
       final notifier2 = container.read(lockProvider.notifier);
       await notifier2.verifyPin('00000000'); // 10th failure
@@ -226,19 +222,23 @@ void main() {
       final pastMs = DateTime.now()
           .subtract(const Duration(seconds: 1))
           .millisecondsSinceEpoch;
-      await waitForLoad();
+
+      // Set initial PIN first, then seed failures
       final notifier = container.read(lockProvider.notifier);
       await notifier.setPin('12345678');
       notifier.lock();
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('pin_failed_attempts', 14);
-      await prefs.setInt('pin_locked_until', pastMs);
-      // Reload state from prefs
+      final pinHash = prefs.getString('pin_hash')!;
+      final pinSalt = prefs.getString('pin_salt')!;
+
       container.dispose();
-      container = ProviderContainer();
-      container.read(lockProvider);
-      await waitForLoad();
+      container = await createContainer({
+        'pin_hash': pinHash,
+        'pin_salt': pinSalt,
+        'pin_failed_attempts': 14,
+        'pin_locked_until': pastMs,
+      });
 
       final notifier2 = container.read(lockProvider.notifier);
       await notifier2.verifyPin('00000000'); // 15th failure
@@ -253,7 +253,6 @@ void main() {
     });
 
     test('PIN correct apres echecs remet failedAttempts a zero', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -278,7 +277,6 @@ void main() {
   // ============================================
   group('removePin', () {
     test('removePin desactive le lock', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -293,7 +291,6 @@ void main() {
     });
 
     test('removePin efface le hash de SharedPreferences', () async {
-      await waitForLoad();
       final notifier = container.read(lockProvider.notifier);
 
       await notifier.setPin('12345678');
@@ -316,14 +313,11 @@ void main() {
       const pin = '12345678';
       final oldHash = sha256.convert(utf8.encode(pin)).toString();
 
-      SharedPreferences.setMockInitialValues({
+      container.dispose();
+      container = await createContainer({
         'pin_hash': oldHash,
         // Pas de pin_salt = format pre-v1
       });
-      container.dispose();
-      container = ProviderContainer();
-      container.read(lockProvider);
-      await waitForLoad();
 
       final notifier = container.read(lockProvider.notifier);
       expect(container.read(lockProvider).isEnabled, true);
@@ -348,14 +342,11 @@ void main() {
       final salt = base64Encode(List.generate(16, (i) => i));
       final legacyHash = sha256.convert(utf8.encode('$salt:$pin')).toString();
 
-      SharedPreferences.setMockInitialValues({
+      container.dispose();
+      container = await createContainer({
         'pin_hash': legacyHash,
         'pin_salt': salt,
       });
-      container.dispose();
-      container = ProviderContainer();
-      container.read(lockProvider);
-      await waitForLoad();
 
       final notifier = container.read(lockProvider.notifier);
       expect(container.read(lockProvider).isEnabled, true);
@@ -376,11 +367,8 @@ void main() {
       const pin = '12345678';
       final oldHash = sha256.convert(utf8.encode(pin)).toString();
 
-      SharedPreferences.setMockInitialValues({'pin_hash': oldHash});
       container.dispose();
-      container = ProviderContainer();
-      container.read(lockProvider);
-      await waitForLoad();
+      container = await createContainer({'pin_hash': oldHash});
 
       final notifier = container.read(lockProvider.notifier);
       final result = await notifier.verifyPin('00000000');

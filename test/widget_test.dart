@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chill_app/app.dart';
 import 'package:chill_app/features/dashboard/dashboard_provider.dart';
 import 'package:chill_app/features/lock/lock_provider.dart' as lock;
 import 'package:chill_app/features/onboarding/onboarding_provider.dart';
+import 'package:chill_app/features/settings/settings_provider.dart';
 import 'package:chill_app/features/tailscale/tailscale_provider.dart';
 
 /// Notifier de test : pas de commandes système (évite les timers pendants)
@@ -49,9 +51,13 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
           dashboardProvider.overrideWith(() => _TestDashboardNotifier()),
           tailscaleProvider.overrideWith(() => _TestTailscaleNotifier()),
           lock.lockProvider.overrideWith(() => _TestLockNotifier()),
@@ -63,7 +69,14 @@ void main() {
     // pump au lieu de pumpAndSettle car les animations tournent en boucle
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Bienvenue sur Chill'), findsOneWidget);
+    // Le texte depend de la locale du systeme (FR ou EN)
+    final frWelcome = find.text('Bienvenue sur Chill');
+    final enWelcome = find.text('Welcome to Chill');
+    expect(
+      frWelcome.evaluate().isNotEmpty || enWelcome.evaluate().isNotEmpty,
+      true,
+      reason: 'Expected welcome text in FR or EN',
+    );
 
     // Démonter le widget tree pour arrêter les timers des animations
     await tester.pumpWidget(const SizedBox.shrink());
