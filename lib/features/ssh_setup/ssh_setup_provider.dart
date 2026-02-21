@@ -135,55 +135,78 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
   // WINDOWS
   // ============================================
   Future<void> _runWindows() async {
-    // 1. Installer client OpenSSH (DOIT être avant le serveur)
+    // 1. Installer client OpenSSH (vérifier d'abord si déjà installé)
     _updateStep('installClient', StepStatus.running);
-    var result = await CommandRunner.runPowerShell(
-      'Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0',
+    var check = await CommandRunner.runPowerShell(
+      "Get-WindowsCapability -Online -Name OpenSSH.Client* | Select-Object -ExpandProperty State",
     );
-    if (!result.success && !result.stderr.contains('already installed')) {
-      debugPrint('[SSH] installClient stderr: ${result.stderr}');
-      _updateStep(
-        'installClient',
-        StepStatus.error,
-        errorDetail: 'Installation failed. Check system logs.',
+    if (check.success && check.stdout.trim() == 'Installed') {
+      debugPrint('[SSH] Client OpenSSH déjà installé');
+    } else {
+      var result = await CommandRunner.runPowerShellElevated(
+        'Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0',
+        timeout: const Duration(minutes: 10),
       );
-      throw Exception('Échec installation client OpenSSH');
+      if (!result.success) {
+        debugPrint('[SSH] installClient stderr: ${result.stderr}');
+        _updateStep(
+          'installClient',
+          StepStatus.error,
+          errorDetail: 'Installation failed. Check system logs.',
+        );
+        throw Exception('Échec installation client OpenSSH');
+      }
     }
     _updateStep('installClient', StepStatus.success);
 
-    // 2. Installer serveur OpenSSH (après le client)
+    // 2. Installer serveur OpenSSH (vérifier d'abord si déjà installé)
     _updateStep('installServer', StepStatus.running);
-    result = await CommandRunner.runPowerShell(
-      'Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0',
+    check = await CommandRunner.runPowerShell(
+      "Get-WindowsCapability -Online -Name OpenSSH.Server* | Select-Object -ExpandProperty State",
     );
-    if (!result.success && !result.stderr.contains('already installed')) {
-      debugPrint('[SSH] installServer stderr: ${result.stderr}');
-      _updateStep(
-        'installServer',
-        StepStatus.error,
-        errorDetail: 'Installation failed. Check system logs.',
+    if (check.success && check.stdout.trim() == 'Installed') {
+      debugPrint('[SSH] Serveur OpenSSH déjà installé');
+    } else {
+      var result = await CommandRunner.runPowerShellElevated(
+        'Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0',
+        timeout: const Duration(minutes: 10),
       );
-      throw Exception('Échec installation serveur OpenSSH');
+      if (!result.success) {
+        debugPrint('[SSH] installServer stderr: ${result.stderr}');
+        _updateStep(
+          'installServer',
+          StepStatus.error,
+          errorDetail: 'Installation failed. Check system logs.',
+        );
+        throw Exception('Échec installation serveur OpenSSH');
+      }
     }
     _updateStep('installServer', StepStatus.success);
 
-    // 3. Démarrer le service SSH
+    // 3. Démarrer le service SSH (vérifier d'abord s'il tourne)
     _updateStep('start', StepStatus.running);
-    result = await CommandRunner.runPowerShell('Start-Service sshd');
-    if (!result.success && !result.stderr.contains('already running')) {
-      debugPrint('[SSH] start stderr: ${result.stderr}');
-      _updateStep(
-        'start',
-        StepStatus.error,
-        errorDetail: 'Service start failed. Check system logs.',
-      );
-      throw Exception('Échec démarrage SSH');
+    check = await CommandRunner.runPowerShell(
+      "(Get-Service sshd -ErrorAction SilentlyContinue).Status",
+    );
+    if (check.success && check.stdout.trim() == 'Running') {
+      debugPrint('[SSH] Service sshd déjà en cours');
+    } else {
+      var result = await CommandRunner.runPowerShellElevated('Start-Service sshd');
+      if (!result.success) {
+        debugPrint('[SSH] start stderr: ${result.stderr}');
+        _updateStep(
+          'start',
+          StepStatus.error,
+          errorDetail: 'Service start failed. Check system logs.',
+        );
+        throw Exception('Échec démarrage SSH');
+      }
     }
     _updateStep('start', StepStatus.success);
 
     // 4. Activer SSH au démarrage
     _updateStep('autostart', StepStatus.running);
-    result = await CommandRunner.runPowerShell(
+    var result = await CommandRunner.runPowerShellElevated(
       "Set-Service -Name sshd -StartupType 'Automatic'",
     );
     if (!result.success) {
@@ -199,13 +222,11 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
 
     // 5. Configurer le pare-feu
     _updateStep('firewall', StepStatus.running);
-    // Vérifier si la règle existe déjà
-    result = await CommandRunner.runPowerShell(
+    check = await CommandRunner.runPowerShell(
       "Get-NetFirewallRule -Name *ssh* -ErrorAction SilentlyContinue",
     );
-    if (result.stdout.isEmpty) {
-      // Créer la règle
-      result = await CommandRunner.runPowerShell(
+    if (check.stdout.isEmpty) {
+      result = await CommandRunner.runPowerShellElevated(
         "New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server' "
         "-Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22",
       );
@@ -222,7 +243,7 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     _updateStep('firewall', StepStatus.success);
 
     // 5b. Désactiver le login root SSH (sécurité)
-    await CommandRunner.runPowerShell(
+    await CommandRunner.runPowerShellElevated(
       r"$configPath = '$env:ProgramData\ssh\sshd_config'; "
       r"if (Test-Path $configPath) { "
       r"$content = Get-Content $configPath; "
