@@ -191,7 +191,9 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     if (check.success && check.stdout.trim() == 'Running') {
       debugPrint('[SSH] Service sshd déjà en cours');
     } else {
-      var result = await CommandRunner.runPowerShellElevated('Start-Service sshd');
+      var result = await CommandRunner.runPowerShellElevated(
+        'Start-Service sshd',
+      );
       if (!result.success) {
         debugPrint('[SSH] start stderr: ${result.stderr}');
         _updateStep(
