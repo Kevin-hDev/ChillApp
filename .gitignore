@@ -49,3 +49,10 @@ app.*.map.json
 .scannerwork/
 snyk-results.json
 snyk-flutter-results.json
+
+# Fichiers de développement interne (restent sur le PC local, pas sur GitHub)
+CLAUDE.md
+SIGN CODE/
+SONARCLOUD_SETUP.md
+docs/
+SECURITE/
