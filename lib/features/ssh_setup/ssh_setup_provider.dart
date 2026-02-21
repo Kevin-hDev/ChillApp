@@ -145,7 +145,7 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     } else {
       var result = await CommandRunner.runPowerShellElevated(
         'Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0',
-        timeout: const Duration(minutes: 10),
+        timeout: const Duration(minutes: 15),
       );
       if (!result.success) {
         debugPrint('[SSH] installClient stderr: ${result.stderr}');
@@ -169,7 +169,7 @@ class SshSetupNotifier extends Notifier<SshSetupState> {
     } else {
       var result = await CommandRunner.runPowerShellElevated(
         'Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0',
-        timeout: const Duration(minutes: 10),
+        timeout: const Duration(minutes: 15),
       );
       if (!result.success) {
         debugPrint('[SSH] installServer stderr: ${result.stderr}');
