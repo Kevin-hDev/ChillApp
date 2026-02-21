@@ -88,8 +88,9 @@ class WolSetupNotifier extends Notifier<WolSetupState> {
   /// Met à jour le statut d'une étape
   void _updateStep(String id, StepStatus status, {String? errorDetail}) {
     final newSteps = state.steps.map((step) {
-      if (step.id == id)
+      if (step.id == id) {
         return step.copyWith(status: status, errorDetail: errorDetail);
+      }
       return step;
     }).toList();
     state = state.copyWith(steps: newSteps);

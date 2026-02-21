@@ -184,20 +184,23 @@ class TailscaleScreen extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () async {
                   // Ouvrir la page d'inscription Tailscale
-                  if (Platform.isLinux)
+                  if (Platform.isLinux) {
                     await Process.run('xdg-open', [
                       'https://login.tailscale.com/start',
                     ]);
-                  if (Platform.isWindows)
+                  }
+                  if (Platform.isWindows) {
                     await Process.run('cmd', [
                       '/c',
                       'start',
                       'https://login.tailscale.com/start',
                     ]);
-                  if (Platform.isMacOS)
+                  }
+                  if (Platform.isMacOS) {
                     await Process.run('open', [
                       'https://login.tailscale.com/start',
                     ]);
+                  }
                 },
                 icon: const Icon(Icons.person_add_outlined),
                 label: Text(t(locale, 'tailscale.signup.button')),

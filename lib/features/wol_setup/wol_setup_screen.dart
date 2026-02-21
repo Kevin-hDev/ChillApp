@@ -415,7 +415,6 @@ class _ResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = context.chillAccent;
-    final orange = context.chillOrange;
 
     return Container(
       width: double.infinity,

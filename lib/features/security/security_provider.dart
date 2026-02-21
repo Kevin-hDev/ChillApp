@@ -411,8 +411,9 @@ class SecurityNotifier extends Notifier<SecurityState> {
             ? SecurityCommands.enableLinuxSysctl()
             : SecurityCommands.disableLinuxSysctl();
       case 'linux.permissions':
-        if (!enable)
+        if (!enable) {
           return false; // Pas de disable — on ne relâche pas les permissions
+        }
         return SecurityCommands.enableLinuxPermissions();
       case 'linux.fail2ban':
         return enable
